@@ -4,31 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تفاصيل المشروع - FGC</title>
+    
     <link rel="stylesheet" href="style.css">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
 
 <div class="container">
+    
     <div class="header-bar">
         <div class="header-title-box">
             <img src="FGC.jpeg" alt="Logo" class="logo-img" style="max-height: 60px;">
             <div>
                 <h2 id="siteTitle" style="margin:0;">جاري التحميل...</h2>
-                <a href="dashboard.html" id="homeBtn" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px; margin-top:5px; display:none;">
-                    <i class="fa-solid fa-house"></i> الرئيسية
-                </a>
-                <button onclick="logout()" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px; margin-top:5px; border-color:var(--danger); color:var(--danger);">
-                    <i class="fa-solid fa-right-from-bracket"></i> خروج
-                </button>
+                <div style="margin-top: 5px;">
+                    <a href="dashboard.html" id="homeBtn" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px; display:none;">
+                        <i class="fa-solid fa-house"></i> الرئيسية
+                    </a>
+                    <button onclick="logout()" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px; border-color:var(--danger); color:var(--danger);">
+                        <i class="fa-solid fa-right-from-bracket"></i> خروج
+                    </button>
+                </div>
             </div>
         </div>
         
-        <div id="actionButtons" style="display:none;">
+        <div id="actionButtons" style="display:none; gap: 10px;">
             <button onclick="openModal()" class="btn btn-primary">
                 <i class="fa-solid fa-plus"></i> إضافة جديد
             </button>
@@ -41,18 +46,27 @@
         </div>
     </div>
 
-    <div class="stat-grid" style="margin-bottom: 30px;">
-        <div class="card" style="text-align:center; border-bottom:4px solid var(--primary-dark);">
-            <h3>الميزانية</h3><p id="statBudget">0</p>
+    <div class="dashboard-top-section">
+        <div class="stats-area">
+            <div class="card" style="border-bottom:4px solid var(--primary-light);">
+                <h3>الميزانية المعتمدة</h3><p id="statBudget">0</p>
+            </div>
+            <div class="card" style="border-bottom:4px solid var(--danger);">
+                <h3>إجمالي المصروف</h3><p id="statSpent" style="color:var(--danger)">0</p>
+            </div>
+            <div class="card" style="border-bottom:4px solid var(--success);">
+                <h3>الرصيد المتبقي</h3><p id="statBalance" style="color:var(--success)">0</p>
+            </div>
+            <div class="card" style="border-bottom:4px solid var(--accent);">
+                <h3>أرباح الشركة</h3><p id="statProfit" style="color:var(--accent)">0</p>
+            </div>
         </div>
-        <div class="card" style="text-align:center; border-bottom:4px solid var(--danger);">
-            <h3>المصروف</h3><p id="statSpent" style="color:var(--danger)">0</p>
-        </div>
-        <div class="card" style="text-align:center; border-bottom:4px solid var(--success);">
-            <h3>المتبقي</h3><p id="statBalance" style="color:var(--success)">0</p>
-        </div>
-        <div class="card" style="text-align:center; border-bottom:4px solid var(--accent-gold);">
-            <h3>الربح</h3><p id="statProfit" style="color:var(--accent-gold)">0</p>
+
+        <div class="chart-area">
+            <h4 style="margin-top:0; color:#888;">تحليل الميزانية</h4>
+            <div class="chart-container">
+                <canvas id="budgetChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -65,9 +79,9 @@
         </div>
     </div>
 
-    <div class="card">
-        <h3><i class="fa-solid fa-list"></i> سجل الحركات</h3>
-        <div class="table-container">
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <h3 style="padding: 20px; margin: 0; background: #fdfdfd; border-bottom: 1px solid #eee;"><i class="fa-solid fa-list"></i> سجل الحركات والتكاليف</h3>
+        <div class="table-container" style="box-shadow: none; border-radius: 0;">
             <table id="transTable">
                 <thead>
                     <tr>
@@ -83,40 +97,45 @@
 <div id="transactionModal" class="modal-overlay">
     <div class="modal-content">
         <span class="close-modal" onclick="closeModal()">&times;</span>
-        <h3 id="modalTitle" style="color:var(--primary-dark); margin-top:0;">تسجيل معاملة جديدة</h3>
+        <h3 id="modalTitle" style="color:var(--primary); margin-top:0;">تسجيل معاملة جديدة</h3>
         <input type="hidden" id="editTransId">
+        
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-            <div><label>رقم التعميد *</label><input type="number" id="orderNum"></div>
-            <div><label>تاريخ التعميد *</label><input type="date" id="orderDate"></div>
-            <div><label>المورد *</label><input type="text" id="supplier"></div>
+            <div class="input-box"><label>رقم التعميد *</label><input type="number" id="orderNum"></div>
+            <div class="input-box"><label>تاريخ التعميد *</label><input type="date" id="orderDate"></div>
+            <div class="input-box"><label>المورد *</label><input type="text" id="supplier"></div>
         </div>
-        <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin: 15px 0;">
-            <h4 style="margin:0 0 10px 0; color:var(--primary-light);">بيانات الفاتورة وأمر الشراء</h4>
+        
+        <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin: 15px 0; border: 1px dashed #ddd;">
+            <h4 style="margin:0 0 10px 0; color:var(--primary-light); font-size: 0.9rem;">بيانات الفاتورة وأمر الشراء</h4>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
-                <div><label>رقم الفاتورة</label><input type="text" id="invoiceNum"></div>
-                <div><label>تاريخ الفاتورة</label><input type="date" id="invoiceDate"></div>
-                <div><label>رقم أمر الشراء (PO)</label><input type="text" id="poNumber"></div>
+                <div class="input-box"><label>رقم الفاتورة</label><input type="text" id="invoiceNum"></div>
+                <div class="input-box"><label>تاريخ الفاتورة</label><input type="date" id="invoiceDate"></div>
+                <div class="input-box"><label>رقم أمر الشراء (PO)</label><input type="text" id="poNumber"></div>
             </div>
         </div>
+        
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-            <div><label>المبلغ (بدون ضريبة) *</label><input type="number" id="amount" style="border-color:var(--accent-gold);"></div>
-            <div><label>النسبة (0.20)</label><input type="number" id="ratio" step="0.01" placeholder="0.20"></div>
-            <div><label>مستخلص / ملاحظات</label><input type="text" id="batch"></div>
+            <div class="input-box"><label>المبلغ (بدون ضريبة) *</label><input type="number" id="amount" style="border: 1px solid var(--accent);"></div>
+            <div class="input-box"><label>النسبة (مثلاً 0.20)</label><input type="number" id="ratio" step="0.01" placeholder="0.20"></div>
+            <div class="input-box"><label>مستخلص / ملاحظات</label><input type="text" id="batch"></div>
         </div>
-        <div style="margin-top: 20px; text-align: left;">
-            <button onclick="closeModal()" class="btn btn-outline" style="margin-left:10px;">إلغاء</button>
+        
+        <div style="margin-top: 20px; text-align: left; display: flex; justify-content: flex-end; gap: 10px;">
+            <button onclick="closeModal()" class="btn btn-outline">إلغاء</button>
             <button onclick="saveTransaction()" class="btn btn-success" style="width: 150px;">حفظ</button>
         </div>
     </div>
 </div>
 
 <div id="importModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-content" style="max-width: 500px; text-align: center;">
         <span class="close-modal" onclick="document.getElementById('importModal').style.display='none'">&times;</span>
-        <h3>استيراد بيانات Excel</h3>
-        <p>اختر ملف CSV يحتوي على البيانات</p>
-        <input type="file" id="csvFile" accept=".csv">
-        <button onclick="processCSV()" class="btn btn-warning" style="width:100%; margin-top:15px;">بدء الاستيراد</button>
+        <div style="font-size: 3rem; color: var(--success); margin-bottom: 10px;"><i class="fa-solid fa-file-excel"></i></div>
+        <h3>استيراد بيانات Excel/CSV</h3>
+        <p style="color:#666;">تأكد أن الملف يحتوي على الأعمدة بالترتيب الصحيح</p>
+        <input type="file" id="csvFile" accept=".csv" style="padding: 20px; border: 2px dashed #ccc; width: 100%; text-align: center; margin: 20px 0;">
+        <button onclick="processCSV()" class="btn btn-warning" style="width:100%;">بدء الاستيراد</button>
     </div>
 </div>
 
@@ -129,40 +148,63 @@
     const siteId = new URLSearchParams(window.location.search).get('id');
     if(!siteId) window.location.href = "dashboard.html";
 
+    // متغير الرسم البياني
+    let budgetChart = null;
+
+    function initChart() {
+        const ctx = document.getElementById('budgetChart').getContext('2d');
+        budgetChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['المصروف', 'المتبقي'],
+                datasets: [{
+                    data: [0, 100],
+                    backgroundColor: ['#c0392b', '#27ae60'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    // تحديث بيانات الشارت
+    function updateChart(spent, balance) {
+        if(budgetChart) {
+            // إذا كان المتبقي بالسالب، نعرضه كصفر في الرسم البياني حتى لا يخرب الشكل
+            const safeBalance = balance > 0 ? balance : 0;
+            budgetChart.data.datasets[0].data = [spent, safeBalance];
+            budgetChart.update();
+        }
+    }
+
     function formatDateForInput(dateString) {
         if (!dateString) return "";
         const date = new Date(dateString);
         if (isNaN(date.getTime())) return ""; 
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0'); 
-        const day = String(date.getDate()).padStart(2, '0');       
+        const day = String(date.getDate()).padStart(2, '0');        
         return `${year}-${month}-${day}`;
     }
 
-    // -------------------------------------------------------------
-    // المنطق الجديد للصلاحيات
-    // -------------------------------------------------------------
     auth.onAuthStateChanged(async user => {
         if(user) {
-            // جلب صلاحيات المستخدم
             const u = await db.collection('users').doc(user.uid).get();
             const userData = u.data();
-
-            // 1. إذا كان أدمن: يظهر له زر العودة للداشبورد وكل الأزرار
             if(u.exists && userData.role === 'admin') {
-                document.getElementById('homeBtn').style.display = 'inline-block';
+                document.getElementById('homeBtn').style.display = 'inline-flex';
                 document.getElementById('actionButtons').style.display = 'flex';
-                document.getElementById('actionButtons').style.gap = '10px';
-            } 
-            // 2. إذا كان مستخدم عادي وهذا هو موقعه: يظهر له أزرار العمليات فقط
-            else if (u.exists && userData.role === 'user' && userData.assignedSiteId === siteId) {
+            } else if (u.exists && userData.role === 'user' && userData.assignedSiteId === siteId) {
                 document.getElementById('actionButtons').style.display = 'flex';
-                document.getElementById('actionButtons').style.gap = '10px';
-                // (زر الرئيسية مخفي افتراضياً وهذا ما نريده)
             }
-            
-            // تحميل البيانات (مشترك للجميع)
             loadPageData();
+            initChart(); // تشغيل الشارت عند البدء
         } else {
             window.location.href = "index.html";
         }
@@ -177,6 +219,9 @@
             document.getElementById('statSpent').innerText = fmt(d.totalSpent);
             document.getElementById('statBalance').innerText = fmt(d.currentBalance);
             document.getElementById('statProfit').innerText = fmt(d.totalProfit);
+
+            // تحديث الرسم البياني عند وصول بيانات جديدة
+            updateChart(d.totalSpent || 0, d.currentBalance || 0);
         });
 
         db.collection("budgets").doc(siteId).collection("transactions").orderBy("orderNumber", "desc").onSnapshot(snap => {
@@ -196,8 +241,8 @@
                     <td>${val.companyRatio || 0}</td>
                     <td>${fmt(val.companyProfit)}</td>
                     <td>
-                        <button onclick="editTrans('${doc.id}')" class="btn btn-secondary" style="padding:5px 8px; font-size:0.8em;"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="deleteTrans('${doc.id}', ${val.amountExclTax}, ${val.companyProfit})" class="btn btn-danger" style="padding:5px 8px; font-size:0.8em;"><i class="fa-solid fa-trash"></i></button>
+                        <button onclick="editTrans('${doc.id}')" class="btn btn-outline" style="padding:5px 8px; font-size:0.8em;"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteTrans('${doc.id}', ${val.amountExclTax}, ${val.companyProfit})" class="btn btn-danger" style="padding:5px 8px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>`;
             });
@@ -205,12 +250,9 @@
         });
     }
 
-    // --- (باقي الدوال: openModal, closeModal, applyFilters, saveTransaction, editTrans, deleteTrans, processCSV, clearAllData, fmt) ---
-    // --- (هي نفس الكود السابق تماماً بدون تغيير، تم اختصارها هنا لتوفير المساحة) ---
-    // تأكد من نسخ باقي الدوال من الملف السابق ووضعها هنا
-    
     function openModal() { document.getElementById('editTransId').value=""; document.getElementById('modalTitle').innerText="تسجيل معاملة جديدة"; document.querySelectorAll('#transactionModal input').forEach(i=>i.value=""); document.getElementById('transactionModal').classList.add('show'); }
     function closeModal() { document.getElementById('transactionModal').classList.remove('show'); }
+    
     function applyFilters() { 
         const inv=document.getElementById('filterInvoice').value.toLowerCase(), po=document.getElementById('filterPO').value.toLowerCase(), sup=document.getElementById('filterSupplier').value.toLowerCase(), date=document.getElementById('filterDate').value;
         document.querySelectorAll('.data-row').forEach(row=>{
