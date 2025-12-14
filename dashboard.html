@@ -2,28 +2,403 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>لوحة التحكم</title>
-    <link rel="stylesheet" href="css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الرئيسية - FGC Dashboard</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;800&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --primary: #1a3c6d;
+            --accent: #d4af37;
+            --success: #27ae60;
+            --danger: #c0392b;
+            --text-dark: #2c3e50;
+            --bg-light: #f4f6f9;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: var(--bg-light);
+            margin: 0; padding: 0;
+            color: var(--text-dark);
+        }
+
+        .navbar {
+            background: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+            position: sticky; top: 0; z-index: 100;
+        }
+
+        .nav-brand {
+            display: flex; align-items: center; gap: 15px;
+        }
+        .nav-brand img { height: 50px; }
+        .nav-brand h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
+
+        .container {
+            max-width: 1200px; margin: 40px auto; padding: 0 20px;
+        }
+
+        /* كارت الإضافة (للأدمن) */
+        .admin-panel {
+            background: linear-gradient(135deg, #fff, #fdfbf7);
+            border: 1px solid #eee;
+            border-right: 5px solid var(--accent);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+            margin-bottom: 40px;
+            display: none; /* مخفي افتراضياً */
+        }
+
+        .input-group {
+            display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;
+        }
+        .input-box { flex: 1; min-width: 200px; }
+        .input-box label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--primary); }
+        .input-box input {
+            width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;
+            font-family: 'Tajawal'; outline: none; transition: 0.3s; box-sizing: border-box;
+        }
+        .input-box input:focus { border-color: var(--accent); background: #fff; }
+
+        /* شبكة المشاريع */
+        .projects-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px;
+        }
+
+        /* كارت المشروع */
+        .project-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid rgba(0,0,0,0.02);
+            display: flex; flex-direction: column;
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.08);
+        }
+
+        .card-header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .card-header h3 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+        .icon-box {
+            background: rgba(255,255,255,0.1); width: 40px; height: 40px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        }
+
+        .card-body { padding: 25px; flex: 1; }
+
+        .stat-row {
+            display: flex; justify-content: space-between; margin-bottom: 15px;
+            padding-bottom: 15px; border-bottom: 1px solid #f0f0f0;
+        }
+        .stat-item label { display: block; font-size: 0.85rem; color: #888; margin-bottom: 5px; }
+        .stat-item span { font-size: 1.1rem; font-weight: bold; color: var(--text-dark); }
+
+        .profit-badge {
+            background: #fffdf5; border: 1px solid #f0e6c8;
+            padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 20px;
+        }
+        .profit-badge label { display: block; font-size: 0.85rem; color: var(--accent); margin-bottom: 2px; }
+        .profit-badge span { font-size: 1.3rem; font-weight: 800; color: var(--primary); }
+
+        .card-footer {
+            padding: 20px; border-top: 1px solid #f5f5f5; background: #fafafa;
+        }
+        .btn-view {
+            width: 100%; padding: 12px; border: none; border-radius: 8px;
+            background: var(--primary); color: white; font-family: 'Tajawal'; font-weight: bold;
+            cursor: pointer; text-decoration: none; display: block; text-align: center;
+            transition: 0.3s;
+        }
+        .btn-view:hover { background: #2a5298; }
+        
+        .btn-add {
+            background: var(--accent); color: white; border: none; padding: 12px 30px;
+            border-radius: 8px; font-weight: bold; cursor: pointer; height: 46px;
+        }
+        .btn-sync {
+            background: transparent; color: var(--text-dark); border: 1px solid #ddd; padding: 10px 20px;
+            border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; margin-top: 15px;
+            font-size: 0.9em; width: 100%; justify-content: center; transition: 0.3s;
+        }
+        .btn-sync:hover { background: #f0f0f0; border-color: #bbb; }
+        
+        .btn-logout {
+            background: transparent; border: 1px solid var(--danger); color: var(--danger);
+            padding: 8px 15px; border-radius: 6px; cursor: pointer; transition: 0.3s;
+        }
+        .btn-logout:hover { background: var(--danger); color: white; }
+
+        /* Loader Overlay */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9); z-index: 999; display: none;
+            justify-content: center; align-items: center; flex-direction: column;
+        }
+        .loader-spinner {
+            border: 5px solid #f3f3f3; border-top: 5px solid var(--primary);
+            border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    </style>
 </head>
 <body>
 
-    <div class="dashboard-container">
-        <div class="header">
-            <h2>لوحة التحكم</h2>
-            <button class="logout-btn" onclick="logout()">تسجيل خروج</button>
-        </div>
-
-        <div id="data-list">
-            <p>جاري تحميل البيانات...</p>
-        </div>
+    <div id="loader">
+        <div class="loader-spinner"></div>
+        <h3 style="color: var(--primary); margin-top: 20px;">جاري تحديث البيانات...</h3>
     </div>
 
-    <script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/dashboard.js"></script>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <img src="FGC.jpeg" alt="Logo">
+            <div>
+                <h2>FGC Dashboard</h2>
+                <span style="font-size: 0.8rem; color: #888;">لوحة التحكم والمشاريع</span>
+            </div>
+        </div>
+        <button onclick="logout()" class="btn-logout">
+            <i class="fa-solid fa-right-from-bracket"></i> خروج
+        </button>
+    </nav>
+
+    <div class="container">
+        
+        <div id="adminPanel" class="admin-panel">
+            <h3 style="margin-top: 0; color: var(--primary); display: flex; justify-content: space-between;">
+                <span><i class="fa-solid fa-folder-plus"></i> إضافة مشروع جديد</span>
+            </h3>
+            
+            <div class="input-group">
+                <div class="input-box" style="flex: 2;">
+                    <label>اسم المشروع</label>
+                    <input type="text" id="newSiteName" placeholder="مثال: مشروع صيانة مستشفى الحرس">
+                </div>
+                <div class="input-box">
+                    <label>الميزانية المعتمدة</label>
+                    <input type="number" id="newSiteBudget" placeholder="500000">
+                </div>
+                <button onclick="addSite()" class="btn-add">إضافة</button>
+            </div>
+
+            <button onclick="recalculateAllProjects()" class="btn-sync">
+                <i class="fa-solid fa-rotate"></i> تحديث وتصحيح جميع الأرصدة والأرباح (إعادة احتساب)
+            </button>
+        </div>
+
+        <h3 style="margin-bottom: 20px; color: var(--text-dark);">المشاريع الجارية</h3>
+        <div id="sitesGrid" class="projects-grid">
+            <p style="color: #888;">جاري تحميل البيانات...</p>
+        </div>
+
+    </div>
+
+<script>
+    // --- إعدادات Firebase ---
+    const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // التحقق من الصلاحية
+    auth.onAuthStateChanged(async user => {
+        if(!user) { window.location.href = "index.html"; return; }
+        
+        try {
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                
+                // إذا كان أدمن
+                if(userData.role === 'admin') {
+                    document.getElementById('adminPanel').style.display = 'block';
+                    loadAllSites();
+                } else {
+                    // مستخدم عادي
+                    loadMySite(userData.assignedSiteId);
+                }
+            }
+        } catch (error) { console.error(error); }
+    });
+
+    function loadAllSites() {
+        db.collection("budgets").orderBy("createdAt", "desc").onSnapshot(snap => renderSites(snap.docs));
+    }
+
+    function loadMySite(siteId) {
+        if(!siteId) {
+            document.getElementById('sitesGrid').innerHTML = "<p>لم يتم تعيين مشروع لك.</p>";
+            return;
+        }
+        db.collection("budgets").doc(siteId).onSnapshot(doc => {
+            if(doc.exists) renderSites([doc]);
+            else document.getElementById('sitesGrid').innerHTML = "<p>المشروع غير موجود.</p>";
+        });
+    }
+
+    // عرض الكروت
+    function renderSites(docs) {
+        const container = document.getElementById('sitesGrid');
+        container.innerHTML = "";
+        
+        if(docs.length === 0) {
+            container.innerHTML = "<p>لا توجد مشاريع حالياً.</p>";
+            return;
+        }
+
+        docs.forEach(doc => {
+            const d = doc.data();
+            
+            // حساب النسبة اللونية
+            const percent = d.totalAllocatedAmount ? (d.currentBalance / d.totalAllocatedAmount) * 100 : 0;
+            const balanceColor = percent < 20 ? 'var(--danger)' : 'var(--success)';
+
+            // القيم الرقمية مع التأكد من عدم وجود NaN
+            const displayProfit = d.totalProfit || 0;
+            const displaySpent = d.totalSpent || 0;
+
+            const html = `
+            <div class="project-card">
+                <div class="card-header">
+                    <h3>${d.itemName}</h3>
+                    <div class="icon-box"><i class="fa-solid fa-building"></i></div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="stat-row">
+                        <div class="stat-item">
+                            <label>الميزانية</label>
+                            <span>${fmt(d.totalAllocatedAmount)}</span>
+                        </div>
+                        <div class="stat-item" style="text-align: left;">
+                            <label>المصروف</label>
+                            <span style="color: var(--danger);">${fmt(displaySpent)}</span>
+                        </div>
+                    </div>
+
+                    <div class="profit-badge">
+                        <label>أرباح الشركة الإجمالية</label>
+                        <span>${fmt(displayProfit)} ريال</span>
+                    </div>
+
+                    <div style="text-align: center;">
+                        <span style="font-size: 0.9rem; color: #888;">الرصيد المتبقي</span>
+                        <div style="font-size: 1.8rem; font-weight: 800; color: ${balanceColor}; line-height: 1;">
+                            ${fmt(d.currentBalance)}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer">
+                    <a href="details.html?id=${doc.id}" class="btn-view">
+                        إدارة العمليات والتفاصيل <i class="fa-solid fa-arrow-left" style="margin-right: 5px;"></i>
+                    </a>
+                </div>
+            </div>`;
+            container.innerHTML += html;
+        });
+    }
+
+    function addSite() {
+        const name = document.getElementById('newSiteName').value;
+        const budget = Number(document.getElementById('newSiteBudget').value);
+        if(!name || !budget) return alert("البيانات ناقصة");
+        
+        db.collection("budgets").add({
+            itemName: name, 
+            totalAllocatedAmount: budget, 
+            currentBalance: budget,
+            totalSpent: 0, 
+            totalProfit: 0, 
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => { 
+            alert("تمت إضافة المشروع"); 
+            document.getElementById('newSiteName').value=""; 
+            document.getElementById('newSiteBudget').value=""; 
+        });
+    }
+
+    // -------------------------------------------------------------
+    // الميزة الجديدة: إعادة احتساب الأرباح من المعاملات (Recalculate)
+    // -------------------------------------------------------------
+    async function recalculateAllProjects() {
+        if(!confirm("هل أنت متأكد؟\nسيقوم النظام بفحص جميع المعاملات في كل مشروع وإعادة حساب (الربح، المصروف، والمتبقي) وتحديثهم بدقة.\n\nهذه العملية قد تستغرق بضع ثوانٍ.")) return;
+
+        document.getElementById('loader').style.display = 'flex';
+
+        try {
+            // 1. جلب كل المشاريع
+            const budgetsSnapshot = await db.collection('budgets').get();
+            
+            const promises = budgetsSnapshot.docs.map(async (budgetDoc) => {
+                const budgetRef = budgetDoc.ref;
+                const originalBudget = budgetDoc.data().totalAllocatedAmount || 0;
+
+                // 2. جلب جميع المعاملات (Transactions) لهذا المشروع
+                const transactionsSnapshot = await budgetRef.collection('transactions').get();
+
+                let totalProfit = 0;
+                let totalSpent = 0;
+
+                // 3. التجميع اليدوي (Summation)
+                transactionsSnapshot.forEach(doc => {
+                    const t = doc.data();
+                    const amount = Number(t.amountExclTax) || 0;
+                    const profit = Number(t.companyProfit) || 0;
+                    
+                    totalSpent += amount;
+                    totalProfit += profit;
+                });
+
+                // 4. تحديث المشروع بالأرقام الصحيحة
+                return budgetRef.update({
+                    totalSpent: totalSpent,
+                    totalProfit: totalProfit,
+                    currentBalance: originalBudget - totalSpent
+                });
+            });
+
+            // انتظار انتهاء الجميع
+            await Promise.all(promises);
+
+            alert("✅ تم تحديث وتصحيح جميع الأرصدة بنجاح!");
+
+        } catch (e) {
+            console.error(e);
+            alert("حدث خطأ أثناء التحديث: " + e.message);
+        } finally {
+            document.getElementById('loader').style.display = 'none';
+        }
+    }
+
+    function logout() { auth.signOut().then(() => window.location.href = "index.html"); }
+
+    function fmt(n) { 
+        if(isNaN(n) || n === null) return "0.00";
+        return Number(n).toLocaleString('ar-EG', {minimumFractionDigits: 2, maximumFractionDigits:2}); 
+    }
+</script>
+
 </body>
 </html>
