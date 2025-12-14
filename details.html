@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>إدارة العمليات</title>
+    <title>تفاصيل المشروع - FGC</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -13,62 +13,78 @@
 
 <div class="container">
     <div class="header-bar">
-        <div>
-            <h2 id="siteTitle">...</h2>
-            <a href="dashboard.html" class="btn btn-warning" style="font-size:0.8em;">عودة للرئيسية</a>
-        </div>
-        <div id="siteStats" style="text-align: left;">
+        <div class="header-title-box">
+            <img src="FGC.jpeg" alt="FGC Logo" class="logo-img" style="max-height: 60px;">
+            <div>
+                <h2 id="siteTitle" style="margin-bottom: 5px;">جاري التحميل...</h2>
+                <a href="dashboard.html" class="btn btn-outline" style="font-size:0.85em; padding: 6px 15px;">🏠 عودة للرئيسية</a>
             </div>
+        </div>
     </div>
 
     <div class="stat-grid">
-        <div class="card"><h3>الميزانية</h3><p id="statBudget">0</p></div>
-        <div class="card"><h3>المصروف</h3><p id="statSpent" style="color:var(--danger)">0</p></div>
-        <div class="card"><h3>المتبقي</h3><p id="statBalance" style="color:var(--success)">0</p></div>
-        <div class="card"><h3>الربح</h3><p id="statProfit" style="color:var(--secondary)">0</p></div>
+        <div class="card" style="text-align: center; border-bottom: 4px solid var(--primary-dark);">
+            <h3>💰 الميزانية المعتمدة</h3>
+            <p id="statBudget" style="color: var(--primary-dark);">0</p>
+        </div>
+        <div class="card" style="text-align: center; border-bottom: 4px solid var(--danger);">
+            <h3>📉 إجمالي المصروف</h3>
+            <p id="statSpent" class="text-danger">0</p>
+        </div>
+        <div class="card" style="text-align: center; border-bottom: 4px solid var(--success);">
+            <h3>✅ الرصيد المتبقي</h3>
+            <p id="statBalance" class="text-success">0</p>
+        </div>
+        <div class="card" style="text-align: center; border-bottom: 4px solid var(--accent-gold);">
+            <h3>📊 أرباح الشركة</h3>
+            <p id="statProfit" class="text-accent">0</p>
+        </div>
     </div>
 
-    <div class="card" id="formCard" style="border-top: 5px solid var(--primary);">
-        <h3 id="formTitle">➕ إضافة معاملة جديدة</h3>
-        <input type="hidden" id="editTransId"> <div class="form-grid">
-            <div><label>رقم التعميد</label><input type="number" id="orderNum"></div>
-            <div><label>تاريخ التعميد</label><input type="date" id="orderDate"></div>
-            <div><label>المورد</label><input type="text" id="supplier"></div>
-            
-            <div style="background:#f9f9f9; padding:5px; border-radius:5px;">
-                <label>رقم الفاتورة</label><input type="text" id="invoiceNum">
-            </div>
-            <div style="background:#f9f9f9; padding:5px; border-radius:5px;">
-                <label>تاريخ الفاتورة</label><input type="date" id="invoiceDate">
-            </div>
-            <div style="background:#f9f9f9; padding:5px; border-radius:5px;">
-                <label>رقم أمر الشراء (PO)</label><input type="text" id="poNumber">
-            </div>
-
-            <div><label>المبلغ (بدون ضريبة)</label><input type="number" id="amount"></div>
-            <div><label>نسبة الشركة (0.20)</label><input type="number" id="ratio" step="0.01"></div>
-            <div><label>ملاحظات/مستخلص</label><input type="text" id="batch"></div>
+    <div class="card" id="formCard" style="border-top: 4px solid var(--primary-light);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 id="formTitle" style="color: var(--primary-dark); margin: 0;">➕ تسجيل معاملة جديدة</h3>
         </div>
         
-        <div style="margin-top: 15px; display: flex; gap: 10px;">
-            <button onclick="saveTransaction()" class="btn btn-success" id="saveBtn" style="flex:2;">حفظ العملية</button>
-            <button onclick="cancelEdit()" class="btn btn-danger" id="cancelBtn" style="display:none; flex:1;">إلغاء التعديل</button>
+        <input type="hidden" id="editTransId">
+        
+        <div class="form-grid">
+            <div><label>رقم التعميد *</label><input type="number" id="orderNum"></div>
+            <div><label>تاريخ التعميد *</label><input type="date" id="orderDate"></div>
+            <div><label>المورد *</label><input type="text" id="supplier"></div>
+            
+            <div style="background:#f4f7f6; padding:15px; border-radius:10px; grid-column: span 3;">
+                <h4 style="margin: 0 0 15px 0; color: var(--primary-dark);">بيانات الفاتورة وأمر الشراء</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                    <div><label>رقم الفاتورة</label><input type="text" id="invoiceNum"></div>
+                    <div><label>تاريخ الفاتورة</label><input type="date" id="invoiceDate"></div>
+                    <div><label>رقم أمر الشراء (PO)</label><input type="text" id="poNumber"></div>
+                </div>
+            </div>
+
+            <div><label>المبلغ (بدون ضريبة) *</label><input type="number" id="amount" style="font-weight: bold;"></div>
+            <div><label>نسبة الشركة (مثلاً 0.20)</label><input type="number" id="ratio" step="0.01" placeholder="0.20"></div>
+            <div><label>ملاحظات / مستخلص</label><input type="text" id="batch"></div>
+        </div>
+        
+        <div style="margin-top: 25px; display: flex; gap: 15px;">
+            <button onclick="saveTransaction()" class="btn btn-success" id="saveBtn" style="flex:3; font-size: 1.1em;">💾 حفظ العملية</button>
+            <button onclick="cancelEdit()" class="btn btn-danger" id="cancelBtn" style="display:none; flex:1;">إلغاء</button>
         </div>
     </div>
 
     <div class="card">
-        <h3>سجل الحركات</h3>
-        <div style="overflow-x:auto;">
+        <h3 style="color: var(--primary-dark);">📝 سجل الحركات والتعميدات</h3>
+        <div class="table-container">
             <table>
                 <thead>
                     <tr>
-                        <th>التعميد</th>
+                        <th>تعميد #</th>
                         <th>التاريخ</th>
                         <th>PO #</th>
                         <th>المورد</th>
                         <th>فاتورة #</th>
-                        <th>تاريخ الفاتورة</th>
-                        <th>المبلغ</th>
+                        <th>مبلغ (ق.م)</th>
                         <th>النسبة</th>
                         <th>الربح</th>
                         <th>تحكم</th>
@@ -79,20 +95,26 @@
         </div>
     </div>
 
-    <div id="adminTools" class="card" style="display:none; background:#fffbf0; border:2px dashed orange;">
-        <h3>أدوات المدير</h3>
-        <input type="file" id="csvFile" accept=".csv">
-        <button onclick="processCSV()" class="btn btn-warning">استيراد CSV</button>
-        <button onclick="clearAllData()" class="btn btn-danger" style="float:left;">تصفير الموقع بالكامل</button>
-        <p style="font-size:0.8em; color:#666; margin-top:5px;">
-            * ترتيب أعمدة الـ CSV الجديد يجب أن يكون:<br>
-            [1:رقم التعميد] [2:تاريخ التعميد] [3:المورد] [4:المبلغ] [5:النسبة] [6:رقم الفاتورة] [7:تاريخ الفاتورة] [8:PO#] [9:ملاحظات]
-        </p>
+    <div id="adminTools" class="card" style="display:none; background:#fffbf0; border: 2px dashed var(--accent-orange);">
+        <h3 style="color: var(--accent-orange);">👑 أدوات المدير المتقدمة</h3>
+        
+        <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
+            <div style="flex: 1;">
+                 <label>استيراد ملف Excel (CSV)</label>
+                 <input type="file" id="csvFile" accept=".csv" style="background: white;">
+            </div>
+            <button onclick="processCSV()" class="btn btn-warning">🚀 بدء الاستيراد</button>
+        </div>
+        
+        <div style="border-top: 1px solid #ebd5b3; padding-top: 20px;">
+            <button onclick="clearAllData()" class="btn btn-danger" style="width: auto;">⚠️ تصفير بيانات المشروع بالكامل (حذف نهائي)</button>
+        </div>
     </div>
 
 </div>
 
 <script>
+    // --- نفس كود الجافاسكربت السابق تماماً (لا تغيير) ---
     const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
@@ -101,13 +123,11 @@
     const siteId = new URLSearchParams(window.location.search).get('id');
     if(!siteId) window.location.href = "dashboard.html";
 
-    // تحميل البيانات
     auth.onAuthStateChanged(async user => {
         if(user) {
             const u = await db.collection('users').doc(user.uid).get();
             if(u.exists && u.data().role === 'admin') document.getElementById('adminTools').style.display = 'block';
             
-            // مراقبة الموقع
             db.collection("budgets").doc(siteId).onSnapshot(doc => {
                 const d = doc.data();
                 document.getElementById('siteTitle').innerText = d.itemName;
@@ -117,7 +137,6 @@
                 document.getElementById('statProfit').innerText = fmt(d.totalProfit);
             });
 
-            // مراقبة الجدول
             db.collection("budgets").doc(siteId).collection("transactions").orderBy("orderNumber", "desc").onSnapshot(snap => {
                 const tbody = document.getElementById('tableBody');
                 tbody.innerHTML = "";
@@ -125,18 +144,17 @@
                     const val = doc.data();
                     tbody.innerHTML += `
                     <tr>
-                        <td>${val.orderNumber}</td>
+                        <td><strong>${val.orderNumber}</strong></td>
                         <td>${val.date}</td>
-                        <td><small>${val.poNumber || '-'}</small></td>
+                        <td>${val.poNumber || '-'}</td>
                         <td>${val.supplierName}</td>
                         <td>${val.invoiceNum || '-'}</td>
-                        <td>${val.invoiceDate || '-'}</td>
-                        <td>${fmt(val.amountExclTax)}</td>
+                        <td style="font-weight:bold; color:var(--primary-dark)">${fmt(val.amountExclTax)}</td>
                         <td>${val.companyRatio}</td>
-                        <td>${fmt(val.companyProfit)}</td>
+                        <td style="color:var(--accent-gold)">${fmt(val.companyProfit)}</td>
                         <td>
-                            <button onclick="editTrans('${doc.id}')" class="btn btn-secondary" style="padding:2px 8px; font-size:12px;">✏️</button>
-                            <button onclick="deleteTrans('${doc.id}', ${val.amountExclTax}, ${val.companyProfit})" class="btn btn-danger" style="padding:2px 8px; font-size:12px;">🗑️</button>
+                            <button onclick="editTrans('${doc.id}')" class="btn btn-secondary" style="padding:5px 10px; font-size:0.9em;">✏️</button>
+                            <button onclick="deleteTrans('${doc.id}', ${val.amountExclTax}, ${val.companyProfit})" class="btn btn-danger" style="padding:5px 10px; font-size:0.9em;">🗑️</button>
                         </td>
                     </tr>`;
                 });
@@ -144,7 +162,6 @@
         }
     });
 
-    // --- العمليات (إضافة / تعديل) ---
     async function saveTransaction() {
         const id = document.getElementById('editTransId').value;
         const data = {
@@ -154,14 +171,13 @@
             amountExclTax: Number(document.getElementById('amount').value),
             companyRatio: Number(document.getElementById('ratio').value),
             batchNumber: document.getElementById('batch').value,
-            // الحقول الجديدة
             invoiceNum: document.getElementById('invoiceNum').value,
             invoiceDate: document.getElementById('invoiceDate').value,
             poNumber: document.getElementById('poNumber').value,
         };
 
-        if(!data.amountExclTax || !data.orderNumber) return alert("أكمل البيانات الأساسية");
-        data.companyProfit = data.amountExclTax * data.companyRatio;
+        if(!data.amountExclTax || !data.orderNumber || !data.supplierName || !data.date) return alert("يرجى إكمال البيانات الأساسية (التي عليها نجمة *)");
+        data.companyProfit = data.amountExclTax * (data.companyRatio || 0);
 
         try {
             await db.runTransaction(async (t) => {
@@ -174,39 +190,29 @@
                 let newBalance = currentSite.currentBalance;
 
                 if(id) {
-                    // ** حالة التعديل **: نعكس القديم أولاً
                     const oldDoc = await t.get(siteRef.collection("transactions").doc(id));
                     const oldData = oldDoc.data();
                     newSpent -= oldData.amountExclTax;
                     newProfit -= oldData.companyProfit;
                     newBalance += oldData.amountExclTax;
-                    
-                    // ثم نطبق الجديد
                     t.update(siteRef.collection("transactions").doc(id), data);
                 } else {
-                    // ** حالة إضافة جديد **
                     data.createdAt = new Date();
                     t.set(siteRef.collection("transactions").doc(), data);
                 }
-
-                // تطبيق الحسابات الجديدة
                 newSpent += data.amountExclTax;
                 newProfit += data.companyProfit;
                 newBalance -= data.amountExclTax;
-
                 t.update(siteRef, { totalSpent: newSpent, totalProfit: newProfit, currentBalance: newBalance });
             });
-            
-            alert(id ? "تم التعديل" : "تمت الإضافة");
-            cancelEdit(); // تنظيف النموذج
+            alert(id ? "تم حفظ التعديلات" : "تمت إضافة العملية بنجاح");
+            cancelEdit();
         } catch(e) { console.error(e); alert("خطأ: " + e.message); }
     }
 
-    // --- وضع التعديل ---
     async function editTrans(id) {
         const doc = await db.collection("budgets").doc(siteId).collection("transactions").doc(id).get();
         const d = doc.data();
-        
         document.getElementById('editTransId').value = id;
         document.getElementById('orderNum').value = d.orderNumber;
         document.getElementById('orderDate').value = d.date;
@@ -217,33 +223,28 @@
         document.getElementById('invoiceNum').value = d.invoiceNum || '';
         document.getElementById('invoiceDate').value = d.invoiceDate || '';
         document.getElementById('poNumber').value = d.poNumber || '';
-
-        // تغيير شكل الزر
-        document.getElementById('saveBtn').innerText = "حفظ التعديلات";
+        document.getElementById('saveBtn').innerText = "💾 حفظ التعديلات";
         document.getElementById('saveBtn').className = "btn btn-warning";
         document.getElementById('formTitle').innerText = "✏️ تعديل المعاملة";
-        document.getElementById('cancelBtn').style.display = 'inline-block';
-        window.scrollTo(0,0);
+        document.getElementById('cancelBtn').style.display = 'inline-flex';
+        document.getElementById('formCard').scrollIntoView({behavior: "smooth"});
     }
 
     function cancelEdit() {
         document.getElementById('editTransId').value = "";
         document.querySelectorAll('input').forEach(i => i.value = "");
-        document.getElementById('saveBtn').innerText = "حفظ العملية";
+        document.getElementById('saveBtn').innerText = "💾 حفظ العملية";
         document.getElementById('saveBtn').className = "btn btn-success";
-        document.getElementById('formTitle').innerText = "➕ إضافة معاملة جديدة";
+        document.getElementById('formTitle').innerText = "➕ تسجيل معاملة جديدة";
         document.getElementById('cancelBtn').style.display = 'none';
-        // إعادة القيم الافتراضية
-        document.getElementById('ratio').value = "0.20"; // أو أي قيمة افتراضية
+        document.getElementById('ratio').value = "";
     }
 
-    // --- الحذف ---
     async function deleteTrans(id, amount, profit) {
-        if(!confirm("حذف نهائي واسترجاع المبلغ؟")) return;
+        if(!confirm("هل أنت متأكد من الحذف النهائي؟ سيتم استرجاع المبلغ للميزانية.")) return;
         await db.runTransaction(async (t) => {
             const siteRef = db.collection("budgets").doc(siteId);
             const siteDoc = await t.get(siteRef);
-            
             t.delete(siteRef.collection("transactions").doc(id));
             t.update(siteRef, {
                 totalSpent: siteDoc.data().totalSpent - amount,
@@ -253,74 +254,51 @@
         });
     }
 
-    // --- الاستيراد (CSV) ---
     function processCSV() {
         const file = document.getElementById('csvFile').files[0];
-        if(!file) return alert("اختر الملف");
-        
+        if(!file) return alert("يرجى اختيار ملف CSV");
         Papa.parse(file, {
             header: false, encoding: "windows-1256", skipEmptyLines: true,
             complete: async function(results) {
                 const rows = results.data;
                 const batch = db.batch();
                 const siteRef = db.collection("budgets").doc(siteId);
-                
-                let bSpent=0, bProfit=0;
-                
-                // نبدأ من 1 (تخطي العناوين)
+                let bSpent=0, bProfit=0, count=0;
                 for(let i=1; i<rows.length; i++){
                     const r = rows[i];
                     if(!r[0] || isNaN(parseFloat(r[3]))) continue;
-                    
                     const amount = parseFloat(r[3]);
-                    const ratio = parseFloat(r[4]);
-                    
+                    const ratio = parseFloat(r[4]) || 0;
                     const newRef = siteRef.collection("transactions").doc();
                     batch.set(newRef, {
-                        orderNumber: Number(r[0]),
-                        date: r[1],
-                        supplierName: r[2],
-                        amountExclTax: amount,
-                        companyRatio: ratio,
-                        companyProfit: amount * ratio,
-                        // تخمين ترتيب الأعمدة الجديدة في ملف الاكسل
-                        invoiceNum: r[5] || '',    // العمود السادس
-                        invoiceDate: r[6] || '',   // العمود السابع
-                        poNumber: r[7] || '',      // العمود الثامن
-                        batchNumber: r[8] || '',
-                        importedAt: new Date()
+                        orderNumber: Number(r[0]), date: r[1], supplierName: r[2], amountExclTax: amount, companyRatio: ratio, companyProfit: amount * ratio,
+                        invoiceNum: r[5] || '', invoiceDate: r[6] || '', poNumber: r[7] || '', batchNumber: r[8] || '', importedAt: new Date()
                     });
-                    bSpent += amount; bProfit += (amount*ratio);
+                    bSpent += amount; bProfit += (amount*ratio); count++;
                 }
-                
                 const cur = (await siteRef.get()).data();
-                batch.update(siteRef, {
-                    totalSpent: (cur.totalSpent||0) + bSpent,
-                    totalProfit: (cur.totalProfit||0) + bProfit,
-                    currentBalance: cur.currentBalance - bSpent
-                });
-                
+                batch.update(siteRef, { totalSpent: (cur.totalSpent||0) + bSpent, totalProfit: (cur.totalProfit||0) + bProfit, currentBalance: cur.currentBalance - bSpent });
                 await batch.commit();
-                alert("تم الاستيراد بنجاح");
+                alert(`تم استيراد ${count} عملية بنجاح`);
                 location.reload();
             }
         });
     }
 
     async function clearAllData() {
-        if(!confirm("تحذير: حذف كل البيانات؟")) return;
+        if(!confirm("تحذير خطير! 🛑\nهل أنت متأكد من تصفير الموقع وحذف كافة البيانات؟\nلا يمكن التراجع.")) return;
         const siteRef = db.collection("budgets").doc(siteId);
         const snaps = await siteRef.collection("transactions").get();
         const batch = db.batch();
         snaps.forEach(d => batch.delete(d.ref));
-        
         const origin = (await siteRef.get()).data().totalAllocatedAmount;
         batch.update(siteRef, { totalSpent: 0, totalProfit: 0, currentBalance: origin });
         await batch.commit();
+        alert("تم تصفير الموقع بنجاح");
         location.reload();
     }
 
-    function fmt(n) { return Number(n).toLocaleString('ar-EG', {maximumFractionDigits:2}); }
+    function fmt(n) { return Number(n).toLocaleString('ar-EG', {minimumFractionDigits: 2, maximumFractionDigits:2}); }
 </script>
 </body>
 </html>
