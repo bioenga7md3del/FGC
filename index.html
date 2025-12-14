@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>نظام إدارة ميزانيات المواقع</title>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; padding: 20px; }
         .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
@@ -55,44 +51,49 @@
 
 </div>
 
-<script>
-    // --------------------------------------------------------------
-    // 1. إعدادات Firebase (استبدل هذا الجزء ببياناتك من Console)
-    // --------------------------------------------------------------
-    // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI",
-  authDomain: "fgcbio.firebaseapp.com",
-  projectId: "fgcbio",
-  storageBucket: "fgcbio.firebasestorage.app",
-  messagingSenderId: "924334872806",
-  appId: "1:924334872806:web:fac89ce388b1ff2de24327",
-  measurementId: "G-H9VW2MZQG0"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+    import { getFirestore, collection, doc, getDoc, onSnapshot, setDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     // --------------------------------------------------------------
-    // 2. دوال المصادقة (Auth)
+    // 1. إعدادات Firebase المحدثة (من البيانات التي أرسلتها)
+    // --------------------------------------------------------------
+    const firebaseConfig = {
+        apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI",
+        authDomain: "fgcbio.firebaseapp.com",
+        projectId: "fgcbio",
+        storageBucket: "fgcbio.firebasestorage.app",
+        messagingSenderId: "924334872806",
+        appId: "1:924334872806:web:fac89ce388b1ff2de24327",
+        measurementId: "G-H9VW2MZQG0"
+    };
+
+    // تهيئة التطبيق
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // --------------------------------------------------------------
+    // 2. ربط الدوال بالـ Global Scope للوصول إليها من HTML
+    // --------------------------------------------------------------
+    window.login = login;
+    window.signup = signup;
+    window.logout = logout;
+    window.addNewSite = addNewSite;
+    window.openSiteDetails = openSiteDetails;
+
+    // --------------------------------------------------------------
+    // 3. دوال المصادقة (Auth)
     // --------------------------------------------------------------
     
     // مراقب حالة المستخدم (يعمل عند فتح الصفحة)
-    auth.onAuthStateChanged(async (user) => {
+    onAuthStateChanged(auth, async (user) => {
         if (user) {
             document.getElementById('loginSection').classList.add('hidden');
             document.getElementById('dashboardSection').classList.remove('hidden');
             document.getElementById('welcomeMsg').innerText = `مرحباً، ${user.email}`;
             
-            // التحقق من صلاحيات المستخدم من قاعدة البيانات
             checkUserRole(user.uid);
         } else {
             document.getElementById('loginSection').classList.remove('hidden');
@@ -103,20 +104,21 @@ const analytics = getAnalytics(app);
     function login() {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('password').value;
-        auth.signInWithEmailAndPassword(email, pass)
+        signInWithEmailAndPassword(auth, email, pass)
             .catch((error) => document.getElementById('loginError').innerText = "خطأ: " + error.message);
     }
 
     function signup() {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('password').value;
-        auth.createUserWithEmailAndPassword(email, pass)
+        createUserWithEmailAndPassword(auth, email, pass)
             .then((userCredential) => {
                 // عند إنشاء حساب جديد، ننشئ له سجلاً في قاعدة البيانات بصلاحية "مستخدم" افتراضياً
-                db.collection("users").doc(userCredential.user.uid).set({
+                const userRef = doc(db, "users", userCredential.user.uid);
+                setDoc(userRef, {
                     email: email,
-                    role: "user", // الافتراضي مستخدم عادي
-                    assignedSiteId: "" // يحتاج أدمن لتعيينه لاحقاً
+                    role: "user",
+                    assignedSiteId: ""
                 });
                 alert("تم إنشاء الحساب! يرجى التواصل مع الإدارة لتفعيل الصلاحيات.");
             })
@@ -124,54 +126,54 @@ const analytics = getAnalytics(app);
     }
 
     function logout() {
-        auth.signOut();
+        signOut(auth);
     }
 
     // --------------------------------------------------------------
-    // 3. منطق البرنامج (Logic)
+    // 4. منطق البرنامج (Logic)
     // --------------------------------------------------------------
 
     let currentUserRole = null;
     let currentAssignedSite = null;
 
     async function checkUserRole(uid) {
-        const userDoc = await db.collection('users').doc(uid).get();
-        if (userDoc.exists) {
+        const userRef = doc(db, 'users', uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
             const userData = userDoc.data();
             currentUserRole = userData.role;
             currentAssignedSite = userData.assignedSiteId;
 
             if (currentUserRole === 'admin') {
-                // إظهار لوحة الأدمن
                 document.getElementById('adminPanel').classList.remove('hidden');
                 loadAllSites(); // الأدمن يرى كل المواقع
             } else {
-                // المستخدم العادي
                 document.getElementById('adminPanel').classList.add('hidden');
                 loadMySite(currentAssignedSite); // يرى موقعه فقط
             }
         }
     }
 
-    // دالة للأدمن: تحميل كل المواقع
+    // دالة للأدمن: تحميل كل المواقع (Real-time)
     function loadAllSites() {
-        db.collection("budgets").onSnapshot((querySnapshot) => {
-            renderSites(querySnapshot);
+        const budgetsCollection = collection(db, "budgets");
+        onSnapshot(budgetsCollection, (querySnapshot) => {
+            renderSites(querySnapshot.docs);
         });
     }
 
-    // دالة للمستخدم: تحميل موقعه فقط
+    // دالة للمستخدم: تحميل موقعه فقط (Real-time)
     function loadMySite(siteId) {
         if(!siteId) {
             document.getElementById('sitesContainer').innerHTML = "<p>لم يتم تعيين موقع لك بعد. راجع المدير.</p>";
             return;
         }
-        // جلب وثيقة واحدة فقط
-        db.collection("budgets").doc(siteId).onSnapshot((doc) => {
-            if(doc.exists) {
-                // نحول الوثيقة الواحدة إلى مصفوفة لتعمل مع دالة العرض المشتركة
-                const fakeSnapshot = [{ id: doc.id, data: () => doc.data() }];
-                renderSites(fakeSnapshot);
+        const siteRef = doc(db, "budgets", siteId);
+        onSnapshot(siteRef, (doc) => {
+            if(doc.exists()) {
+                // نمرر الوثيقة الواحدة داخل مصفوفة لتعمل مع دالة العرض المشتركة
+                renderSites([doc]); 
             } else {
                 document.getElementById('sitesContainer').innerHTML = "<p>الموقع المحدد غير موجود.</p>";
             }
@@ -183,18 +185,25 @@ const analytics = getAnalytics(app);
         const container = document.getElementById('sitesContainer');
         container.innerHTML = "";
         
+        if (docs.length === 0) {
+            container.innerHTML = "<p>لا توجد مواقع لعرضها حالياً.</p>";
+            return;
+        }
+
         docs.forEach((doc) => {
-            // التعامل سواء كان القادم من Snapshot (يحتوي .docs) أو مصفوفة يدوية
-            const item = doc.data ? doc : doc; 
-            const data = item.data();
+            const data = doc.data();
             
+            // تأكد أن القيم العددية موجودة قبل العرض
+            const totalSpent = data.totalSpent || 0;
+            const currentBalance = data.currentBalance || data.totalAllocatedAmount;
+
             const html = `
             <div class="card">
                 <h3>🏢 ${data.itemName}</h3>
-                <p><strong>الميزانية:</strong> ${data.totalAllocatedAmount}</p>
-                <p><strong>المصروف:</strong> ${data.totalSpent || 0}</p>
-                <p><strong>المتبقي:</strong> <span style="color:${data.currentBalance < 0 ? 'red' : 'green'}">${data.currentBalance || data.totalAllocatedAmount}</span></p>
-                <button onclick="openSiteDetails('${item.id}')">عرض التفاصيل وإضافة فواتير</button>
+                <p><strong>الميزانية المعتمدة:</strong> ${data.totalAllocatedAmount.toLocaleString('ar-EG')}</p>
+                <p><strong>إجمالي المصروف:</strong> ${totalSpent.toLocaleString('ar-EG')}</p>
+                <p><strong>المتبقي:</strong> <span style="font-weight: bold; color:${currentBalance < 0 ? 'red' : 'green'}">${currentBalance.toLocaleString('ar-EG')}</span></p>
+                <button onclick="openSiteDetails('${doc.id}')">عرض التفاصيل وإضافة فواتير</button>
             </div>
             `;
             container.innerHTML += html;
@@ -206,27 +215,27 @@ const analytics = getAnalytics(app);
         const name = document.getElementById('newSiteName').value;
         const budget = Number(document.getElementById('newSiteBudget').value);
 
-        if (!name || !budget) return alert("البيانات ناقصة");
+        if (!name || !budget || isNaN(budget) || budget <= 0) return alert("الرجاء إدخال اسم وميزانية صحيحة");
 
-        db.collection("budgets").add({
+        const budgetsCollection = collection(db, "budgets");
+        addDoc(budgetsCollection, {
             itemName: name,
             totalAllocatedAmount: budget,
             currentBalance: budget,
             totalSpent: 0,
             totalProfit: 0,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
         }).then(() => {
             alert("تمت إضافة الموقع بنجاح");
             document.getElementById('newSiteName').value = "";
             document.getElementById('newSiteBudget').value = "";
+        }).catch((error) => {
+            alert("حدث خطأ أثناء الإضافة: " + error.message);
         });
     }
 
     function openSiteDetails(siteId) {
-        // هنا يمكنك توجيه المستخدم لصفحة أخرى أو إظهار Modal
-        // تحتوي على تفاصيل الفواتير (التي صممناها سابقاً)
-        alert("سيتم الانتقال لصفحة التفاصيل للموقع ID: " + siteId);
-        // window.location.href = "details.html?id=" + siteId;
+        alert("سيتم الانتقال لصفحة التفاصيل وإضافة التعميدات للموقع ID: " + siteId + "\n(تحتاج إلى تطوير صفحة 'details.html' لاحقاً).");
     }
 
 </script>
