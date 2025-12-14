@@ -2,9 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم | Dashboard</title>
-    
+    <title>لوحة التحكم</title>
     <link rel="stylesheet" href="css/style.css">
     
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -14,72 +12,18 @@
 <body>
 
     <div class="dashboard-container">
-        
-        <aside class="sidebar">
-            <h3>لوحة التحكم</h3>
-            <ul>
-                <li><a href="#" class="active">الرئيسية</a></li>
-                <li><a href="#">المستخدمين</a></li>
-                <li><a href="#">الإعدادات</a></li>
-            </ul>
-        </aside>
+        <div class="header">
+            <h2>لوحة التحكم</h2>
+            <button class="logout-btn" onclick="logout()">تسجيل خروج</button>
+        </div>
 
-        <main class="main-content">
-            
-            <header>
-                <h2 id="welcomeMsg">مرحباً بك...</h2>
-                <button id="logoutBtn" style="background-color: #ff4444; color: white;">تسجيل خروج</button>
-            </header>
-
-            <div class="stats-grid">
-                <div class="card">
-                    <h3>عدد المستخدمين</h3>
-                    <p id="usersCount">0</p>
-                </div>
-                <div class="card">
-                    <h3>المبيعات</h3>
-                    <p id="salesCount">0 ر.س</p>
-                </div>
-                <div class="card">
-                    <h3>الطلبات</h3>
-                    <p id="ordersCount">0</p>
-                </div>
-            </div>
-
-            <div class="data-section">
-                <h3>آخر البيانات</h3>
-                <div id="dataOutput">جاري التحميل...</div>
-            </div>
-
-        </main>
+        <div id="data-list">
+            <p>جاري تحميل البيانات...</p>
+        </div>
     </div>
 
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/dashboard.js"></script>
-
-    <script>
-        // كود بسيط للتأكد من حالة تسجيل الدخول عند فتح الصفحة
-        // يفضل نقل هذا الكود لاحقاً داخل dashboard.js
-        document.addEventListener('DOMContentLoaded', () => {
-             // التحقق هل المستخدم مسجل دخول أم لا
-             firebase.auth().onAuthStateChanged((user) => {
-                if (user) {
-                    // المستخدم مسجل دخول
-                    document.getElementById('welcomeMsg').innerText = `مرحباً، ${user.email}`;
-                } else {
-                    // المستخدم غير مسجل، ارجعه لصفحة الدخول
-                    window.location.href = 'index.html';
-                }
-            });
-
-            // تفعيل زر الخروج
-            document.getElementById('logoutBtn').addEventListener('click', () => {
-                firebase.auth().signOut().then(() => {
-                    window.location.href = 'index.html';
-                });
-            });
-        });
-    </script>
 </body>
 </html>
