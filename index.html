@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول - نظام إدارة المشاريع</title>
+    <title>تسجيل الدخول - FGC System</title>
     <link rel="stylesheet" href="style.css">
+    
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -13,14 +14,31 @@
 
 <div class="login-wrapper">
     <div class="card login-box">
-        <h2 style="color: var(--primary);">FGC System</h2>
-        <p style="color: #666; margin-bottom: 30px;">نظام إدارة الميزانيات والتعميدات</p>
+        <h2 style="color: var(--primary); margin-bottom: 5px;">FGC System</h2>
+        <p style="color: #7f8c8d; margin-bottom: 30px;">نظام إدارة الميزانيات والتعميدات</p>
         
-        <input type="email" id="email" placeholder="البريد الإلكتروني">
-        <input type="password" id="password" placeholder="كلمة المرور">
+        <h3 id="formTitle" style="color: var(--secondary);">تسجيل الدخول</h3>
+
+        <div style="text-align: right;">
+            <label style="font-size: 0.9em; font-weight: bold;">البريد الإلكتروني</label>
+            <input type="email" id="email" placeholder="name@company.com">
+            
+            <label style="font-size: 0.9em; font-weight: bold;">كلمة المرور</label>
+            <input type="password" id="password" placeholder="******">
+        </div>
         
-        <button onclick="login()" class="btn btn-primary" style="width: 100%; margin-top: 20px;">دخول للنظام</button>
-        <p id="errorMsg" style="color: red; margin-top: 10px; font-size: 0.9em;"></p>
+        <button onclick="handleAuth()" id="actionBtn" class="btn btn-primary" style="width: 100%; margin-top: 20px; padding: 12px;">
+            دخول للنظام
+        </button>
+        
+        <p id="errorMsg" style="color: #c0392b; margin-top: 15px; font-size: 0.9em; font-weight: bold;"></p>
+
+        <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+            <span id="toggleText">ليس لديك حساب؟ </span>
+            <a href="#" onclick="toggleMode()" id="toggleLink" style="color: var(--secondary); font-weight: bold; text-decoration: none;">
+                إنشاء حساب جديد
+            </a>
+        </div>
     </div>
 </div>
 
@@ -37,26 +55,103 @@
 
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
+    const db = firebase.firestore();
 
-    // التحقق التلقائي إذا كان المستخدم مسجل دخول سابقاً
+    // متغير لتحديد الوضع الحالي (هل هو دخول أم تسجيل؟)
+    let isLoginMode = true;
+
+    // 1. مراقب الحالة: التحويل التلقائي إذا كان مسجلاً
     auth.onAuthStateChanged(user => {
-        if(user) window.location.href = "dashboard.html";
+        if(user) {
+            window.location.href = "dashboard.html";
+        }
     });
 
-    function login() {
+    // 2. دالة التبديل بين الوضعين
+    function toggleMode() {
+        isLoginMode = !isLoginMode; // عكس الحالة
+        const title = document.getElementById('formTitle');
+        const btn = document.getElementById('actionBtn');
+        const toggleText = document.getElementById('toggleText');
+        const toggleLink = document.getElementById('toggleLink');
+        const errorMsg = document.getElementById('errorMsg');
+
+        errorMsg.innerText = ""; // مسح الأخطاء القديمة
+
+        if (isLoginMode) {
+            // وضع تسجيل الدخول
+            title.innerText = "تسجيل الدخول";
+            btn.innerText = "دخول للنظام";
+            btn.className = "btn btn-primary";
+            toggleText.innerText = "ليس لديك حساب؟ ";
+            toggleLink.innerText = "إنشاء حساب جديد";
+        } else {
+            // وضع إنشاء الحساب
+            title.innerText = "إنشاء حساب جديد";
+            btn.innerText = "تسجيل حساب";
+            btn.className = "btn btn-success"; // لون أخضر للتمييز
+            toggleText.innerText = "لديك حساب بالفعل؟ ";
+            toggleLink.innerText = "تسجيل الدخول";
+        }
+    }
+
+    // 3. الدالة الرئيسية التي تنفذ العملية حسب الوضع
+    function handleAuth() {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('password').value;
-        const btn = document.querySelector('button');
+        const btn = document.getElementById('actionBtn');
+        const errorMsg = document.getElementById('errorMsg');
         
-        btn.innerText = "جاري التحقق...";
-        document.getElementById('errorMsg').innerText = "";
+        if(!email || !pass) {
+            errorMsg.innerText = "يرجى إدخال البريد وكلمة المرور";
+            return;
+        }
 
-        auth.signInWithEmailAndPassword(email, pass)
-            .then(() => window.location.href = "dashboard.html")
-            .catch(err => {
-                btn.innerText = "دخول للنظام";
-                document.getElementById('errorMsg').innerText = "خطأ: تأكد من الإيميل وكلمة المرور";
-            });
+        if (pass.length < 6) {
+            errorMsg.innerText = "كلمة المرور يجب أن تكون 6 أحرف على الأقل";
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "جاري العمل...";
+        errorMsg.innerText = "";
+
+        if (isLoginMode) {
+            // --- كود تسجيل الدخول ---
+            auth.signInWithEmailAndPassword(email, pass)
+                .catch(err => handleError(err, btn));
+        } else {
+            // --- كود إنشاء حساب جديد ---
+            auth.createUserWithEmailAndPassword(email, pass)
+                .then((userCredential) => {
+                    // بعد نجاح الإنشاء، يجب حفظ بيانات المستخدم في قاعدة البيانات
+                    return db.collection('users').doc(userCredential.user.uid).set({
+                        email: email,
+                        role: 'user',        // الصلاحية الافتراضية
+                        assignedSiteId: '',  // لا يوجد موقع معين بعد
+                        createdAt: new Date()
+                    });
+                })
+                .then(() => {
+                    // سيتم التحويل تلقائياً عبر onAuthStateChanged
+                    console.log("Account Created");
+                })
+                .catch(err => handleError(err, btn));
+        }
+    }
+
+    function handleError(err, btn) {
+        btn.disabled = false;
+        btn.innerText = isLoginMode ? "دخول للنظام" : "تسجيل حساب";
+        
+        let message = "حدث خطأ غير معروف: " + err.message;
+        if(err.code === 'auth/email-already-in-use') message = "البريد الإلكتروني مسجل مسبقاً";
+        if(err.code === 'auth/user-not-found') message = "المستخدم غير موجود";
+        if(err.code === 'auth/wrong-password') message = "كلمة المرور غير صحيحة";
+        if(err.code === 'auth/weak-password') message = "كلمة المرور ضعيفة جداً";
+        if(err.code === 'auth/invalid-email') message = "صيغة البريد الإلكتروني غير صحيحة";
+        
+        document.getElementById('errorMsg').innerText = message;
     }
 </script>
 </body>
