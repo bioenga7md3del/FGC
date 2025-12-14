@@ -2,8 +2,10 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تفاصيل المشروع - FGC</title>
     <link rel="stylesheet" href="style.css">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -23,6 +25,7 @@
                 </a>
             </div>
         </div>
+        
         <div id="adminButtons" style="display:none;">
             <button onclick="openModal()" class="btn btn-primary">
                 <i class="fa-solid fa-plus"></i> إضافة جديد
@@ -110,7 +113,7 @@
         </div>
 
         <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin: 15px 0;">
-            <h4 style="margin:0 0 10px 0; color:var(--primary-light);">بيانات الفاتورة</h4>
+            <h4 style="margin:0 0 10px 0; color:var(--primary-light);">بيانات الفاتورة وأمر الشراء</h4>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
                 <div><label>رقم الفاتورة</label><input type="text" id="invoiceNum"></div>
                 <div><label>تاريخ الفاتورة</label><input type="date" id="invoiceDate"></div>
@@ -142,7 +145,9 @@
 </div>
 
 <script>
-    // --- إعدادات Firebase ---
+    // -----------------------------------------------------------
+    // 1. إعدادات Firebase
+    // -----------------------------------------------------------
     const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
@@ -151,7 +156,24 @@
     const siteId = new URLSearchParams(window.location.search).get('id');
     if(!siteId) window.location.href = "dashboard.html";
 
-    // --- تحميل البيانات ---
+    // -----------------------------------------------------------
+    // 2. دالة مساعدة لإصلاح التاريخ (الحل للمشكلة)
+    // -----------------------------------------------------------
+    function formatDateForInput(dateString) {
+        if (!dateString) return "";
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return ""; // لو التاريخ غير صالح
+        
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // إضافة 0 للشهر الفردي
+        const day = String(date.getDate()).padStart(2, '0');       // إضافة 0 لليوم الفردي
+        
+        return `${year}-${month}-${day}`;
+    }
+
+    // -----------------------------------------------------------
+    // 3. تحميل البيانات ومراقبتها
+    // -----------------------------------------------------------
     auth.onAuthStateChanged(async user => {
         if(user) {
             const u = await db.collection('users').doc(user.uid).get();
@@ -160,6 +182,7 @@
                 document.getElementById('adminButtons').style.gap = '10px';
             }
             
+            // مراقبة بيانات الموقع الرئيسية
             db.collection("budgets").doc(siteId).onSnapshot(doc => {
                 const d = doc.data();
                 document.getElementById('siteTitle').innerText = d.itemName;
@@ -169,6 +192,7 @@
                 document.getElementById('statProfit').innerText = fmt(d.totalProfit);
             });
 
+            // مراقبة جدول الحركات
             db.collection("budgets").doc(siteId).collection("transactions").orderBy("orderNumber", "desc").onSnapshot(snap => {
                 const tbody = document.getElementById('tableBody');
                 tbody.innerHTML = "";
@@ -191,12 +215,14 @@
                         </td>
                     </tr>`;
                 });
-                applyFilters(); // إعادة تطبيق الفلاتر عند تحديث البيانات
+                applyFilters(); // تطبيق الفلتر تلقائياً عند تحديث البيانات
             });
         }
     });
 
-    // --- دوال الـ Modal ---
+    // -----------------------------------------------------------
+    // 4. دوال النافذة المنبثقة (Modal)
+    // -----------------------------------------------------------
     function openModal() {
         document.getElementById('editTransId').value = "";
         document.getElementById('modalTitle').innerText = "تسجيل معاملة جديدة";
@@ -208,7 +234,9 @@
         document.getElementById('transactionModal').classList.remove('show');
     }
 
-    // --- دوال الفلترة (Search Functionality) ---
+    // -----------------------------------------------------------
+    // 5. دوال الفلترة (Filtering)
+    // -----------------------------------------------------------
     function applyFilters() {
         const invFilter = document.getElementById('filterInvoice').value.toLowerCase();
         const poFilter = document.getElementById('filterPO').value.toLowerCase();
@@ -234,7 +262,11 @@
         });
     }
 
-    // --- العمليات (حفظ / تعديل) ---
+    // -----------------------------------------------------------
+    // 6. العمليات (حفظ / تعديل / حذف / استيراد)
+    // -----------------------------------------------------------
+    
+    // حفظ (جديد أو تعديل)
     async function saveTransaction() {
         const id = document.getElementById('editTransId').value;
         const data = {
@@ -263,6 +295,7 @@
                 let newBalance = currentSite.currentBalance;
 
                 if(id) {
+                    // تعديل: نعكس القديم ونطبق الجديد
                     const oldDoc = await t.get(siteRef.collection("transactions").doc(id));
                     const oldData = oldDoc.data();
                     newSpent -= oldData.amountExclTax;
@@ -270,66 +303,82 @@
                     newBalance += oldData.amountExclTax;
                     t.update(siteRef.collection("transactions").doc(id), data);
                 } else {
+                    // إضافة جديد
                     data.createdAt = new Date();
                     t.set(siteRef.collection("transactions").doc(), data);
                 }
+                
                 newSpent += data.amountExclTax;
                 newProfit += data.companyProfit;
                 newBalance -= data.amountExclTax;
+                
                 t.update(siteRef, { totalSpent: newSpent, totalProfit: newProfit, currentBalance: newBalance });
             });
             
             closeModal();
-            alert("تم الحفظ بنجاح");
+            alert(id ? "تم التعديل بنجاح" : "تمت الإضافة بنجاح");
         } catch(e) { console.error(e); alert("خطأ: " + e.message); }
     }
 
+    // فتح نافذة التعديل (مع إصلاح التاريخ)
     async function editTrans(id) {
-        const doc = await db.collection("budgets").doc(siteId).collection("transactions").doc(id).get();
-        const d = doc.data();
-        
-        document.getElementById('editTransId').value = id;
-        document.getElementById('modalTitle').innerText = "تعديل المعاملة";
-        
-        document.getElementById('orderNum').value = d.orderNumber;
-        document.getElementById('orderDate').value = d.date;
-        document.getElementById('supplier').value = d.supplierName;
-        document.getElementById('amount').value = d.amountExclTax;
-        document.getElementById('ratio').value = d.companyRatio;
-        document.getElementById('batch').value = d.batchNumber || '';
-        document.getElementById('invoiceNum').value = d.invoiceNum || '';
-        document.getElementById('invoiceDate').value = d.invoiceDate || '';
-        document.getElementById('poNumber').value = d.poNumber || '';
-
+        // إظهار النافذة وعنوان التحميل
+        document.getElementById('modalTitle').innerText = "جاري جلب البيانات...";
         document.getElementById('transactionModal').classList.add('show');
+
+        try {
+            const doc = await db.collection("budgets").doc(siteId).collection("transactions").doc(id).get();
+            if(!doc.exists) { alert("المعاملة غير موجودة"); closeModal(); return; }
+
+            const d = doc.data();
+            
+            document.getElementById('editTransId').value = id;
+            document.getElementById('modalTitle').innerText = "تعديل المعاملة";
+            
+            document.getElementById('orderNum').value = d.orderNumber;
+            document.getElementById('supplier').value = d.supplierName;
+            document.getElementById('amount').value = d.amountExclTax;
+            document.getElementById('ratio').value = d.companyRatio;
+            document.getElementById('batch').value = d.batchNumber || '';
+            document.getElementById('invoiceNum').value = d.invoiceNum || '';
+            document.getElementById('poNumber').value = d.poNumber || '';
+
+            // استخدام الدالة المساعدة لضبط التواريخ
+            document.getElementById('orderDate').value = formatDateForInput(d.date);
+            document.getElementById('invoiceDate').value = formatDateForInput(d.invoiceDate);
+
+        } catch(e) { console.error(e); closeModal(); alert("خطأ في التحميل"); }
     }
 
+    // حذف
     async function deleteTrans(id, amount, profit) {
         if(!confirm("هل أنت متأكد من الحذف؟")) return;
-        // ... (نفس كود الحذف السابق) ...
-        await db.runTransaction(async (t) => {
-            const siteRef = db.collection("budgets").doc(siteId);
-            const siteDoc = await t.get(siteRef);
-            t.delete(siteRef.collection("transactions").doc(id));
-            t.update(siteRef, {
-                totalSpent: siteDoc.data().totalSpent - amount,
-                totalProfit: siteDoc.data().totalProfit - profit,
-                currentBalance: siteDoc.data().currentBalance + amount
+        try {
+            await db.runTransaction(async (t) => {
+                const siteRef = db.collection("budgets").doc(siteId);
+                const siteDoc = await t.get(siteRef);
+                t.delete(siteRef.collection("transactions").doc(id));
+                t.update(siteRef, {
+                    totalSpent: siteDoc.data().totalSpent - amount,
+                    totalProfit: siteDoc.data().totalProfit - profit,
+                    currentBalance: siteDoc.data().currentBalance + amount
+                });
             });
-        });
+        } catch(e) { alert("خطأ في الحذف"); }
     }
 
+    // استيراد CSV
     function processCSV() {
         const file = document.getElementById('csvFile').files[0];
         if(!file) return alert("اختر الملف");
         Papa.parse(file, {
             header: false, encoding: "windows-1256", skipEmptyLines: true,
             complete: async function(results) {
-                // ... (نفس كود الاستيراد السابق) ...
-                 const rows = results.data;
+                const rows = results.data;
                 const batch = db.batch();
                 const siteRef = db.collection("budgets").doc(siteId);
                 let bSpent=0, bProfit=0;
+                
                 for(let i=1; i<rows.length; i++){
                     const r = rows[i];
                     if(!r[0] || isNaN(parseFloat(r[3]))) continue;
@@ -351,6 +400,7 @@
         });
     }
 
+    // تصفير الموقع
     async function clearAllData() {
         if(!confirm("تحذير: حذف الكل؟")) return;
         const siteRef = db.collection("budgets").doc(siteId);
