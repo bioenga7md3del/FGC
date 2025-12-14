@@ -1,0 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+
+:root {
+    --primary: #2c3e50;    /* كحلي غامق */
+    --secondary: #3498db;  /* أزرق فاتح */
+    --accent: #f1c40f;     /* أصفر ذهبي */
+    --success: #27ae60;    /* أخضر */
+    --danger: #c0392b;     /* أحمر */
+    --light: #ecf0f1;      /* رمادي فاتح للخلفية */
+    --dark: #2c3e50;
+    --white: #ffffff;
+}
+
+body {
+    font-family: 'Tajawal', sans-serif;
+    background-color: var(--light);
+    margin: 0;
+    padding: 0;
+    direction: rtl;
+    color: var(--dark);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 20px;
+}
+
+/* الكروت والبطاقات */
+.card {
+    background: var(--white);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+}
+
+/* الأزرار */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Tajawal', sans-serif;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary { background-color: var(--primary); color: white; }
+.btn-secondary { background-color: var(--secondary); color: white; }
+.btn-success { background-color: var(--success); color: white; }
+.btn-danger { background-color: var(--danger); color: white; }
+.btn-warning { background-color: var(--accent); color: #333; }
+.btn:hover { opacity: 0.9; transform: scale(1.02); }
+
+/* حقول الإدخال */
+input, select {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-family: 'Tajawal', sans-serif;
+}
+
+input:focus {
+    border-color: var(--secondary);
+    outline: none;
+}
+
+/* الجداول */
+table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; border-radius: 8px; overflow: hidden; }
+th, td { padding: 15px; text-align: right; border-bottom: 1px solid #eee; }
+th { background-color: var(--primary); color: white; font-weight: bold; }
+tr:hover { background-color: #f8f9fa; }
+
+/* تنسيقات خاصة */
+.header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+
+/* شاشة تسجيل الدخول */
+.login-wrapper {
+    display: flex; justify-content: center; align-items: center; height: 100vh;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+}
+.login-box { width: 100%; max-width: 400px; padding: 40px; text-align: center; }
