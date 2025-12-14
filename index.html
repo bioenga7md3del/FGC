@@ -225,7 +225,8 @@
     }
 
     function openSiteDetails(siteId) {
-        alert("سيتم الانتقال لصفحة التفاصيل للموقع ID: " + siteId);
+        // الانتقال لصفحة التفاصيل مع تمرير رقم الموقع
+        window.location.href = "details.html?id=" + siteId;
     }
 </script>
 
