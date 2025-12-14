@@ -15,6 +15,12 @@
 </head>
 <body>
 
+<div class="print-header">
+    <h1>تقرير متابعة مشروع</h1>
+    <h2 id="printSiteName"></h2>
+    <p>تاريخ التقرير: <span id="printDate"></span></p>
+</div>
+
 <div class="container">
     
     <div class="header-bar">
@@ -34,11 +40,19 @@
         </div>
         
         <div id="actionButtons" style="display:none; gap: 10px;">
+            <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333;">
+                <i class="fa-solid fa-print"></i> طباعة
+            </button>
+            
+            <button onclick="exportTableToCSV('report.csv')" class="btn btn-success" style="background: #217346;">
+                <i class="fa-solid fa-file-excel"></i> تصدير Excel
+            </button>
+        
             <button onclick="openModal()" class="btn btn-primary">
                 <i class="fa-solid fa-plus"></i> إضافة جديد
             </button>
             <button onclick="document.getElementById('importModal').style.display='flex'" class="btn btn-warning">
-                <i class="fa-solid fa-file-csv"></i> استيراد Excel
+                <i class="fa-solid fa-file-csv"></i> استيراد
             </button>
             <button onclick="clearAllData()" class="btn btn-danger">
                 <i class="fa-solid fa-trash"></i> تصفير
@@ -183,6 +197,38 @@
         }
     }
 
+    // تحديث اسم وتاريخ التقرير للطباعة
+    function updatePrintHeader(siteName) {
+        document.getElementById('printSiteName').innerText = siteName;
+        document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
+    }
+
+    // تصدير CSV
+    function exportTableToCSV(filename) {
+        let csv = [];
+        csv.push('\uFEFF'); // BOM for Arabic support
+        let rows = document.querySelectorAll("table tr");
+        for (let i = 0; i < rows.length; i++) {
+            let row = [], cols = rows[i].querySelectorAll("td, th");
+            for (let j = 0; j < cols.length - 1; j++) { // Skip last column
+                let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/,/g, ""); 
+                row.push('"' + data + '"');
+            }
+            csv.push(row.join(","));
+        }
+        downloadCSV(csv.join("\n"), filename);
+    }
+
+    function downloadCSV(csv, filename) {
+        let csvFile = new Blob([csv], {type: "text/csv"});
+        let downloadLink = document.createElement("a");
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+    }
+
     function formatDateForInput(dateString) {
         if (!dateString) return "";
         const date = new Date(dateString);
@@ -220,8 +266,11 @@
             document.getElementById('statBalance').innerText = fmt(d.currentBalance);
             document.getElementById('statProfit').innerText = fmt(d.totalProfit);
 
-            // تحديث الرسم البياني عند وصول بيانات جديدة
+            // تحديث الرسم البياني
             updateChart(d.totalSpent || 0, d.currentBalance || 0);
+            
+            // تحديث ترويسة الطباعة
+            updatePrintHeader(d.itemName);
         });
 
         db.collection("budgets").doc(siteId).collection("transactions").orderBy("orderNumber", "desc").onSnapshot(snap => {
