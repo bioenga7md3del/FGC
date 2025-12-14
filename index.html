@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة ميزانيات المواقع</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .hidden { display: none; }
+        input, button, select { display: block; width: 100%; margin: 10px 0; padding: 10px; box-sizing: border-box; }
+        button { background-color: #28a745; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #218838; }
+        .card { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 5px; background: #fff; border-right: 5px solid #007bff; }
+        .logout-btn { background-color: #dc3545; width: auto; float: left; }
+        h2, h3 { color: #333; }
+        .admin-controls { background: #e2e6ea; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px dashed #333; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div id="loginSection">
+        <h2 style="text-align: center;">تسجيل الدخول للنظام</h2>
+        <input type="email" id="email" placeholder="البريد الإلكتروني">
+        <input type="password" id="password" placeholder="كلمة المرور">
+        <button onclick="login()">دخول</button>
+        <button onclick="signup()" style="background-color: #007bff;">إنشاء حساب جديد</button> 
+        <p id="loginError" style="color: red;"></p>
+    </div>
+
+    <div id="dashboardSection" class="hidden">
+        <button onclick="logout()" class="logout-btn">تسجيل خروج</button>
+        <div style="clear: both;"></div>
+        
+        <h2 id="welcomeMsg">مرحباً</h2>
+        
+        <div id="adminPanel" class="hidden admin-controls">
+            <h3>👑 لوحة الأدمن - إضافة موقع جديد</h3>
+            <input type="text" id="newSiteName" placeholder="اسم الموقع (مثال: الفريق المتحرك)">
+            <input type="number" id="newSiteBudget" placeholder="الميزانية المعتمدة">
+            <button onclick="addNewSite()">إضافة الموقع</button>
+        </div>
+
+        <h3>المواقع المتاحة لك:</h3>
+        <div id="sitesContainer">
+            <p>جاري تحميل البيانات...</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // --------------------------------------------------------------
+    // 1. إعدادات Firebase (استبدل هذا الجزء ببياناتك من Console)
+    // --------------------------------------------------------------
+    const firebaseConfig = {
+        apiKey: "AIzaSyDxxxxxx-YOUR_API_KEY",
+        authDomain: "your-project.firebaseapp.com",
+        projectId: "your-project-id",
+        storageBucket: "your-project.appspot.com",
+        messagingSenderId: "123456789",
+        appId: "1:123456789:web:xxxxxx"
+    };
+
+    // تهيئة التطبيق
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // --------------------------------------------------------------
+    // 2. دوال المصادقة (Auth)
+    // --------------------------------------------------------------
+    
+    // مراقب حالة المستخدم (يعمل عند فتح الصفحة)
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            document.getElementById('welcomeMsg').innerText = `مرحباً، ${user.email}`;
+            
+            // التحقق من صلاحيات المستخدم من قاعدة البيانات
+            checkUserRole(user.uid);
+        } else {
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('dashboardSection').classList.add('hidden');
+        }
+    });
+
+    function login() {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
+        auth.signInWithEmailAndPassword(email, pass)
+            .catch((error) => document.getElementById('loginError').innerText = "خطأ: " + error.message);
+    }
+
+    function signup() {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
+        auth.createUserWithEmailAndPassword(email, pass)
+            .then((userCredential) => {
+                // عند إنشاء حساب جديد، ننشئ له سجلاً في قاعدة البيانات بصلاحية "مستخدم" افتراضياً
+                db.collection("users").doc(userCredential.user.uid).set({
+                    email: email,
+                    role: "user", // الافتراضي مستخدم عادي
+                    assignedSiteId: "" // يحتاج أدمن لتعيينه لاحقاً
+                });
+                alert("تم إنشاء الحساب! يرجى التواصل مع الإدارة لتفعيل الصلاحيات.");
+            })
+            .catch((error) => document.getElementById('loginError').innerText = error.message);
+    }
+
+    function logout() {
+        auth.signOut();
+    }
+
+    // --------------------------------------------------------------
+    // 3. منطق البرنامج (Logic)
+    // --------------------------------------------------------------
+
+    let currentUserRole = null;
+    let currentAssignedSite = null;
+
+    async function checkUserRole(uid) {
+        const userDoc = await db.collection('users').doc(uid).get();
+        if (userDoc.exists) {
+            const userData = userDoc.data();
+            currentUserRole = userData.role;
+            currentAssignedSite = userData.assignedSiteId;
+
+            if (currentUserRole === 'admin') {
+                // إظهار لوحة الأدمن
+                document.getElementById('adminPanel').classList.remove('hidden');
+                loadAllSites(); // الأدمن يرى كل المواقع
+            } else {
+                // المستخدم العادي
+                document.getElementById('adminPanel').classList.add('hidden');
+                loadMySite(currentAssignedSite); // يرى موقعه فقط
+            }
+        }
+    }
+
+    // دالة للأدمن: تحميل كل المواقع
+    function loadAllSites() {
+        db.collection("budgets").onSnapshot((querySnapshot) => {
+            renderSites(querySnapshot);
+        });
+    }
+
+    // دالة للمستخدم: تحميل موقعه فقط
+    function loadMySite(siteId) {
+        if(!siteId) {
+            document.getElementById('sitesContainer').innerHTML = "<p>لم يتم تعيين موقع لك بعد. راجع المدير.</p>";
+            return;
+        }
+        // جلب وثيقة واحدة فقط
+        db.collection("budgets").doc(siteId).onSnapshot((doc) => {
+            if(doc.exists) {
+                // نحول الوثيقة الواحدة إلى مصفوفة لتعمل مع دالة العرض المشتركة
+                const fakeSnapshot = [{ id: doc.id, data: () => doc.data() }];
+                renderSites(fakeSnapshot);
+            } else {
+                document.getElementById('sitesContainer').innerHTML = "<p>الموقع المحدد غير موجود.</p>";
+            }
+        });
+    }
+
+    // دالة العرض المشتركة (HTML Rendering)
+    function renderSites(docs) {
+        const container = document.getElementById('sitesContainer');
+        container.innerHTML = "";
+        
+        docs.forEach((doc) => {
+            // التعامل سواء كان القادم من Snapshot (يحتوي .docs) أو مصفوفة يدوية
+            const item = doc.data ? doc : doc; 
+            const data = item.data();
+            
+            const html = `
+            <div class="card">
+                <h3>🏢 ${data.itemName}</h3>
+                <p><strong>الميزانية:</strong> ${data.totalAllocatedAmount}</p>
+                <p><strong>المصروف:</strong> ${data.totalSpent || 0}</p>
+                <p><strong>المتبقي:</strong> <span style="color:${data.currentBalance < 0 ? 'red' : 'green'}">${data.currentBalance || data.totalAllocatedAmount}</span></p>
+                <button onclick="openSiteDetails('${item.id}')">عرض التفاصيل وإضافة فواتير</button>
+            </div>
+            `;
+            container.innerHTML += html;
+        });
+    }
+
+    // دالة للأدمن لإضافة موقع جديد
+    function addNewSite() {
+        const name = document.getElementById('newSiteName').value;
+        const budget = Number(document.getElementById('newSiteBudget').value);
+
+        if (!name || !budget) return alert("البيانات ناقصة");
+
+        db.collection("budgets").add({
+            itemName: name,
+            totalAllocatedAmount: budget,
+            currentBalance: budget,
+            totalSpent: 0,
+            totalProfit: 0,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            alert("تمت إضافة الموقع بنجاح");
+            document.getElementById('newSiteName').value = "";
+            document.getElementById('newSiteBudget').value = "";
+        });
+    }
+
+    function openSiteDetails(siteId) {
+        // هنا يمكنك توجيه المستخدم لصفحة أخرى أو إظهار Modal
+        // تحتوي على تفاصيل الفواتير (التي صممناها سابقاً)
+        alert("سيتم الانتقال لصفحة التفاصيل للموقع ID: " + siteId);
+        // window.location.href = "details.html?id=" + siteId;
+    }
+
+</script>
+
+</body>
+</html>
