@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الرئيسية - المواقع</title>
+    <title>الرئيسية - FGC</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -13,44 +13,57 @@
 
 <div class="container">
     <div class="header-bar">
-        <h2>📌 لوحة القيادة والمواقع</h2>
-        <button onclick="logout()" class="btn btn-danger">تسجيل خروج</button>
+        <div class="header-title-box">
+            <img src="FGC.jpeg" alt="FGC Logo" class="logo-img">
+            <h2>لوحة القيادة والمشاريع</h2>
+        </div>
+        <button onclick="logout()" class="btn btn-danger">تسجيل خروج 🔒</button>
     </div>
 
-    <div id="adminPanel" class="card" style="display:none; border-right: 5px solid var(--accent);">
-        <h3>👑 إضافة موقع جديد</h3>
-        <div style="display: flex; gap: 10px;">
-            <input type="text" id="newSiteName" placeholder="اسم الموقع (مثال: مستشفى الحرس)">
-            <input type="number" id="newSiteBudget" placeholder="الميزانية المعتمدة">
-            <button onclick="addSite()" class="btn btn-warning" style="white-space: nowrap;">إضافة +</button>
+    <div id="adminPanel" class="card" style="display:none; border-right: 5px solid var(--accent-gold); background: #fffdf5;">
+        <h3 style="color: var(--primary-dark);">👑 إضافة مشروع جديد</h3>
+        <div style="display: flex; gap: 15px; align-items: flex-end;">
+            <div style="flex: 2;">
+                <label>اسم المشروع/البند</label>
+                <input type="text" id="newSiteName" placeholder="مثال: صيانة الأجهزة الدقيقة">
+            </div>
+            <div style="flex: 1;">
+                <label>الميزانية المعتمدة</label>
+                <input type="number" id="newSiteBudget" placeholder="Example: 500000">
+            </div>
+            <button onclick="addSite()" class="btn btn-warning" style="height: 53px;">إضافة +</button>
         </div>
     </div>
 
-    <h3 style="margin-top: 30px;">المواقع المتاحة:</h3>
+    <h3 style="margin-top: 30px; color: var(--primary-dark);">المشاريع الجارية:</h3>
     <div id="sitesGrid" class="stat-grid">
-        <p>جاري التحميل...</p>
+        <p>جاري تحميل البيانات...</p>
     </div>
 </div>
 
 <script>
-    // نفس الكونفجريشن دائماً
+    // --- نفس كود الجافاسكربت السابق (المصحح) ---
     const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
 
     auth.onAuthStateChanged(async user => {
-        if(!user) window.location.href = "index.html";
-        
-        // التحقق من الأدمن
-        const userDoc = await db.collection('users').doc(user.uid).get();
-        if(userDoc.exists && userDoc.data().role === 'admin') {
-            document.getElementById('adminPanel').style.display = 'block';
-            loadAllSites();
-        } else {
-            // تحميل موقع المستخدم المحدد فقط
-            loadMySite(userDoc.data().assignedSiteId);
-        }
+        if(!user) { window.location.href = "index.html"; return; }
+        try {
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                if(userData.role === 'admin') {
+                    document.getElementById('adminPanel').style.display = 'block';
+                    loadAllSites();
+                } else {
+                    loadMySite(userData.assignedSiteId || null);
+                }
+            } else {
+                document.getElementById('sitesGrid').innerHTML = `<div class="card" style="text-align:center;"><p>الحساب قيد التفعيل. يرجى مراجعة الإدارة.</p></div>`;
+            }
+        } catch (error) { console.error(error); }
     });
 
     function loadAllSites() {
@@ -58,28 +71,33 @@
     }
 
     function loadMySite(siteId) {
-        if(!siteId) return document.getElementById('sitesGrid').innerHTML = "لم يتم تعيين موقع لك.";
-        db.collection("budgets").doc(siteId).onSnapshot(doc => renderSites([doc]));
+        if(!siteId) {
+            document.getElementById('sitesGrid').innerHTML = `<div class="card" style="text-align:center; padding:30px;"><h3>مرحباً بك 👋</h3><p style="color:var(--text-light);">لم يتم تعيين مشروع لك بعد.</p></div>`;
+            return;
+        }
+        db.collection("budgets").doc(siteId).onSnapshot(doc => doc.exists ? renderSites([doc]) : document.getElementById('sitesGrid').innerHTML = "<p>الموقع غير موجود.</p>");
     }
 
     function renderSites(docs) {
         const container = document.getElementById('sitesGrid');
         container.innerHTML = "";
+        if(docs.length === 0) { container.innerHTML = "<p>لا توجد مشاريع حالياً.</p>"; return; }
+
         docs.forEach(doc => {
             const d = doc.data();
-            // ألوان ديناميكية حسب نسبة المتبقي
-            const percent = (d.currentBalance / d.totalAllocatedAmount) * 100;
-            const color = percent < 20 ? 'red' : 'green';
-
+            const percent = d.totalAllocatedAmount ? (d.currentBalance / d.totalAllocatedAmount) * 100 : 0;
+            // استخدام ألوان الهوية الجديدة للنسبة
+            const color = percent < 20 ? 'var(--danger)' : 'var(--success)';
+            
             const html = `
-            <div class="card">
-                <h3>🏢 ${d.itemName}</h3>
-                <p style="font-size:0.9em; color:#777;">الميزانية: ${Number(d.totalAllocatedAmount).toLocaleString()}</p>
-                <div style="margin: 15px 0;">
-                    <span style="display:block; font-size:0.8em;">المتبقي</span>
-                    <strong style="font-size:1.4em; color:${color}">${Number(d.currentBalance).toLocaleString()}</strong>
+            <div class="card" style="border-top: 4px solid var(--primary-light);">
+                <h3 style="color: var(--primary-dark); margin-top:0;">🏢 ${d.itemName}</h3>
+                <p style="font-size:0.95em; color:var(--text-light); margin-bottom:15px;">الميزانية: <strong>${Number(d.totalAllocatedAmount).toLocaleString('ar-EG')}</strong></p>
+                <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 10px; text-align: center;">
+                    <span style="display:block; font-size:0.9em; color:var(--text-dark); margin-bottom:5px;">الرصيد المتبقي</span>
+                    <strong style="font-size:1.6em; color:${color}">${Number(d.currentBalance).toLocaleString('ar-EG')}</strong>
                 </div>
-                <a href="details.html?id=${doc.id}" class="btn btn-secondary" style="width:100%; text-align:center;">إدارة العمليات</a>
+                <a href="details.html?id=${doc.id}" class="btn btn-secondary" style="width:100%; justify-content: center;">إدارة العمليات 📋</a>
             </div>`;
             container.innerHTML += html;
         });
@@ -88,15 +106,15 @@
     function addSite() {
         const name = document.getElementById('newSiteName').value;
         const budget = Number(document.getElementById('newSiteBudget').value);
-        if(!name || !budget) return alert("أكمل البيانات");
+        if(!name || !budget) return alert("يرجى إدخال الاسم والميزانية");
         
         db.collection("budgets").add({
             itemName: name, totalAllocatedAmount: budget, currentBalance: budget,
             totalSpent: 0, totalProfit: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => { alert("تم"); document.getElementById('newSiteName').value=""; });
+        }).then(() => { alert("تمت الإضافة"); document.getElementById('newSiteName').value=""; document.getElementById('newSiteBudget').value=""; });
     }
 
-    function logout() { auth.signOut(); }
+    function logout() { auth.signOut().then(() => window.location.href = "index.html"); }
 </script>
 </body>
 </html>
