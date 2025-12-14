@@ -3,64 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام إدارة ميزانيات المواقع</title>
-    
+    <title>تسجيل الدخول - نظام إدارة المشاريع</title>
+    <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .hidden { display: none; }
-        input, button, select { display: block; width: 100%; margin: 10px 0; padding: 10px; box-sizing: border-box; }
-        button { background-color: #28a745; color: white; border: none; cursor: pointer; }
-        button:hover { background-color: #218838; }
-        .card { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 5px; background: #fff; border-right: 5px solid #007bff; }
-        .logout-btn { background-color: #dc3545; width: auto; float: left; }
-        h2, h3 { color: #333; }
-        .admin-controls { background: #e2e6ea; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px dashed #333; }
-        .error { color: red; font-size: 0.9em; }
-    </style>
 </head>
 <body>
 
-<div class="container">
-    
-    <div id="loginSection">
-        <h2 style="text-align: center;">تسجيل الدخول للنظام</h2>
+<div class="login-wrapper">
+    <div class="card login-box">
+        <h2 style="color: var(--primary);">FGC System</h2>
+        <p style="color: #666; margin-bottom: 30px;">نظام إدارة الميزانيات والتعميدات</p>
+        
         <input type="email" id="email" placeholder="البريد الإلكتروني">
         <input type="password" id="password" placeholder="كلمة المرور">
-        <button onclick="login()">دخول</button>
-        <button onclick="signup()" style="background-color: #007bff;">إنشاء حساب جديد</button> 
-        <p id="loginError" class="error"></p>
-    </div>
-
-    <div id="dashboardSection" class="hidden">
-        <button onclick="logout()" class="logout-btn">تسجيل خروج</button>
-        <div style="clear: both;"></div>
         
-        <h2 id="welcomeMsg">مرحباً</h2>
-        
-        <div id="adminPanel" class="hidden admin-controls">
-            <h3>👑 لوحة الأدمن - إضافة موقع جديد</h3>
-            <input type="text" id="newSiteName" placeholder="اسم الموقع (مثال: الفريق المتحرك)">
-            <input type="number" id="newSiteBudget" placeholder="الميزانية المعتمدة">
-            <button onclick="addNewSite()">إضافة الموقع</button>
-        </div>
-
-        <h3>المواقع المتاحة لك:</h3>
-        <div id="sitesContainer">
-            <p>جاري تحميل البيانات...</p>
-        </div>
+        <button onclick="login()" class="btn btn-primary" style="width: 100%; margin-top: 20px;">دخول للنظام</button>
+        <p id="errorMsg" style="color: red; margin-top: 10px; font-size: 0.9em;"></p>
     </div>
-
 </div>
 
 <script>
-    // --------------------------------------------------------------
-    // 1. إعدادات Firebase (تم تحديثها ببياناتك)
-    // --------------------------------------------------------------
     const firebaseConfig = {
         apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI",
         authDomain: "fgcbio.firebaseapp.com",
@@ -71,164 +35,29 @@
         measurementId: "G-H9VW2MZQG0"
     };
 
-    // تهيئة التطبيق باستخدام syntax الـ compat القديم والسهل
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
-    const db = firebase.firestore();
 
-    // --------------------------------------------------------------
-    // 2. دوال المصادقة (Auth)
-    // --------------------------------------------------------------
-    
-    // مراقب حالة المستخدم (يعمل عند فتح الصفحة)
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            document.getElementById('loginSection').classList.add('hidden');
-            document.getElementById('dashboardSection').classList.remove('hidden');
-            document.getElementById('welcomeMsg').innerText = `مرحباً، ${user.email}`;
-            
-            checkUserRole(user.uid);
-        } else {
-            document.getElementById('loginSection').classList.remove('hidden');
-            document.getElementById('dashboardSection').classList.add('hidden');
-        }
+    // التحقق التلقائي إذا كان المستخدم مسجل دخول سابقاً
+    auth.onAuthStateChanged(user => {
+        if(user) window.location.href = "dashboard.html";
     });
 
     function login() {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('password').value;
-        if(!email || !pass) return alert("يرجى إدخال البيانات");
+        const btn = document.querySelector('button');
         
+        btn.innerText = "جاري التحقق...";
+        document.getElementById('errorMsg').innerText = "";
+
         auth.signInWithEmailAndPassword(email, pass)
-            .catch((error) => document.getElementById('loginError').innerText = "خطأ: " + error.message);
-    }
-
-    function signup() {
-        const email = document.getElementById('email').value;
-        const pass = document.getElementById('password').value;
-        if(!email || !pass) return alert("يرجى إدخال البيانات");
-
-        auth.createUserWithEmailAndPassword(email, pass)
-            .then((userCredential) => {
-                // إنشاء سجل للمستخدم في قاعدة البيانات
-                db.collection("users").doc(userCredential.user.uid).set({
-                    email: email,
-                    role: "user",
-                    assignedSiteId: ""
-                });
-                alert("تم إنشاء الحساب! يرجى التواصل مع الإدارة لتفعيل الصلاحيات.");
-            })
-            .catch((error) => document.getElementById('loginError').innerText = error.message);
-    }
-
-    function logout() {
-        auth.signOut();
-    }
-
-    // --------------------------------------------------------------
-    // 3. منطق البرنامج (Logic)
-    // --------------------------------------------------------------
-
-    let currentUserRole = null;
-    let currentAssignedSite = null;
-
-    function checkUserRole(uid) {
-        db.collection('users').doc(uid).get().then((doc) => {
-            if (doc.exists) {
-                const userData = doc.data();
-                currentUserRole = userData.role;
-                currentAssignedSite = userData.assignedSiteId;
-
-                if (currentUserRole === 'admin') {
-                    document.getElementById('adminPanel').classList.remove('hidden');
-                    loadAllSites(); 
-                } else {
-                    document.getElementById('adminPanel').classList.add('hidden');
-                    loadMySite(currentAssignedSite); 
-                }
-            } else {
-                console.log("No user document found!");
-            }
-        });
-    }
-
-    // دالة للأدمن: تحميل كل المواقع (Real-time)
-    function loadAllSites() {
-        db.collection("budgets").onSnapshot((querySnapshot) => {
-            renderSites(querySnapshot.docs);
-        });
-    }
-
-    // دالة للمستخدم: تحميل موقعه فقط (Real-time)
-    function loadMySite(siteId) {
-        if(!siteId) {
-            document.getElementById('sitesContainer').innerHTML = "<p>لم يتم تعيين موقع لك بعد. راجع المدير.</p>";
-            return;
-        }
-        db.collection("budgets").doc(siteId).onSnapshot((doc) => {
-            if(doc.exists) {
-                renderSites([doc]); 
-            } else {
-                document.getElementById('sitesContainer').innerHTML = "<p>الموقع المحدد غير موجود.</p>";
-            }
-        });
-    }
-
-    // دالة العرض المشتركة
-    function renderSites(docs) {
-        const container = document.getElementById('sitesContainer');
-        container.innerHTML = "";
-        
-        if (docs.length === 0) {
-            container.innerHTML = "<p>لا توجد مواقع لعرضها حالياً.</p>";
-            return;
-        }
-
-        docs.forEach((doc) => {
-            const data = doc.data();
-            const totalSpent = data.totalSpent || 0;
-            const currentBalance = data.currentBalance !== undefined ? data.currentBalance : data.totalAllocatedAmount;
-
-            const html = `
-            <div class="card">
-                <h3>🏢 ${data.itemName}</h3>
-                <p><strong>الميزانية المعتمدة:</strong> ${Number(data.totalAllocatedAmount).toLocaleString('ar-EG')}</p>
-                <p><strong>إجمالي المصروف:</strong> ${Number(totalSpent).toLocaleString('ar-EG')}</p>
-                <p><strong>المتبقي:</strong> <span style="font-weight: bold; color:${currentBalance < 0 ? 'red' : 'green'}">${Number(currentBalance).toLocaleString('ar-EG')}</span></p>
-                <button onclick="openSiteDetails('${doc.id}')">عرض التفاصيل وإضافة فواتير</button>
-            </div>
-            `;
-            container.innerHTML += html;
-        });
-    }
-
-    function addNewSite() {
-        const name = document.getElementById('newSiteName').value;
-        const budget = Number(document.getElementById('newSiteBudget').value);
-
-        if (!name || !budget || isNaN(budget) || budget <= 0) return alert("الرجاء إدخال اسم وميزانية صحيحة");
-
-        db.collection("budgets").add({
-            itemName: name,
-            totalAllocatedAmount: budget,
-            currentBalance: budget,
-            totalSpent: 0,
-            totalProfit: 0,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => {
-            alert("تمت إضافة الموقع بنجاح");
-            document.getElementById('newSiteName').value = "";
-            document.getElementById('newSiteBudget').value = "";
-        }).catch((error) => {
-            alert("حدث خطأ أثناء الإضافة: " + error.message);
-        });
-    }
-
-    function openSiteDetails(siteId) {
-        // الانتقال لصفحة التفاصيل مع تمرير رقم الموقع
-        window.location.href = "details.html?id=" + siteId;
+            .then(() => window.location.href = "dashboard.html")
+            .catch(err => {
+                btn.innerText = "دخول للنظام";
+                document.getElementById('errorMsg').innerText = "خطأ: تأكد من الإيميل وكلمة المرور";
+            });
     }
 </script>
-
 </body>
 </html>
