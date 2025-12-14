@@ -1,6 +1,279 @@
-<script src="js/config.js"></script>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفاصيل المشروع - FGC</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
 
-<script src="js/details.js"></script>
+<div class="container">
+    <div class="header-bar">
+        <div class="header-title-box">
+            <img src="FGC.jpeg" alt="Logo" class="logo-img" style="max-height: 60px;">
+            <div>
+                <h2 id="siteTitle" style="margin:0;">جاري التحميل...</h2>
+                <a href="dashboard.html" id="homeBtn" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px; margin-top:5px; display:none;">
+                    <i class="fa-solid fa-house"></i> الرئيسية
+                </a>
+                <button onclick="logout()" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px; margin-top:5px; border-color:var(--danger); color:var(--danger);">
+                    <i class="fa-solid fa-right-from-bracket"></i> خروج
+                </button>
+            </div>
+        </div>
+        
+        <div id="actionButtons" style="display:none;">
+            <button onclick="openModal()" class="btn btn-primary">
+                <i class="fa-solid fa-plus"></i> إضافة جديد
+            </button>
+            <button onclick="document.getElementById('importModal').style.display='flex'" class="btn btn-warning">
+                <i class="fa-solid fa-file-csv"></i> استيراد Excel
+            </button>
+            <button onclick="clearAllData()" class="btn btn-danger">
+                <i class="fa-solid fa-trash"></i> تصفير
+            </button>
+        </div>
+    </div>
 
+    <div class="stat-grid" style="margin-bottom: 30px;">
+        <div class="card" style="text-align:center; border-bottom:4px solid var(--primary-dark);">
+            <h3>الميزانية</h3><p id="statBudget">0</p>
+        </div>
+        <div class="card" style="text-align:center; border-bottom:4px solid var(--danger);">
+            <h3>المصروف</h3><p id="statSpent" style="color:var(--danger)">0</p>
+        </div>
+        <div class="card" style="text-align:center; border-bottom:4px solid var(--success);">
+            <h3>المتبقي</h3><p id="statBalance" style="color:var(--success)">0</p>
+        </div>
+        <div class="card" style="text-align:center; border-bottom:4px solid var(--accent-gold);">
+            <h3>الربح</h3><p id="statProfit" style="color:var(--accent-gold)">0</p>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <div class="filter-container">
+            <div class="filter-group"><label>بحث برقم الفاتورة</label><input type="text" id="filterInvoice" onkeyup="applyFilters()" placeholder="اكتب الرقم..."></div>
+            <div class="filter-group"><label>بحث برقم أمر الشراء</label><input type="text" id="filterPO" onkeyup="applyFilters()" placeholder="اكتب رقم الـ PO..."></div>
+            <div class="filter-group"><label>بحث باسم المورد</label><input type="text" id="filterSupplier" onkeyup="applyFilters()" placeholder="اسم المورد..."></div>
+            <div class="filter-group"><label>فلترة بالتاريخ</label><input type="date" id="filterDate" onchange="applyFilters()"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3><i class="fa-solid fa-list"></i> سجل الحركات</h3>
+        <div class="table-container">
+            <table id="transTable">
+                <thead>
+                    <tr>
+                        <th>التعميد</th><th>التاريخ</th><th>PO #</th><th>المورد</th><th>فاتورة #</th><th>تاريخ الفاتورة</th><th>المبلغ</th><th>النسبة</th><th>الربح</th><th>تحكم</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="transactionModal" class="modal-overlay">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <h3 id="modalTitle" style="color:var(--primary-dark); margin-top:0;">تسجيل معاملة جديدة</h3>
+        <input type="hidden" id="editTransId">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div><label>رقم التعميد *</label><input type="number" id="orderNum"></div>
+            <div><label>تاريخ التعميد *</label><input type="date" id="orderDate"></div>
+            <div><label>المورد *</label><input type="text" id="supplier"></div>
+        </div>
+        <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin: 15px 0;">
+            <h4 style="margin:0 0 10px 0; color:var(--primary-light);">بيانات الفاتورة وأمر الشراء</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                <div><label>رقم الفاتورة</label><input type="text" id="invoiceNum"></div>
+                <div><label>تاريخ الفاتورة</label><input type="date" id="invoiceDate"></div>
+                <div><label>رقم أمر الشراء (PO)</label><input type="text" id="poNumber"></div>
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div><label>المبلغ (بدون ضريبة) *</label><input type="number" id="amount" style="border-color:var(--accent-gold);"></div>
+            <div><label>النسبة (0.20)</label><input type="number" id="ratio" step="0.01" placeholder="0.20"></div>
+            <div><label>مستخلص / ملاحظات</label><input type="text" id="batch"></div>
+        </div>
+        <div style="margin-top: 20px; text-align: left;">
+            <button onclick="closeModal()" class="btn btn-outline" style="margin-left:10px;">إلغاء</button>
+            <button onclick="saveTransaction()" class="btn btn-success" style="width: 150px;">حفظ</button>
+        </div>
+    </div>
+</div>
+
+<div id="importModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close-modal" onclick="document.getElementById('importModal').style.display='none'">&times;</span>
+        <h3>استيراد بيانات Excel</h3>
+        <p>اختر ملف CSV يحتوي على البيانات</p>
+        <input type="file" id="csvFile" accept=".csv">
+        <button onclick="processCSV()" class="btn btn-warning" style="width:100%; margin-top:15px;">بدء الاستيراد</button>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    const siteId = new URLSearchParams(window.location.search).get('id');
+    if(!siteId) window.location.href = "dashboard.html";
+
+    function formatDateForInput(dateString) {
+        if (!dateString) return "";
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return ""; 
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0'); 
+        const day = String(date.getDate()).padStart(2, '0');       
+        return `${year}-${month}-${day}`;
+    }
+
+    // -------------------------------------------------------------
+    // المنطق الجديد للصلاحيات
+    // -------------------------------------------------------------
+    auth.onAuthStateChanged(async user => {
+        if(user) {
+            // جلب صلاحيات المستخدم
+            const u = await db.collection('users').doc(user.uid).get();
+            const userData = u.data();
+
+            // 1. إذا كان أدمن: يظهر له زر العودة للداشبورد وكل الأزرار
+            if(u.exists && userData.role === 'admin') {
+                document.getElementById('homeBtn').style.display = 'inline-block';
+                document.getElementById('actionButtons').style.display = 'flex';
+                document.getElementById('actionButtons').style.gap = '10px';
+            } 
+            // 2. إذا كان مستخدم عادي وهذا هو موقعه: يظهر له أزرار العمليات فقط
+            else if (u.exists && userData.role === 'user' && userData.assignedSiteId === siteId) {
+                document.getElementById('actionButtons').style.display = 'flex';
+                document.getElementById('actionButtons').style.gap = '10px';
+                // (زر الرئيسية مخفي افتراضياً وهذا ما نريده)
+            }
+            
+            // تحميل البيانات (مشترك للجميع)
+            loadPageData();
+        } else {
+            window.location.href = "index.html";
+        }
+    });
+
+    function loadPageData() {
+        db.collection("budgets").doc(siteId).onSnapshot(doc => {
+            if(!doc.exists) return;
+            const d = doc.data();
+            document.getElementById('siteTitle').innerText = d.itemName;
+            document.getElementById('statBudget').innerText = fmt(d.totalAllocatedAmount);
+            document.getElementById('statSpent').innerText = fmt(d.totalSpent);
+            document.getElementById('statBalance').innerText = fmt(d.currentBalance);
+            document.getElementById('statProfit').innerText = fmt(d.totalProfit);
+        });
+
+        db.collection("budgets").doc(siteId).collection("transactions").orderBy("orderNumber", "desc").onSnapshot(snap => {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = "";
+            snap.forEach(doc => {
+                const val = doc.data();
+                tbody.innerHTML += `
+                <tr class="data-row">
+                    <td>${val.orderNumber}</td>
+                    <td class="col-date">${val.date}</td>
+                    <td class="col-po">${val.poNumber || '-'}</td>
+                    <td class="col-supplier">${val.supplierName}</td>
+                    <td class="col-invoice">${val.invoiceNum || '-'}</td>
+                    <td class="col-invoice-date">${val.invoiceDate || '-'}</td>
+                    <td>${fmt(val.amountExclTax)}</td>
+                    <td>${val.companyRatio || 0}</td>
+                    <td>${fmt(val.companyProfit)}</td>
+                    <td>
+                        <button onclick="editTrans('${doc.id}')" class="btn btn-secondary" style="padding:5px 8px; font-size:0.8em;"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteTrans('${doc.id}', ${val.amountExclTax}, ${val.companyProfit})" class="btn btn-danger" style="padding:5px 8px; font-size:0.8em;"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+            applyFilters();
+        });
+    }
+
+    // --- (باقي الدوال: openModal, closeModal, applyFilters, saveTransaction, editTrans, deleteTrans, processCSV, clearAllData, fmt) ---
+    // --- (هي نفس الكود السابق تماماً بدون تغيير، تم اختصارها هنا لتوفير المساحة) ---
+    // تأكد من نسخ باقي الدوال من الملف السابق ووضعها هنا
+    
+    function openModal() { document.getElementById('editTransId').value=""; document.getElementById('modalTitle').innerText="تسجيل معاملة جديدة"; document.querySelectorAll('#transactionModal input').forEach(i=>i.value=""); document.getElementById('transactionModal').classList.add('show'); }
+    function closeModal() { document.getElementById('transactionModal').classList.remove('show'); }
+    function applyFilters() { 
+        const inv=document.getElementById('filterInvoice').value.toLowerCase(), po=document.getElementById('filterPO').value.toLowerCase(), sup=document.getElementById('filterSupplier').value.toLowerCase(), date=document.getElementById('filterDate').value;
+        document.querySelectorAll('.data-row').forEach(row=>{
+            const i=row.querySelector('.col-invoice').innerText.toLowerCase(), p=row.querySelector('.col-po').innerText.toLowerCase(), s=row.querySelector('.col-supplier').innerText.toLowerCase(), d=row.querySelector('.col-date').innerText;
+            row.style.display = (i.includes(inv)&&p.includes(po)&&s.includes(sup)&&(!date||d===date))?'':'none';
+        });
+    }
+
+    async function saveTransaction() {
+        const id=document.getElementById('editTransId').value;
+        const amt=parseFloat(document.getElementById('amount').value)||0, ratio=parseFloat(document.getElementById('ratio').value)||0;
+        const data={ orderNumber:Number(document.getElementById('orderNum').value), date:document.getElementById('orderDate').value, supplierName:document.getElementById('supplier').value, amountExclTax:amt, companyRatio:ratio, companyProfit:amt*ratio, batchNumber:document.getElementById('batch').value, invoiceNum:document.getElementById('invoiceNum').value, invoiceDate:document.getElementById('invoiceDate').value, poNumber:document.getElementById('poNumber').value };
+        if(!amt||!data.orderNumber) return alert("بيانات ناقصة");
+        try {
+            await db.runTransaction(async t=>{
+                const ref=db.collection("budgets").doc(siteId), doc=await t.get(ref), cur=doc.data();
+                let sp=cur.totalSpent||0, pr=cur.totalProfit||0, bl=cur.currentBalance||0;
+                if(id){ const old=await t.get(ref.collection("transactions").doc(id)), od=old.data(); sp-=(od.amountExclTax||0); pr-=(od.companyProfit||0); bl+=(od.amountExclTax||0); t.update(ref.collection("transactions").doc(id),data); }
+                else { data.createdAt=new Date(); t.set(ref.collection("transactions").doc(),data); }
+                t.update(ref,{ totalSpent:sp+data.amountExclTax, totalProfit:pr+data.companyProfit, currentBalance:bl-data.amountExclTax });
+            });
+            closeModal();
+        } catch(e){alert("خطأ: "+e.message);}
+    }
+
+    async function editTrans(id) {
+        const doc=await db.collection("budgets").doc(siteId).collection("transactions").doc(id).get(), d=doc.data();
+        document.getElementById('editTransId').value=id; document.getElementById('modalTitle').innerText="تعديل المعاملة";
+        document.getElementById('orderNum').value=d.orderNumber; document.getElementById('supplier').value=d.supplierName; document.getElementById('amount').value=d.amountExclTax; document.getElementById('ratio').value=d.companyRatio; document.getElementById('batch').value=d.batchNumber||''; document.getElementById('invoiceNum').value=d.invoiceNum||''; document.getElementById('poNumber').value=d.poNumber||''; 
+        document.getElementById('orderDate').value=formatDateForInput(d.date); document.getElementById('invoiceDate').value=formatDateForInput(d.invoiceDate);
+        document.getElementById('transactionModal').classList.add('show');
+    }
+
+    async function deleteTrans(id, amt, prf) {
+        if(!confirm("حذف؟")) return;
+        await db.runTransaction(async t=>{ const r=db.collection("budgets").doc(siteId), d=await t.get(r); t.delete(r.collection("transactions").doc(id)); t.update(r,{ totalSpent:(d.data().totalSpent||0)-amt, totalProfit:(d.data().totalProfit||0)-prf, currentBalance:(d.data().currentBalance||0)+amt }); });
+    }
+
+    function processCSV() {
+        const f=document.getElementById('csvFile').files[0]; if(!f) return alert("ملف؟");
+        Papa.parse(f,{header:false,encoding:"windows-1256",skipEmptyLines:true,complete:async res=>{
+            const b=db.batch(), r=db.collection("budgets").doc(siteId); let s=0, p=0;
+            res.data.forEach((row,i)=>{
+                if(i>0 && row[0] && !isNaN(parseFloat(row[3]))){
+                    const a=parseFloat(row[3]), rt=parseFloat(row[4])||0;
+                    b.set(r.collection("transactions").doc(),{orderNumber:Number(row[0]),date:row[1],supplierName:row[2],amountExclTax:a,companyRatio:rt,companyProfit:a*rt,invoiceNum:row[5]||'',invoiceDate:row[6]||'',poNumber:row[7]||'',batchNumber:row[8]||'',importedAt:new Date()});
+                    s+=a; p+=(a*rt);
+                }
+            });
+            const c=(await r.get()).data(); b.update(r,{totalSpent:(c.totalSpent||0)+s, totalProfit:(c.totalProfit||0)+p, currentBalance:c.currentBalance-s});
+            await b.commit(); location.reload();
+        }});
+    }
+
+    async function clearAllData() {
+        if(!confirm("حذف الكل؟")) return;
+        const r=db.collection("budgets").doc(siteId), s=await r.collection("transactions").get(), b=db.batch();
+        s.forEach(d=>b.delete(d.ref)); const org=(await r.get()).data().totalAllocatedAmount;
+        b.update(r,{totalSpent:0,totalProfit:0,currentBalance:org}); await b.commit(); location.reload();
+    }
+
+    function logout() { auth.signOut().then(()=>window.location.href="index.html"); }
+    function fmt(n) { return Number(n||0).toLocaleString('ar-EG',{minimumFractionDigits:2}); }
+</script>
 </body>
 </html>
