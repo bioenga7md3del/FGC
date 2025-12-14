@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول - FGC System</title>
+    <title>تسجيل الدخول - FGC</title>
     <link rel="stylesheet" href="style.css">
-    
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -14,68 +13,56 @@
 
 <div class="login-wrapper">
     <div class="card login-box">
-        <h2 style="color: var(--primary); margin-bottom: 5px;">FGC System</h2>
-        <p style="color: #7f8c8d; margin-bottom: 30px;">نظام إدارة الميزانيات والتعميدات</p>
+        <img src="FGC.jpeg" alt="FGC Logo" class="logo-img login-logo">
         
-        <h3 id="formTitle" style="color: var(--secondary);">تسجيل الدخول</h3>
+        <h2 style="color: var(--primary-dark); margin-bottom: 5px; font-weight: 800;">نظام إدارة المشاريع</h2>
+        <p style="color: var(--text-light); margin-bottom: 30px;">يرجى تسجيل الدخول للمتابعة</p>
+        
+        <h3 id="formTitle" style="color: var(--accent-orange); margin-bottom: 20px;">تسجيل الدخول</h3>
 
         <div style="text-align: right;">
-            <label style="font-size: 0.9em; font-weight: bold;">البريد الإلكتروني</label>
-            <input type="email" id="email" placeholder="name@company.com">
+            <label>البريد الإلكتروني</label>
+            <input type="email" id="email" placeholder="name@fgc.com">
             
-            <label style="font-size: 0.9em; font-weight: bold;">كلمة المرور</label>
+            <label>كلمة المرور</label>
             <input type="password" id="password" placeholder="******">
         </div>
         
-        <button onclick="handleAuth()" id="actionBtn" class="btn btn-primary" style="width: 100%; margin-top: 20px; padding: 12px;">
+        <button onclick="handleAuth()" id="actionBtn" class="btn btn-primary" style="width: 100%; margin-top: 25px; font-size: 1.1rem;">
             دخول للنظام
         </button>
         
-        <p id="errorMsg" style="color: #c0392b; margin-top: 15px; font-size: 0.9em; font-weight: bold;"></p>
+        <p id="errorMsg" style="color: var(--danger); margin-top: 15px; font-weight: bold;"></p>
 
-        <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
-            <span id="toggleText">ليس لديك حساب؟ </span>
-            <a href="#" onclick="toggleMode()" id="toggleLink" style="color: var(--secondary); font-weight: bold; text-decoration: none;">
-                إنشاء حساب جديد
+        <div style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 20px; font-size: 0.95rem;">
+            <span id="toggleText" style="color: var(--text-light);">ليس لديك حساب؟ </span>
+            <a href="#" onclick="toggleMode()" id="toggleLink" style="color: var(--primary-light); font-weight: bold; text-decoration: none;">
+                إنشاء حساب موظف جديد
             </a>
         </div>
     </div>
 </div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI",
-        authDomain: "fgcbio.firebaseapp.com",
-        projectId: "fgcbio",
-        storageBucket: "fgcbio.firebasestorage.app",
-        messagingSenderId: "924334872806",
-        appId: "1:924334872806:web:fac89ce388b1ff2de24327",
-        measurementId: "G-H9VW2MZQG0"
-    };
-
+    // --- نفس كود الجافاسكربت السابق تماماً ---
+    const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327", measurementId: "G-H9VW2MZQG0" };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
     let isLoginMode = true;
-    let isSigningUp = false; // 🛑 متغير جديد لمنع التوجيه المتسرع
+    let isSigningUp = false;
 
-    // 1. مراقب الحالة
     auth.onAuthStateChanged(user => {
-        // الشرط الجديد: إذا كان المستخدم موجوداً، ولكننا لسنا في وضع "جاري التسجيل"، قم بالتوجيه
-        if(user && !isSigningUp) {
-            window.location.href = "dashboard.html";
-        }
+        if(user && !isSigningUp) window.location.href = "dashboard.html";
     });
 
-    // 2. دالة التبديل
     function toggleMode() {
         isLoginMode = !isLoginMode;
         const title = document.getElementById('formTitle');
         const btn = document.getElementById('actionBtn');
         const toggleText = document.getElementById('toggleText');
         const toggleLink = document.getElementById('toggleLink');
-        
         document.getElementById('errorMsg').innerText = "";
 
         if (isLoginMode) {
@@ -83,7 +70,7 @@
             btn.innerText = "دخول للنظام";
             btn.className = "btn btn-primary";
             toggleText.innerText = "ليس لديك حساب؟ ";
-            toggleLink.innerText = "إنشاء حساب جديد";
+            toggleLink.innerText = "إنشاء حساب موظف جديد";
         } else {
             title.innerText = "إنشاء حساب جديد";
             btn.innerText = "تسجيل حساب";
@@ -93,7 +80,6 @@
         }
     }
 
-    // 3. الدالة الرئيسية
     function handleAuth() {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('password').value;
@@ -108,31 +94,19 @@
         errorMsg.innerText = "";
 
         if (isLoginMode) {
-            // --- تسجيل دخول ---
             auth.signInWithEmailAndPassword(email, pass).catch(err => handleError(err, btn));
         } else {
-            // --- إنشاء حساب جديد ---
-            isSigningUp = true; // 🛑 تفعيل الراية: "نحن نسجل الآن، لا تنقلنا تلقائياً"
-
+            isSigningUp = true;
             auth.createUserWithEmailAndPassword(email, pass)
                 .then((userCredential) => {
-                    // الآن نحفظ في قاعدة البيانات ونحن مطمئنون أن الصفحة لن تغلق
                     return db.collection('users').doc(userCredential.user.uid).set({
-                        email: email,
-                        role: 'user',        
-                        assignedSiteId: '',  
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        email: email, role: 'user', assignedSiteId: '', createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 })
-                .then(() => {
-                    console.log("تم حفظ اليوزر في الداتا بيز");
-                    // الآن فقط نقوم بالتوجيه يدوياً بعد التأكد من الحفظ
-                    window.location.href = "dashboard.html";
-                })
+                .then(() => window.location.href = "dashboard.html")
                 .catch(err => {
-                    isSigningUp = false; // إلغاء الراية في حال حدوث خطأ
+                    isSigningUp = false;
                     handleError(err, btn);
-                    // في حال تم إنشاء الحساب في Auth وفشل في Database، نقوم بحذفه لتجنب البيانات المعلقة
                     if(auth.currentUser) auth.currentUser.delete();
                 });
         }
@@ -144,6 +118,8 @@
         let message = err.message;
         if(err.code === 'auth/email-already-in-use') message = "البريد مسجل بالفعل";
         if(err.code === 'auth/weak-password') message = "كلمة المرور ضعيفة";
+        if(err.code === 'auth/user-not-found') message = "المستخدم غير موجود";
+        if(err.code === 'auth/wrong-password') message = "كلمة المرور غير صحيحة";
         document.getElementById('errorMsg').innerText = "خطأ: " + message;
     }
 </script>
