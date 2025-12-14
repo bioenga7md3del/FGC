@@ -8,83 +8,83 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
 
 <div class="container">
     <div class="header-bar">
         <div class="header-title-box">
-            <img src="FGC.jpeg" alt="FGC Logo" class="logo-img" style="max-height: 60px;">
+            <img src="FGC.jpeg" alt="Logo" class="logo-img" style="max-height: 60px;">
             <div>
-                <h2 id="siteTitle" style="margin-bottom: 5px;">جاري التحميل...</h2>
-                <a href="dashboard.html" class="btn btn-outline" style="font-size:0.85em; padding: 6px 15px;">🏠 عودة للرئيسية</a>
+                <h2 id="siteTitle" style="margin:0;">جاري التحميل...</h2>
+                <a href="dashboard.html" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px; margin-top:5px;">
+                    <i class="fa-solid fa-house"></i> الرئيسية
+                </a>
             </div>
+        </div>
+        <div id="adminButtons" style="display:none;">
+            <button onclick="openModal()" class="btn btn-primary">
+                <i class="fa-solid fa-plus"></i> إضافة جديد
+            </button>
+            <button onclick="document.getElementById('importModal').style.display='flex'" class="btn btn-warning">
+                <i class="fa-solid fa-file-csv"></i> استيراد Excel
+            </button>
+            <button onclick="clearAllData()" class="btn btn-danger">
+                <i class="fa-solid fa-trash"></i> تصفير
+            </button>
         </div>
     </div>
 
-    <div class="stat-grid">
-        <div class="card" style="text-align: center; border-bottom: 4px solid var(--primary-dark);">
-            <h3>💰 الميزانية المعتمدة</h3>
-            <p id="statBudget" style="color: var(--primary-dark);">0</p>
+    <div class="stat-grid" style="margin-bottom: 30px;">
+        <div class="card" style="text-align:center; border-bottom:4px solid var(--primary-dark);">
+            <h3>الميزانية</h3><p id="statBudget">0</p>
         </div>
-        <div class="card" style="text-align: center; border-bottom: 4px solid var(--danger);">
-            <h3>📉 إجمالي المصروف</h3>
-            <p id="statSpent" class="text-danger">0</p>
+        <div class="card" style="text-align:center; border-bottom:4px solid var(--danger);">
+            <h3>المصروف</h3><p id="statSpent" style="color:var(--danger)">0</p>
         </div>
-        <div class="card" style="text-align: center; border-bottom: 4px solid var(--success);">
-            <h3>✅ الرصيد المتبقي</h3>
-            <p id="statBalance" class="text-success">0</p>
+        <div class="card" style="text-align:center; border-bottom:4px solid var(--success);">
+            <h3>المتبقي</h3><p id="statBalance" style="color:var(--success)">0</p>
         </div>
-        <div class="card" style="text-align: center; border-bottom: 4px solid var(--accent-gold);">
-            <h3>📊 أرباح الشركة</h3>
-            <p id="statProfit" class="text-accent">0</p>
+        <div class="card" style="text-align:center; border-bottom:4px solid var(--accent-gold);">
+            <h3>الربح</h3><p id="statProfit" style="color:var(--accent-gold)">0</p>
         </div>
     </div>
 
-    <div class="card" id="formCard" style="border-top: 4px solid var(--primary-light);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 id="formTitle" style="color: var(--primary-dark); margin: 0;">➕ تسجيل معاملة جديدة</h3>
-        </div>
-        
-        <input type="hidden" id="editTransId">
-        
-        <div class="form-grid">
-            <div><label>رقم التعميد *</label><input type="number" id="orderNum"></div>
-            <div><label>تاريخ التعميد *</label><input type="date" id="orderDate"></div>
-            <div><label>المورد *</label><input type="text" id="supplier"></div>
-            
-            <div style="background:#f4f7f6; padding:15px; border-radius:10px; grid-column: span 3;">
-                <h4 style="margin: 0 0 15px 0; color: var(--primary-dark);">بيانات الفاتورة وأمر الشراء</h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
-                    <div><label>رقم الفاتورة</label><input type="text" id="invoiceNum"></div>
-                    <div><label>تاريخ الفاتورة</label><input type="date" id="invoiceDate"></div>
-                    <div><label>رقم أمر الشراء (PO)</label><input type="text" id="poNumber"></div>
-                </div>
+    <div class="action-bar">
+        <div class="filter-container">
+            <div class="filter-group">
+                <label>بحث برقم الفاتورة</label>
+                <input type="text" id="filterInvoice" onkeyup="applyFilters()" placeholder="اكتب الرقم...">
             </div>
-
-            <div><label>المبلغ (بدون ضريبة) *</label><input type="number" id="amount" style="font-weight: bold;"></div>
-            <div><label>نسبة الشركة (مثلاً 0.20)</label><input type="number" id="ratio" step="0.01" placeholder="0.20"></div>
-            <div><label>ملاحظات / مستخلص</label><input type="text" id="batch"></div>
-        </div>
-        
-        <div style="margin-top: 25px; display: flex; gap: 15px;">
-            <button onclick="saveTransaction()" class="btn btn-success" id="saveBtn" style="flex:3; font-size: 1.1em;">💾 حفظ العملية</button>
-            <button onclick="cancelEdit()" class="btn btn-danger" id="cancelBtn" style="display:none; flex:1;">إلغاء</button>
+            <div class="filter-group">
+                <label>بحث برقم أمر الشراء (PO)</label>
+                <input type="text" id="filterPO" onkeyup="applyFilters()" placeholder="اكتب رقم الـ PO...">
+            </div>
+            <div class="filter-group">
+                <label>بحث باسم المورد</label>
+                <input type="text" id="filterSupplier" onkeyup="applyFilters()" placeholder="اسم المورد...">
+            </div>
+            <div class="filter-group">
+                <label>فلترة بالتاريخ</label>
+                <input type="date" id="filterDate" onchange="applyFilters()">
+            </div>
         </div>
     </div>
 
     <div class="card">
-        <h3 style="color: var(--primary-dark);">📝 سجل الحركات والتعميدات</h3>
+        <h3><i class="fa-solid fa-list"></i> سجل الحركات</h3>
         <div class="table-container">
-            <table>
+            <table id="transTable">
                 <thead>
                     <tr>
-                        <th>تعميد #</th>
+                        <th>التعميد</th>
                         <th>التاريخ</th>
                         <th>PO #</th>
                         <th>المورد</th>
                         <th>فاتورة #</th>
-                        <th>مبلغ (ق.م)</th>
+                        <th>تاريخ الفاتورة</th>
+                        <th>المبلغ</th>
                         <th>النسبة</th>
                         <th>الربح</th>
                         <th>تحكم</th>
@@ -94,27 +94,55 @@
             </table>
         </div>
     </div>
+</div>
 
-    <div id="adminTools" class="card" style="display:none; background:#fffbf0; border: 2px dashed var(--accent-orange);">
-        <h3 style="color: var(--accent-orange);">👑 أدوات المدير المتقدمة</h3>
+<div id="transactionModal" class="modal-overlay">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <h3 id="modalTitle" style="color:var(--primary-dark); margin-top:0;">تسجيل معاملة جديدة</h3>
         
-        <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
-            <div style="flex: 1;">
-                 <label>استيراد ملف Excel (CSV)</label>
-                 <input type="file" id="csvFile" accept=".csv" style="background: white;">
-            </div>
-            <button onclick="processCSV()" class="btn btn-warning">🚀 بدء الاستيراد</button>
+        <input type="hidden" id="editTransId">
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div><label>رقم التعميد *</label><input type="number" id="orderNum"></div>
+            <div><label>تاريخ التعميد *</label><input type="date" id="orderDate"></div>
+            <div><label>المورد *</label><input type="text" id="supplier"></div>
         </div>
-        
-        <div style="border-top: 1px solid #ebd5b3; padding-top: 20px;">
-            <button onclick="clearAllData()" class="btn btn-danger" style="width: auto;">⚠️ تصفير بيانات المشروع بالكامل (حذف نهائي)</button>
+
+        <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin: 15px 0;">
+            <h4 style="margin:0 0 10px 0; color:var(--primary-light);">بيانات الفاتورة</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                <div><label>رقم الفاتورة</label><input type="text" id="invoiceNum"></div>
+                <div><label>تاريخ الفاتورة</label><input type="date" id="invoiceDate"></div>
+                <div><label>رقم أمر الشراء (PO)</label><input type="text" id="poNumber"></div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div><label>المبلغ (بدون ضريبة) *</label><input type="number" id="amount" style="border-color:var(--accent-gold);"></div>
+            <div><label>النسبة (0.20)</label><input type="number" id="ratio" step="0.01" placeholder="0.20"></div>
+            <div><label>مستخلص / ملاحظات</label><input type="text" id="batch"></div>
+        </div>
+
+        <div style="margin-top: 20px; text-align: left;">
+            <button onclick="closeModal()" class="btn btn-outline" style="margin-left:10px;">إلغاء</button>
+            <button onclick="saveTransaction()" class="btn btn-success" style="width: 150px; justify-content: center;">حفظ</button>
         </div>
     </div>
+</div>
 
+<div id="importModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close-modal" onclick="document.getElementById('importModal').style.display='none'">&times;</span>
+        <h3>استيراد بيانات Excel</h3>
+        <p>اختر ملف CSV يحتوي على البيانات</p>
+        <input type="file" id="csvFile" accept=".csv">
+        <button onclick="processCSV()" class="btn btn-warning" style="width:100%; margin-top:15px;">بدء الاستيراد</button>
+    </div>
 </div>
 
 <script>
-    // --- نفس كود الجافاسكربت السابق تماماً (لا تغيير) ---
+    // --- إعدادات Firebase ---
     const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
@@ -123,10 +151,14 @@
     const siteId = new URLSearchParams(window.location.search).get('id');
     if(!siteId) window.location.href = "dashboard.html";
 
+    // --- تحميل البيانات ---
     auth.onAuthStateChanged(async user => {
         if(user) {
             const u = await db.collection('users').doc(user.uid).get();
-            if(u.exists && u.data().role === 'admin') document.getElementById('adminTools').style.display = 'block';
+            if(u.exists && u.data().role === 'admin') {
+                document.getElementById('adminButtons').style.display = 'flex';
+                document.getElementById('adminButtons').style.gap = '10px';
+            }
             
             db.collection("budgets").doc(siteId).onSnapshot(doc => {
                 const d = doc.data();
@@ -143,25 +175,66 @@
                 snap.forEach(doc => {
                     const val = doc.data();
                     tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${val.orderNumber}</strong></td>
-                        <td>${val.date}</td>
-                        <td>${val.poNumber || '-'}</td>
-                        <td>${val.supplierName}</td>
-                        <td>${val.invoiceNum || '-'}</td>
-                        <td style="font-weight:bold; color:var(--primary-dark)">${fmt(val.amountExclTax)}</td>
+                    <tr class="data-row">
+                        <td>${val.orderNumber}</td>
+                        <td class="col-date">${val.date}</td>
+                        <td class="col-po">${val.poNumber || '-'}</td>
+                        <td class="col-supplier">${val.supplierName}</td>
+                        <td class="col-invoice">${val.invoiceNum || '-'}</td>
+                        <td class="col-invoice-date">${val.invoiceDate || '-'}</td>
+                        <td>${fmt(val.amountExclTax)}</td>
                         <td>${val.companyRatio}</td>
-                        <td style="color:var(--accent-gold)">${fmt(val.companyProfit)}</td>
+                        <td>${fmt(val.companyProfit)}</td>
                         <td>
-                            <button onclick="editTrans('${doc.id}')" class="btn btn-secondary" style="padding:5px 10px; font-size:0.9em;">✏️</button>
-                            <button onclick="deleteTrans('${doc.id}', ${val.amountExclTax}, ${val.companyProfit})" class="btn btn-danger" style="padding:5px 10px; font-size:0.9em;">🗑️</button>
+                            <button onclick="editTrans('${doc.id}')" class="btn btn-secondary" style="padding:5px 8px; font-size:0.8em;"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteTrans('${doc.id}', ${val.amountExclTax}, ${val.companyProfit})" class="btn btn-danger" style="padding:5px 8px; font-size:0.8em;"><i class="fa-solid fa-trash"></i></button>
                         </td>
                     </tr>`;
                 });
+                applyFilters(); // إعادة تطبيق الفلاتر عند تحديث البيانات
             });
         }
     });
 
+    // --- دوال الـ Modal ---
+    function openModal() {
+        document.getElementById('editTransId').value = "";
+        document.getElementById('modalTitle').innerText = "تسجيل معاملة جديدة";
+        document.querySelectorAll('#transactionModal input').forEach(i => i.value = "");
+        document.getElementById('transactionModal').classList.add('show');
+    }
+
+    function closeModal() {
+        document.getElementById('transactionModal').classList.remove('show');
+    }
+
+    // --- دوال الفلترة (Search Functionality) ---
+    function applyFilters() {
+        const invFilter = document.getElementById('filterInvoice').value.toLowerCase();
+        const poFilter = document.getElementById('filterPO').value.toLowerCase();
+        const supFilter = document.getElementById('filterSupplier').value.toLowerCase();
+        const dateFilter = document.getElementById('filterDate').value;
+
+        const rows = document.querySelectorAll('.data-row');
+
+        rows.forEach(row => {
+            const invText = row.querySelector('.col-invoice').innerText.toLowerCase();
+            const poText = row.querySelector('.col-po').innerText.toLowerCase();
+            const supText = row.querySelector('.col-supplier').innerText.toLowerCase();
+            const dateText = row.querySelector('.col-date').innerText;
+
+            let show = true;
+
+            if(invFilter && !invText.includes(invFilter)) show = false;
+            if(poFilter && !poText.includes(poFilter)) show = false;
+            if(supFilter && !supText.includes(supFilter)) show = false;
+            if(dateFilter && dateText !== dateFilter) show = false;
+
+            row.style.display = show ? '' : 'none';
+        });
+    }
+
+    // --- العمليات (حفظ / تعديل) ---
     async function saveTransaction() {
         const id = document.getElementById('editTransId').value;
         const data = {
@@ -176,7 +249,7 @@
             poNumber: document.getElementById('poNumber').value,
         };
 
-        if(!data.amountExclTax || !data.orderNumber || !data.supplierName || !data.date) return alert("يرجى إكمال البيانات الأساسية (التي عليها نجمة *)");
+        if(!data.amountExclTax || !data.orderNumber) return alert("أكمل البيانات الأساسية");
         data.companyProfit = data.amountExclTax * (data.companyRatio || 0);
 
         try {
@@ -205,15 +278,19 @@
                 newBalance -= data.amountExclTax;
                 t.update(siteRef, { totalSpent: newSpent, totalProfit: newProfit, currentBalance: newBalance });
             });
-            alert(id ? "تم حفظ التعديلات" : "تمت إضافة العملية بنجاح");
-            cancelEdit();
+            
+            closeModal();
+            alert("تم الحفظ بنجاح");
         } catch(e) { console.error(e); alert("خطأ: " + e.message); }
     }
 
     async function editTrans(id) {
         const doc = await db.collection("budgets").doc(siteId).collection("transactions").doc(id).get();
         const d = doc.data();
+        
         document.getElementById('editTransId').value = id;
+        document.getElementById('modalTitle').innerText = "تعديل المعاملة";
+        
         document.getElementById('orderNum').value = d.orderNumber;
         document.getElementById('orderDate').value = d.date;
         document.getElementById('supplier').value = d.supplierName;
@@ -223,25 +300,13 @@
         document.getElementById('invoiceNum').value = d.invoiceNum || '';
         document.getElementById('invoiceDate').value = d.invoiceDate || '';
         document.getElementById('poNumber').value = d.poNumber || '';
-        document.getElementById('saveBtn').innerText = "💾 حفظ التعديلات";
-        document.getElementById('saveBtn').className = "btn btn-warning";
-        document.getElementById('formTitle').innerText = "✏️ تعديل المعاملة";
-        document.getElementById('cancelBtn').style.display = 'inline-flex';
-        document.getElementById('formCard').scrollIntoView({behavior: "smooth"});
-    }
 
-    function cancelEdit() {
-        document.getElementById('editTransId').value = "";
-        document.querySelectorAll('input').forEach(i => i.value = "");
-        document.getElementById('saveBtn').innerText = "💾 حفظ العملية";
-        document.getElementById('saveBtn').className = "btn btn-success";
-        document.getElementById('formTitle').innerText = "➕ تسجيل معاملة جديدة";
-        document.getElementById('cancelBtn').style.display = 'none';
-        document.getElementById('ratio').value = "";
+        document.getElementById('transactionModal').classList.add('show');
     }
 
     async function deleteTrans(id, amount, profit) {
-        if(!confirm("هل أنت متأكد من الحذف النهائي؟ سيتم استرجاع المبلغ للميزانية.")) return;
+        if(!confirm("هل أنت متأكد من الحذف؟")) return;
+        // ... (نفس كود الحذف السابق) ...
         await db.runTransaction(async (t) => {
             const siteRef = db.collection("budgets").doc(siteId);
             const siteDoc = await t.get(siteRef);
@@ -256,37 +321,38 @@
 
     function processCSV() {
         const file = document.getElementById('csvFile').files[0];
-        if(!file) return alert("يرجى اختيار ملف CSV");
+        if(!file) return alert("اختر الملف");
         Papa.parse(file, {
             header: false, encoding: "windows-1256", skipEmptyLines: true,
             complete: async function(results) {
-                const rows = results.data;
+                // ... (نفس كود الاستيراد السابق) ...
+                 const rows = results.data;
                 const batch = db.batch();
                 const siteRef = db.collection("budgets").doc(siteId);
-                let bSpent=0, bProfit=0, count=0;
+                let bSpent=0, bProfit=0;
                 for(let i=1; i<rows.length; i++){
                     const r = rows[i];
                     if(!r[0] || isNaN(parseFloat(r[3]))) continue;
                     const amount = parseFloat(r[3]);
-                    const ratio = parseFloat(r[4]) || 0;
+                    const ratio = parseFloat(r[4]);
                     const newRef = siteRef.collection("transactions").doc();
                     batch.set(newRef, {
                         orderNumber: Number(r[0]), date: r[1], supplierName: r[2], amountExclTax: amount, companyRatio: ratio, companyProfit: amount * ratio,
                         invoiceNum: r[5] || '', invoiceDate: r[6] || '', poNumber: r[7] || '', batchNumber: r[8] || '', importedAt: new Date()
                     });
-                    bSpent += amount; bProfit += (amount*ratio); count++;
+                    bSpent += amount; bProfit += (amount*ratio);
                 }
                 const cur = (await siteRef.get()).data();
                 batch.update(siteRef, { totalSpent: (cur.totalSpent||0) + bSpent, totalProfit: (cur.totalProfit||0) + bProfit, currentBalance: cur.currentBalance - bSpent });
                 await batch.commit();
-                alert(`تم استيراد ${count} عملية بنجاح`);
+                alert("تم الاستيراد");
                 location.reload();
             }
         });
     }
 
     async function clearAllData() {
-        if(!confirm("تحذير خطير! 🛑\nهل أنت متأكد من تصفير الموقع وحذف كافة البيانات؟\nلا يمكن التراجع.")) return;
+        if(!confirm("تحذير: حذف الكل؟")) return;
         const siteRef = db.collection("budgets").doc(siteId);
         const snaps = await siteRef.collection("transactions").get();
         const batch = db.batch();
@@ -294,7 +360,7 @@
         const origin = (await siteRef.get()).data().totalAllocatedAmount;
         batch.update(siteRef, { totalSpent: 0, totalProfit: 0, currentBalance: origin });
         await batch.commit();
-        alert("تم تصفير الموقع بنجاح");
+        alert("تم التصفير");
         location.reload();
     }
 
