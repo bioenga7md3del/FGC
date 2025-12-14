@@ -162,17 +162,15 @@
     function formatDateForInput(dateString) {
         if (!dateString) return "";
         const date = new Date(dateString);
-        if (isNaN(date.getTime())) return ""; // لو التاريخ غير صالح
-        
+        if (isNaN(date.getTime())) return ""; 
         const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0'); // إضافة 0 للشهر الفردي
-        const day = String(date.getDate()).padStart(2, '0');       // إضافة 0 لليوم الفردي
-        
+        const month = String(date.getMonth() + 1).padStart(2, '0'); 
+        const day = String(date.getDate()).padStart(2, '0');       
         return `${year}-${month}-${day}`;
     }
 
     // -----------------------------------------------------------
-    // 3. تحميل البيانات ومراقبتها
+    // 3. تحميل البيانات
     // -----------------------------------------------------------
     auth.onAuthStateChanged(async user => {
         if(user) {
@@ -182,7 +180,6 @@
                 document.getElementById('adminButtons').style.gap = '10px';
             }
             
-            // مراقبة بيانات الموقع الرئيسية
             db.collection("budgets").doc(siteId).onSnapshot(doc => {
                 const d = doc.data();
                 document.getElementById('siteTitle').innerText = d.itemName;
@@ -192,7 +189,6 @@
                 document.getElementById('statProfit').innerText = fmt(d.totalProfit);
             });
 
-            // مراقبة جدول الحركات
             db.collection("budgets").doc(siteId).collection("transactions").orderBy("orderNumber", "desc").onSnapshot(snap => {
                 const tbody = document.getElementById('tableBody');
                 tbody.innerHTML = "";
@@ -215,7 +211,7 @@
                         </td>
                     </tr>`;
                 });
-                applyFilters(); // تطبيق الفلتر تلقائياً عند تحديث البيانات
+                applyFilters();
             });
         }
     });
@@ -235,7 +231,7 @@
     }
 
     // -----------------------------------------------------------
-    // 5. دوال الفلترة (Filtering)
+    // 5. دوال الفلترة
     // -----------------------------------------------------------
     function applyFilters() {
         const invFilter = document.getElementById('filterInvoice').value.toLowerCase();
@@ -263,10 +259,8 @@
     }
 
     // -----------------------------------------------------------
-    // 6. العمليات (حفظ / تعديل / حذف / استيراد)
+    // 6. العمليات
     // -----------------------------------------------------------
-    
-    // حفظ (جديد أو تعديل)
     async function saveTransaction() {
         const id = document.getElementById('editTransId').value;
         const data = {
@@ -295,7 +289,6 @@
                 let newBalance = currentSite.currentBalance;
 
                 if(id) {
-                    // تعديل: نعكس القديم ونطبق الجديد
                     const oldDoc = await t.get(siteRef.collection("transactions").doc(id));
                     const oldData = oldDoc.data();
                     newSpent -= oldData.amountExclTax;
@@ -303,7 +296,6 @@
                     newBalance += oldData.amountExclTax;
                     t.update(siteRef.collection("transactions").doc(id), data);
                 } else {
-                    // إضافة جديد
                     data.createdAt = new Date();
                     t.set(siteRef.collection("transactions").doc(), data);
                 }
@@ -315,14 +307,14 @@
                 t.update(siteRef, { totalSpent: newSpent, totalProfit: newProfit, currentBalance: newBalance });
             });
             
+            // --- هنا التغيير: حذفنا رسالة الـ alert ---
             closeModal();
-            
+            // ------------------------------------------
+
         } catch(e) { console.error(e); alert("خطأ: " + e.message); }
     }
 
-    // فتح نافذة التعديل (مع إصلاح التاريخ)
     async function editTrans(id) {
-        // إظهار النافذة وعنوان التحميل
         document.getElementById('modalTitle').innerText = "جاري جلب البيانات...";
         document.getElementById('transactionModal').classList.add('show');
 
@@ -343,14 +335,12 @@
             document.getElementById('invoiceNum').value = d.invoiceNum || '';
             document.getElementById('poNumber').value = d.poNumber || '';
 
-            // استخدام الدالة المساعدة لضبط التواريخ
             document.getElementById('orderDate').value = formatDateForInput(d.date);
             document.getElementById('invoiceDate').value = formatDateForInput(d.invoiceDate);
 
         } catch(e) { console.error(e); closeModal(); alert("خطأ في التحميل"); }
     }
 
-    // حذف
     async function deleteTrans(id, amount, profit) {
         if(!confirm("هل أنت متأكد من الحذف؟")) return;
         try {
@@ -367,7 +357,6 @@
         } catch(e) { alert("خطأ في الحذف"); }
     }
 
-    // استيراد CSV
     function processCSV() {
         const file = document.getElementById('csvFile').files[0];
         if(!file) return alert("اختر الملف");
@@ -400,7 +389,6 @@
         });
     }
 
-    // تصفير الموقع
     async function clearAllData() {
         if(!confirm("تحذير: حذف الكل؟")) return;
         const siteRef = db.collection("budgets").doc(siteId);
