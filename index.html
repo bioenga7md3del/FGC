@@ -13,8 +13,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
-        /* ... (نفس تنسيقات CSS السابقة في index.html لا تغيير عليها) ... */
-        /* اختصاراً للمساحة، استخدم نفس الستايل السابق تماماً */
         :root { --primary: #1a3c6d; --accent: #d4af37; --text-gray: #6c757d; --bg-light: #f8f9fd; }
         body { margin: 0; padding: 0; font-family: 'Tajawal', sans-serif; background-color: var(--bg-light); height: 100vh; overflow: hidden; display: flex; }
         .brand-section { flex: 1.2; background-image: linear-gradient(135deg, rgba(26, 60, 109, 0.9), rgba(26, 60, 109, 0.7)), url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop'); background-size: cover; background-position: center; color: white; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 60px; position: relative; }
@@ -39,6 +37,14 @@
         .switch-mode { text-align: center; margin-top: 25px; color: var(--text-gray); font-size: 0.95rem; }
         .switch-mode a { color: var(--primary); font-weight: bold; text-decoration: none; }
         #errorMsg { text-align: center; color: #dc3545; font-weight: bold; margin-top: 15px; min-height: 20px; font-size: 0.9em; }
+        
+        /* --- ستايل الخيارات الجديدة (Remember me & Forgot Password) --- */
+        .options-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 0.9rem; }
+        .remember-me { display: flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text-gray); }
+        .remember-me input { cursor: pointer; accent-color: var(--primary); width: 16px; height: 16px; }
+        .forgot-link { color: var(--primary); text-decoration: none; font-weight: bold; font-size: 0.9rem; transition: 0.3s; }
+        .forgot-link:hover { text-decoration: underline; color: var(--accent); }
+
         @media (max-width: 768px) { body { flex-direction: column; height: auto; overflow-y: auto; } .brand-section { padding: 40px 20px; min-height: 250px; flex: none; align-items: center; text-align: center; } .login-section { padding: 40px 20px; border-radius: 30px 30px 0 0; margin-top: -30px; } }
         @keyframes slideInLeft { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
     </style>
@@ -80,6 +86,14 @@
                 </div>
             </div>
 
+            <div class="options-row" id="loginOptions">
+                <label class="remember-me">
+                    <input type="checkbox" id="rememberMe" checked>
+                    <span>البقاء متصلاً</span>
+                </label>
+                <a href="#" onclick="forgotPassword()" class="forgot-link">نسيت كلمة المرور؟</a>
+            </div>
+
             <button onclick="handleAuth()" id="actionBtn" class="btn-main">
                 دخول للنظام <i class="fa-solid fa-arrow-left" style="margin-right: 10px;"></i>
             </button>
@@ -101,39 +115,54 @@
     let isLoginMode = true;
     let isSigningUp = false;
 
-    // -------------------------------------------------------------------
-    // منطق التوجيه الذكي (أهم تعديل)
-    // -------------------------------------------------------------------
+    // التحقق من حالة الدخول
     auth.onAuthStateChanged(async user => {
         if(user && !isSigningUp) {
             const btn = document.getElementById('actionBtn');
             if(btn) btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> جاري التوجيه...';
 
             try {
-                // جلب بيانات المستخدم لمعرفة نوعه وموقعه
                 const userDoc = await db.collection('users').doc(user.uid).get();
                 if(userDoc.exists) {
                     const userData = userDoc.data();
-                    
                     if (userData.role === 'admin') {
-                        // الأدمن يذهب للداشبورد
                         window.location.href = "dashboard.html";
                     } else if (userData.role === 'user' && userData.assignedSiteId) {
-                        // المستخدم العادي يذهب فوراً لصفحة التفاصيل الخاصة بمشروعه
                         window.location.href = "details.html?id=" + userData.assignedSiteId;
                     } else {
-                        // مستخدم جديد ليس له موقع بعد
                         window.location.href = "dashboard.html";
                     }
                 }
             } catch (error) {
                 console.error("Error fetching user role:", error);
-                window.location.href = "dashboard.html"; // احتياطياً
+                window.location.href = "dashboard.html";
             }
         }
     });
 
-    // ... (باقي دوال تسجيل الدخول وإنشاء الحساب كما هي تماماً) ...
+    // دالة استعادة كلمة المرور
+    function forgotPassword() {
+        const email = document.getElementById('email').value;
+        if (!email) {
+            alert("⚠️ يرجى كتابة بريدك الإلكتروني في خانة البريد أولاً، ثم اضغط على (نسيت كلمة المرور) مرة أخرى.");
+            document.getElementById('email').focus();
+            return;
+        }
+        
+        if(!confirm(`هل تريد إرسال رابط إعادة تعيين كلمة المرور إلى: ${email}؟`)) return;
+
+        auth.sendPasswordResetEmail(email)
+            .then(() => {
+                alert("✅ تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني. يرجى التحقق من الرسائل الواردة (أو الرسائل غير المرغوب فيها).");
+            })
+            .catch((error) => {
+                let msg = error.message;
+                if(error.code === 'auth/user-not-found') msg = "هذا البريد الإلكتروني غير مسجل لدينا.";
+                if(error.code === 'auth/invalid-email') msg = "صيغة البريد الإلكتروني غير صحيحة.";
+                alert("❌ خطأ: " + msg);
+            });
+    }
+
     function toggleMode() {
         isLoginMode = !isLoginMode;
         const title = document.getElementById('formTitle');
@@ -141,6 +170,8 @@
         const btn = document.getElementById('actionBtn');
         const toggleText = document.getElementById('toggleText');
         const toggleLink = document.querySelector('.switch-mode a');
+        const loginOptions = document.getElementById('loginOptions'); // الصف الجديد
+        
         document.getElementById('errorMsg').innerText = "";
 
         if (isLoginMode) {
@@ -149,16 +180,18 @@
             btn.innerHTML = 'دخول للنظام <i class="fa-solid fa-arrow-left" style="margin-right: 10px;"></i>';
             toggleText.innerText = "ليس لديك حساب موظف؟ ";
             toggleLink.innerText = "إنشاء حساب جديد";
+            loginOptions.style.display = "flex"; // إظهار الخيارات في تسجيل الدخول
         } else {
             title.innerText = "إنشاء حساب جديد 🚀";
             sub.innerText = "سجل بياناتك للانضمام لفريق العمل";
             btn.innerHTML = 'تسجيل حساب <i class="fa-solid fa-user-plus" style="margin-right: 10px;"></i>';
             toggleText.innerText = "لديك حساب بالفعل؟ ";
             toggleLink.innerText = "تسجيل الدخول";
+            loginOptions.style.display = "none"; // إخفاء الخيارات عند إنشاء حساب
         }
     }
 
-    function handleAuth() {
+    async function handleAuth() {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('password').value;
         const btn = document.getElementById('actionBtn');
@@ -172,7 +205,15 @@
         errorMsg.innerText = "";
 
         if (isLoginMode) {
-            auth.signInWithEmailAndPassword(email, pass).catch(err => handleError(err, btn));
+            // منطق "البقاء متصلاً"
+            const rememberMe = document.getElementById('rememberMe').checked;
+            const persistence = rememberMe ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
+
+            auth.setPersistence(persistence)
+                .then(() => {
+                    return auth.signInWithEmailAndPassword(email, pass);
+                })
+                .catch(err => handleError(err, btn));
         } else {
             isSigningUp = true;
             auth.createUserWithEmailAndPassword(email, pass)
@@ -182,7 +223,6 @@
                     });
                 })
                 .then(() => {
-                    // التوجيه سيتم عبر onAuthStateChanged ولكن هنا نعالجه احتياطياً
                     window.location.href = "dashboard.html";
                 })
                 .catch(err => {
@@ -200,6 +240,7 @@
         if(err.code === 'auth/user-not-found') message = "بيانات الدخول غير صحيحة";
         if(err.code === 'auth/wrong-password') message = "كلمة المرور خاطئة";
         if(err.code === 'auth/email-already-in-use') message = "هذا البريد مسجل مسبقاً";
+        if(err.code === 'auth/too-many-requests') message = "محاولات كثيرة خاطئة، يرجى الانتظار قليلاً";
         document.getElementById('errorMsg').innerText = message;
     }
 </script>
