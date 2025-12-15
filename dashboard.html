@@ -134,7 +134,7 @@
         });
     }
 
-    async function openUsersModal() {
+   async function openUsersModal() {
         document.getElementById('usersModal').style.display = 'flex';
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">جاري تحميل المستخدمين...</td></tr>';
@@ -153,16 +153,22 @@
                     sitesOptions += `<option value="${site.id}" ${selected}>${site.name}</option>`;
                 });
 
-                const roleUserSel = u.role === 'user' ? 'selected' : '';
-                const roleAdminSel = u.role === 'admin' ? 'selected' : '';
+                // تحديد الخيار المختار بناءً على الدور الحالي
+                const r = u.role;
+                const selUser = r === 'user' ? 'selected' : '';
+                const selAdmin = r === 'admin' ? 'selected' : '';
+                const selViewer = r === 'viewer' ? 'selected' : '';
+                const selViewerPro = r === 'viewer_pro' ? 'selected' : '';
 
                 const row = `
                 <tr>
                     <td>${u.email} <br> <small style="color:#999">${userId.substring(0,5)}...</small></td>
                     <td>
                         <select id="role-${userId}" style="padding: 8px; border-radius: 5px; border: 1px solid #ddd; width: 100%;">
-                            <option value="user" ${roleUserSel}>مستخدم عادي</option>
-                            <option value="admin" ${roleAdminSel}>مدير (Admin)</option>
+                            <option value="user" ${selUser}>مستخدم (إدخال بيانات)</option>
+                            <option value="viewer" ${selViewer}>مشاهد فقط (بدون أرباح)</option>
+                            <option value="viewer_pro" ${selViewerPro}>مشاهد (مع أرباح)</option>
+                            <option value="admin" ${selAdmin}>مدير (Admin)</option>
                         </select>
                     </td>
                     <td>
@@ -184,7 +190,6 @@
             tbody.innerHTML = '<tr><td colspan="4" style="color:red">خطأ في جلب البيانات</td></tr>';
         }
     }
-
     async function saveUserChanges(userId) {
         const newRole = document.getElementById(`role-${userId}`).value;
         const newSite = document.getElementById(`site-${userId}`).value;
