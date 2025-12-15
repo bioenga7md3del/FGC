@@ -48,15 +48,18 @@
             <button onclick="exportTableToCSV('report.csv')" class="btn btn-success" style="background: #217346;">
                 <i class="fa-solid fa-file-excel"></i> تصدير Excel
             </button>
-            <button onclick="openModal()" class="btn btn-primary">
-                <i class="fa-solid fa-plus"></i> إضافة جديد
-            </button>
-            <button onclick="document.getElementById('importModal').style.display='flex'" class="btn btn-warning">
-                <i class="fa-solid fa-file-csv"></i> استيراد
-            </button>
-            <button onclick="clearAllData()" class="btn btn-danger">
-                <i class="fa-solid fa-trash"></i> تصفير
-            </button>
+            
+            <span id="editButtons" style="display:none; gap: 10px;">
+                <button onclick="openModal()" class="btn btn-primary">
+                    <i class="fa-solid fa-plus"></i> إضافة جديد
+                </button>
+                <button onclick="document.getElementById('importModal').style.display='flex'" class="btn btn-warning">
+                    <i class="fa-solid fa-file-csv"></i> استيراد
+                </button>
+                <button onclick="clearAllData()" class="btn btn-danger">
+                    <i class="fa-solid fa-trash"></i> تصفير
+                </button>
+            </span>
         </div>
     </div>
 
@@ -71,8 +74,8 @@
             <div class="card" style="border-bottom:4px solid var(--success);">
                 <h3>الرصيد المتبقي</h3><p id="statBalance" style="color:var(--success)">0</p>
             </div>
-            <div class="card" id="cardProfit" style="border-bottom:4px solid var(--accent);">
-                <h3> مبلغ التمويل</h3><p id="statProfit" style="color:var(--accent)">0</p>
+            <div class="card" id="cardProfit" style="border-bottom:4px solid var(--accent); display:none;">
+                <h3>مبلغ التمويل</h3><p id="statProfit" style="color:var(--accent)">0</p>
             </div>
         </div>
 
@@ -86,10 +89,11 @@
 
     <div class="action-bar">
         <div class="filter-container">
+            <div class="filter-group"><label>بحث برقم المستخلص</label><input type="text" id="filterBatch" onkeyup="applyFilters()" placeholder="رقم المستخلص..."></div>
             <div class="filter-group"><label>بحث برقم الفاتورة</label><input type="text" id="filterInvoice" onkeyup="applyFilters()" placeholder="اكتب الرقم..."></div>
-            <div class="filter-group"><label>بحث برقم أمر الشراء</label><input type="text" id="filterPO" onkeyup="applyFilters()" placeholder="اكتب رقم الـ PO..."></div>
-            <div class="filter-group"><label>بحث باسم المورد</label><input type="text" id="filterSupplier" onkeyup="applyFilters()" placeholder="اسم المورد..."></div>
-            <div class="filter-group"><label>فلترة بالتاريخ</label><input type="date" id="filterDate" onchange="applyFilters()"></div>
+            <div class="filter-group"><label>بحث برقم PO</label><input type="text" id="filterPO" onkeyup="applyFilters()" placeholder="رقم الـ PO..."></div>
+            <div class="filter-group"><label>المورد</label><input type="text" id="filterSupplier" onkeyup="applyFilters()" placeholder="اسم المورد..."></div>
+            <div class="filter-group"><label>التاريخ</label><input type="date" id="filterDate" onchange="applyFilters()"></div>
         </div>
     </div>
 
@@ -99,10 +103,14 @@
             <table id="transTable">
                 <thead>
                     <tr>
-                        <th>التعميد</th><th>التاريخ</th><th>PO #</th><th>المورد</th><th>فاتورة #</th><th>تاريخ الفاتورة</th><th>المبلغ</th>
-                        <th id="headerRatio">النسبة</th>
-                        <th id="headerProfit">الربح</th>
-                        <th>تحكم</th>
+                        <th>التعميد</th><th>التاريخ</th><th>PO #</th>
+                        <th>رقم المستخلص</th>
+                        
+                        <th>المورد</th><th>فاتورة #</th><th>تاريخ الفاتورة</th><th>المبلغ</th>
+                        
+                        <th id="headerRatio" style="display:none;">النسبة</th>
+                        <th id="headerProfit" style="display:none;">الربح</th>
+                        <th id="headerActions" style="display:none;">تحكم</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody"></tbody>
@@ -134,10 +142,8 @@
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
             <div class="input-box"><label>المبلغ (بدون ضريبة) *</label><input type="number" id="amount" style="border: 1px solid var(--accent);"></div>
-            
             <div class="input-box" id="divRatio"><label>النسبة (مثلاً 0.20)</label><input type="number" id="ratio" step="0.01" placeholder="0.20"></div>
-            
-            <div class="input-box"><label>مستخلص / ملاحظات</label><input type="text" id="batch"></div>
+            <div class="input-box"><label>رقم المستخلص</label><input type="text" id="batch"></div>
         </div>
         
         <div style="margin-top: 20px; text-align: left; display: flex; justify-content: flex-end; gap: 10px;">
@@ -168,7 +174,7 @@
     if(!siteId) window.location.href = "dashboard.html";
 
     let budgetChart = null;
-    let currentUserRole = 'user'; // المتغير الافتراضي للصلاحية
+    let currentUserRole = 'user'; 
 
     function initChart() {
         const ctx = document.getElementById('budgetChart').getContext('2d');
@@ -176,17 +182,9 @@
             type: 'doughnut',
             data: {
                 labels: ['المصروف', 'المتبقي'],
-                datasets: [{
-                    data: [0, 100],
-                    backgroundColor: ['#c0392b', '#27ae60'],
-                    borderWidth: 0
-                }]
+                datasets: [{ data: [0, 100], backgroundColor: ['#c0392b', '#27ae60'], borderWidth: 0 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom' } }
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
         });
     }
 
@@ -203,17 +201,25 @@
         document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
     }
 
-    // تعديل الدالة لإخفاء أعمدة الربح عند التصدير إذا كان مستخدم
     function exportTableToCSV(filename) {
-        let csv = [];
-        csv.push('\uFEFF'); 
-        let rows = document.querySelectorAll("table tr");
+        let csv = []; csv.push('\uFEFF'); let rows = document.querySelectorAll("table tr");
         for (let i = 0; i < rows.length; i++) {
             let row = [], cols = rows[i].querySelectorAll("td, th");
-            for (let j = 0; j < cols.length - 1; j++) {
-                // إذا كان مستخدم، نتخطى العمود رقم 7 (النسبة) ورقم 8 (الربح)
-                // الأرقام هنا تعتمد على ترتيب الأعمدة (التعميد 0, التاريخ 1, ... المبلغ 6, النسبة 7, الربح 8)
-                if(currentUserRole !== 'admin' && (j === 7 || j === 8)) continue;
+            // الفلترة عند التصدير
+            const canSeeProfit = (currentUserRole === 'admin' || currentUserRole === 'viewer_pro');
+            
+            // عدد الأعمدة الكلي يعتمد على HTML، لكننا نعرف ترتيبهم
+            // 0:تعميد, 1:تاريخ, 2:PO, 3:مستخلص, 4:مورد, 5:فاتورة, 6:تاريخ فاتورة, 7:مبلغ
+            // 8:نسبة (مخفي للبعض), 9:ربح (مخفي للبعض), 10:تحكم
+            
+            for (let j = 0; j < cols.length; j++) {
+                // تخطي عمود التحكم (الأخير) دائماً
+                if (cols[j].innerText === 'تحكم' || cols[j].querySelector('button')) continue;
+
+                // تخطي أعمدة الربح والنسبة إذا لم تكن لديه صلاحية
+                // العمود 8 (نسبة) والعمود 9 (ربح) تقريبياً حسب الترتيب الجديد
+                // الأفضل الاعتماد على الـ display style في الجدول
+                if (cols[j].style.display === 'none') continue;
 
                 let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/,/g, ""); 
                 row.push('"' + data + '"');
@@ -248,35 +254,44 @@
             const u = await db.collection('users').doc(user.uid).get();
             const userData = u.data();
             
-            // حفظ نوع المستخدم في المتغير
-            if(u.exists) {
-                currentUserRole = userData.role;
+            if(u.exists) currentUserRole = userData.role;
+
+            // --- منطق الصلاحيات الجديد ---
+            const canSeeProfit = (currentUserRole === 'admin' || currentUserRole === 'viewer_pro');
+            const canEdit = (currentUserRole === 'admin' || currentUserRole === 'user');
+
+            // 1. الأزرار العامة (الظهور للي له علاقة بالموقع)
+            document.getElementById('actionButtons').style.display = 'flex';
+            
+            // زر العودة للرئيسية للأدمن فقط
+            if(currentUserRole === 'admin') document.getElementById('homeBtn').style.display = 'inline-flex';
+
+            // 2. أزرار التعديل والإضافة (تظهر فقط للأدمن واليوزر)
+            const editBtnGroup = document.getElementById('editButtons');
+            if(canEdit) {
+                editBtnGroup.style.display = 'flex'; // استخدام flex عشان الـ gap يشتغل
+            } else {
+                editBtnGroup.style.display = 'none';
             }
 
-            if(u.exists && userData.role === 'admin') {
-                document.getElementById('homeBtn').style.display = 'inline-flex';
-                document.getElementById('actionButtons').style.display = 'flex';
-                // إظهار عناصر الأدمن
-                document.getElementById('cardProfit').style.display = 'block';
-                document.getElementById('headerProfit').style.display = 'table-cell';
-                document.getElementById('headerRatio').style.display = 'table-cell';
-            } else {
-                // صلاحيات المستخدم العادي
-                document.getElementById('actionButtons').style.display = 'flex';
-                // إخفاء عناصر الأدمن
-                document.getElementById('cardProfit').style.display = 'none';
-                document.getElementById('headerProfit').style.display = 'none';
-                document.getElementById('headerRatio').style.display = 'none';
-            }
+            // 3. عرض الأرباح (للأدمن والمشاهد برو)
+            const profitDisplay = canSeeProfit ? '' : 'none'; // '' يعني Default (block/table-cell)
             
-            loadPageData();
+            document.getElementById('cardProfit').style.display = canSeeProfit ? 'block' : 'none';
+            document.getElementById('headerProfit').style.display = canSeeProfit ? 'table-cell' : 'none';
+            document.getElementById('headerRatio').style.display = canSeeProfit ? 'table-cell' : 'none';
+
+            // 4. عمود التحكم (تعديل/حذف)
+            document.getElementById('headerActions').style.display = canEdit ? 'table-cell' : 'none';
+
+            loadPageData(canSeeProfit, canEdit);
             initChart();
         } else {
             window.location.href = "index.html";
         }
     });
 
-    function loadPageData() {
+    function loadPageData(canSeeProfit, canEdit) {
         db.collection("budgets").doc(siteId).onSnapshot(doc => {
             if(!doc.exists) return;
             const d = doc.data();
@@ -296,13 +311,20 @@
             snap.forEach(doc => {
                 const val = doc.data();
                 
-                // تجهيز خلايا النسبة والربح بناءً على الصلاحية
-                let adminCells = '';
-                if(currentUserRole === 'admin') {
-                    adminCells = `
-                        <td>${val.companyRatio || 0}</td>
-                        <td>${fmt(val.companyProfit)}</td>
-                    `;
+                // خلايا الأرباح
+                let profitCells = '';
+                if(canSeeProfit) {
+                    profitCells = `<td>${val.companyRatio || 0}</td><td>${fmt(val.companyProfit)}</td>`;
+                }
+
+                // خلية التحكم
+                let actionCell = '';
+                if(canEdit) {
+                    actionCell = `
+                    <td>
+                        <button onclick="editTrans('${doc.id}')" class="btn btn-outline" style="padding:5px 8px; font-size:0.8em;"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteTrans('${doc.id}', ${val.amountExclTax}, ${val.companyProfit})" class="btn btn-danger" style="padding:5px 8px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                    </td>`;
                 }
 
                 tbody.innerHTML += `
@@ -310,14 +332,14 @@
                     <td>${val.orderNumber}</td>
                     <td class="col-date">${val.date}</td>
                     <td class="col-po">${val.poNumber || '-'}</td>
+                    <td class="col-batch">${val.batchNumber || '-'}</td> 
+                    
                     <td class="col-supplier">${val.supplierName}</td>
                     <td class="col-invoice">${val.invoiceNum || '-'}</td>
                     <td class="col-invoice-date">${val.invoiceDate || '-'}</td>
                     <td>${fmt(val.amountExclTax)}</td>
-                    ${adminCells} <td>
-                        <button onclick="editTrans('${doc.id}')" class="btn btn-outline" style="padding:5px 8px; font-size:0.8em;"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="deleteTrans('${doc.id}', ${val.amountExclTax}, ${val.companyProfit})" class="btn btn-danger" style="padding:5px 8px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>
-                    </td>
+                    ${profitCells}
+                    ${actionCell}
                 </tr>`;
             });
             applyFilters();
@@ -329,7 +351,7 @@
         document.getElementById('modalTitle').innerText="تسجيل معاملة جديدة"; 
         document.querySelectorAll('#transactionModal input').forEach(i=>i.value=""); 
         
-        // التحكم في ظهور خانة النسبة في المودال
+        // التحكم في ظهور خانة النسبة في المودال (للأدمن فقط هو من يعدل النسبة)
         if(currentUserRole === 'admin') {
             document.getElementById('divRatio').style.display = 'block';
         } else {
@@ -342,19 +364,26 @@
     function closeModal() { document.getElementById('transactionModal').classList.remove('show'); }
     
     function applyFilters() { 
-        const inv=document.getElementById('filterInvoice').value.toLowerCase(), po=document.getElementById('filterPO').value.toLowerCase(), sup=document.getElementById('filterSupplier').value.toLowerCase(), date=document.getElementById('filterDate').value;
+        const inv=document.getElementById('filterInvoice').value.toLowerCase();
+        const po=document.getElementById('filterPO').value.toLowerCase();
+        const sup=document.getElementById('filterSupplier').value.toLowerCase();
+        const batch=document.getElementById('filterBatch').value.toLowerCase();
+        const date=document.getElementById('filterDate').value;
+
         document.querySelectorAll('.data-row').forEach(row=>{
-            const i=row.querySelector('.col-invoice').innerText.toLowerCase(), p=row.querySelector('.col-po').innerText.toLowerCase(), s=row.querySelector('.col-supplier').innerText.toLowerCase(), d=row.querySelector('.col-date').innerText;
-            row.style.display = (i.includes(inv)&&p.includes(po)&&s.includes(sup)&&(!date||d===date))?'':'none';
+            const i=row.querySelector('.col-invoice').innerText.toLowerCase();
+            const p=row.querySelector('.col-po').innerText.toLowerCase();
+            const s=row.querySelector('.col-supplier').innerText.toLowerCase();
+            const b=row.querySelector('.col-batch').innerText.toLowerCase();
+            const d=row.querySelector('.col-date').innerText;
+            
+            row.style.display = (i.includes(inv)&&p.includes(po)&&s.includes(sup)&&b.includes(batch)&&(!date||d===date))?'':'none';
         });
     }
 
     async function saveTransaction() {
         const id=document.getElementById('editTransId').value;
         const amt=parseFloat(document.getElementById('amount').value)||0;
-        
-        // إذا كان المستخدم عادي، نأخذ النسبة القديمة (لو كان تعديل) أو صفر (لو جديد)
-        // لأن الحقل مخفي، القيمة فيه قد لا تكون محدثة أو قد تكون فارغة
         let ratio = parseFloat(document.getElementById('ratio').value)||0;
         
         const data={ 
@@ -378,26 +407,19 @@
                 let sp=cur.totalSpent||0, pr=cur.totalProfit||0, bl=cur.currentBalance||0;
                 
                 if(id){ 
-                    // في حالة التعديل
                     const oldDoc = await t.get(ref.collection("transactions").doc(id));
                     const od = oldDoc.data();
-                    
-                    // إذا كان المستخدم ليس أدمن، يجب أن نحافظ على النسبة والربح القديمين
-                    // لأن المستخدم لا يرى النسبة، فلو حفظ، القيمة المخفية قد تكون خطأ
                     if(currentUserRole !== 'admin') {
                         data.companyRatio = od.companyRatio || 0;
                         data.companyProfit = data.amountExclTax * data.companyRatio;
                     }
-                    
                     sp-=(od.amountExclTax||0); pr-=(od.companyProfit||0); bl+=(od.amountExclTax||0); 
                     t.update(ref.collection("transactions").doc(id),data); 
                 }
                 else { 
-                    // إضافة جديد
                     data.createdAt=new Date(); 
                     t.set(ref.collection("transactions").doc(),data); 
                 }
-                
                 t.update(ref,{ totalSpent:sp+data.amountExclTax, totalProfit:pr+data.companyProfit, currentBalance:bl-data.amountExclTax });
             });
             closeModal();
@@ -410,7 +432,6 @@
         document.getElementById('orderNum').value=d.orderNumber; document.getElementById('supplier').value=d.supplierName; document.getElementById('amount').value=d.amountExclTax; document.getElementById('ratio').value=d.companyRatio; document.getElementById('batch').value=d.batchNumber||''; document.getElementById('invoiceNum').value=d.invoiceNum||''; document.getElementById('poNumber').value=d.poNumber||''; 
         document.getElementById('orderDate').value=formatDateForInput(d.date); document.getElementById('invoiceDate').value=formatDateForInput(d.invoiceDate);
         
-        // التحكم في ظهور خانة النسبة عند التعديل
         if(currentUserRole === 'admin') {
             document.getElementById('divRatio').style.display = 'block';
         } else {
