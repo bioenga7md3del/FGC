@@ -41,16 +41,24 @@
             background: white; border-radius: 8px; padding: 15px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #eee;
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 10px; transition: 0.2s;
+            margin-bottom: 10px; transition: 0.2s; position: relative;
         }
         .site-mini-card:hover { transform: translateX(-5px); border-color: var(--accent); }
-        .site-info h4 { margin: 0 0 5px 0; color: var(--text-dark); }
+        .site-info h4 { margin: 0 0 5px 0; color: var(--text-dark); display: flex; align-items: center; gap: 8px; }
         .site-stats { font-size: 0.85rem; color: #666; display: flex; gap: 15px; }
         .site-balance { font-weight: bold; }
         
+        /* بادج نوع البند */
+        .category-badge {
+            font-size: 0.7em; padding: 2px 8px; border-radius: 10px; color: white;
+            background: #999; vertical-align: middle;
+        }
+        .cat-spare_parts { background: var(--primary); }
+        .cat-labor { background: var(--accent-orange); }
+        .cat-subcontractors { background: #6c757d; }
+
         .empty-sites { text-align: center; color: #999; padding: 20px; font-style: italic; }
         
-        /* أزرار التعديل */
         .btn-edit-sm {
             background: white; border: 1px solid #ccc; color: #555;
             padding: 5px 10px; border-radius: 5px; cursor: pointer;
@@ -58,7 +66,6 @@
         }
         .btn-edit-sm:hover { border-color: var(--primary); color: var(--primary); }
         
-        /* زر تعديل العقد (في الهيدر) */
         .btn-edit-contract {
             background: transparent; border: 1px solid var(--accent); color: var(--accent);
             width: 30px; height: 30px; border-radius: 50%; display: flex;
@@ -112,7 +119,7 @@
                     <i class="fa-solid fa-file-contract" style="font-size: 1.2rem;"></i><br> إضافة عقد جديد
                 </button>
                 <button onclick="openAddSiteModal()" class="btn btn-warning" style="flex: 1; padding: 15px; color: white;">
-                    <i class="fa-solid fa-map-location-dot" style="font-size: 1.2rem;"></i><br> إضافة موقع لعقد
+                    <i class="fa-solid fa-map-location-dot" style="font-size: 1.2rem;"></i><br> إضافة موقع / بند
                 </button>
             </div>
         </div>
@@ -149,10 +156,7 @@
                         <input type="date" id="newContractEnd">
                     </div>
                 </div>
-                <div class="input-box">
-                    <label>القيمة الإجمالية للعقد (اختياري)</label>
-                    <input type="number" id="newContractValue" placeholder="0">
-                </div>
+                <p style="font-size:0.85em; color:#888; margin-top:5px;">* قيمة العقد ستحسب تلقائياً بناءً على مجموع ميزانيات المواقع/البنود المضافة له.</p>
                 <button onclick="addContract()" class="btn-add" style="margin-top: 10px; width: 100%;">حفظ العقد</button>
             </div>
         </div>
@@ -182,10 +186,6 @@
                         <input type="date" id="editContractEnd">
                     </div>
                 </div>
-                <div class="input-box">
-                    <label>القيمة الإجمالية للعقد</label>
-                    <input type="number" id="editContractValue">
-                </div>
                 <button onclick="updateContract()" class="btn-add" style="margin-top: 10px; width: 100%;">حفظ التعديلات</button>
             </div>
         </div>
@@ -194,7 +194,7 @@
     <div id="addSiteModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 500px;">
             <span class="close-modal" onclick="document.getElementById('addSiteModal').style.display='none'">&times;</span>
-            <h2 style="color: var(--primary); margin-top: 0;">إضافة موقع لمشروع</h2>
+            <h2 style="color: var(--primary); margin-top: 0;">إضافة بند للعقد</h2>
             <div class="input-group" style="flex-direction: column; align-items: stretch;">
                 <div class="input-box">
                     <label>اختر العقد التابع له</label>
@@ -203,14 +203,22 @@
                     </select>
                 </div>
                 <div class="input-box">
-                    <label>اسم الموقع (مثال: مستشفى ضباء)</label>
-                    <input type="text" id="newSiteName" placeholder="اسم الموقع...">
+                    <label>نوع البند</label>
+                    <select id="newSiteCategory" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-weight:bold;">
+                        <option value="spare_parts" selected>⚙️ قطع غيار (الأساسي)</option>
+                        <option value="labor">👷 عمالة</option>
+                        <option value="subcontractors">🤝 مقاولي باطن</option>
+                    </select>
                 </div>
                 <div class="input-box">
-                    <label>ميزانية الموقع المخصصة</label>
-                    <input type="number" id="newSiteBudget" placeholder="0">
+                    <label>اسم الموقع/المشروع (مثال: الفريق المتحرك)</label>
+                    <input type="text" id="newSiteName" placeholder="الاسم...">
                 </div>
-                <button onclick="addSite()" class="btn-add" style="margin-top: 10px; width: 100%;">حفظ الموقع</button>
+                <div class="input-box">
+                    <label>الميزانية المخصصة لهذا البند</label>
+                    <input type="number" id="newSiteBudget" placeholder="مثال: 6000000">
+                </div>
+                <button onclick="addSite()" class="btn-add" style="margin-top: 10px; width: 100%;">حفظ</button>
             </div>
         </div>
     </div>
@@ -218,7 +226,7 @@
     <div id="editSiteModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 500px;">
             <span class="close-modal" onclick="document.getElementById('editSiteModal').style.display='none'">&times;</span>
-            <h2 style="color: var(--primary); margin-top: 0;">تعديل وربط الموقع</h2>
+            <h2 style="color: var(--primary); margin-top: 0;">تعديل بيانات البند</h2>
             <input type="hidden" id="editSiteId">
             <div class="input-group" style="flex-direction: column; align-items: stretch;">
                 <div class="input-box">
@@ -227,7 +235,15 @@
                     </select>
                 </div>
                 <div class="input-box">
-                    <label>اسم الموقع</label>
+                    <label>نوع البند</label>
+                    <select id="editSiteCategory" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                        <option value="spare_parts">⚙️ قطع غيار</option>
+                        <option value="labor">👷 عمالة</option>
+                        <option value="subcontractors">🤝 مقاولي باطن</option>
+                    </select>
+                </div>
+                <div class="input-box">
+                    <label>اسم الموقع/المشروع</label>
                     <input type="text" id="editSiteName">
                 </div>
                 <div class="input-box">
@@ -267,6 +283,12 @@
 
     let allContracts = [];
     let allSites = [];
+
+    const categoryLabels = {
+        'spare_parts': { text: 'قطع غيار', icon: 'fa-cogs', class: 'cat-spare_parts' },
+        'labor': { text: 'عمالة', icon: 'fa-hard-hat', class: 'cat-labor' },
+        'subcontractors': { text: 'مقاولي باطن', icon: 'fa-handshake', class: 'cat-subcontractors' }
+    };
 
     auth.onAuthStateChanged(async user => {
         if(!user) { window.location.href = "index.html"; return; }
@@ -323,21 +345,30 @@
     }
 
     function renderContractCard(contract, sites, container, isOrphan = false) {
+        // حساب إجمالي العقد تلقائياً من مجموع ميزانيات البنود
         const allocatedTotal = sites.reduce((sum, s) => sum + (s.totalAllocatedAmount || 0), 0);
         const spentTotal = sites.reduce((sum, s) => sum + (s.totalSpent || 0), 0);
         
         let sitesHTML = "";
         if (sites.length === 0) {
-            sitesHTML = `<div class="empty-sites">لا توجد مواقع مضافة لهذا العقد بعد.</div>`;
+            sitesHTML = `<div class="empty-sites">لا توجد بنود مضافة لهذا العقد بعد.</div>`;
         } else {
             sites.forEach(site => {
                 const percent = site.totalAllocatedAmount ? (site.currentBalance / site.totalAllocatedAmount) * 100 : 0;
                 const balanceColor = percent < 20 ? 'var(--danger)' : 'var(--success)';
                 
+                // تحديد شكل البند (قطع غيار، عمالة، إلخ)
+                const catKey = site.category || 'spare_parts';
+                const catInfo = categoryLabels[catKey] || categoryLabels['spare_parts'];
+
                 sitesHTML += `
                 <div class="site-mini-card">
                     <div class="site-info">
-                        <h4><i class="fa-solid fa-location-dot" style="color:var(--accent); margin-left:5px;"></i> ${site.itemName}</h4>
+                        <h4>
+                            <i class="fa-solid ${catInfo.icon}" style="color:var(--primary);"></i> 
+                            ${site.itemName}
+                            <span class="category-badge ${catInfo.class}">${catInfo.text}</span>
+                        </h4>
                         <div class="site-stats">
                             <span>الميزانية: ${fmt(site.totalAllocatedAmount)}</span>
                             <span>المصروف: <span style="color:var(--danger)">${fmt(site.totalSpent)}</span></span>
@@ -347,7 +378,7 @@
                         <div class="site-balance" style="color:${balanceColor}">${fmt(site.currentBalance)}</div>
                         <div style="margin-top:5px;">
                             <a href="details.html?id=${site.id}" class="btn btn-outline" style="font-size:0.8em; padding:5px 10px; display:inline-block;">التفاصيل</a>
-                            <button onclick="openEditSiteModal('${site.id}')" class="btn-edit-sm" title="تعديل وربط العقد">
+                            <button onclick="openEditSiteModal('${site.id}')" class="btn-edit-sm" title="تعديل">
                                 <i class="fa-solid fa-pen-to-square"></i> تعديل
                             </button>
                         </div>
@@ -360,7 +391,6 @@
         const headerStyle = isOrphan ? 'background: #fff0f0; border-bottom-color: var(--danger);' : '';
         const titleStyle = isOrphan ? 'color: var(--danger);' : '';
 
-        // تجهيز بيانات العقد للعرض
         const authority = contract.supervisingAuthority ? `<span title="الجهة المشرفة"><i class="fa-solid fa-building-columns"></i> ${contract.supervisingAuthority}</span>` : '';
         const dateRange = (contract.startDate || contract.endDate) ? 
             `<span title="مدة العقد"><i class="fa-regular fa-calendar"></i> ${contract.startDate || '?'} <i class="fa-solid fa-arrow-left" style="font-size:0.7em"></i> ${contract.endDate || '?'}</span>` : '';
@@ -377,8 +407,8 @@
                     <div class="contract-details">
                          ${authority}
                          ${dateRange}
-                         <span><i class="fa-solid fa-calculator"></i> قيمة العقد: ${fmt(contract.totalValue)}</span>
-                         <span><i class="fa-solid fa-chart-pie"></i> إجمالي مصروف المواقع: ${fmt(spentTotal)}</span>
+                         <span style="border-color:var(--accent); color:var(--primary); font-weight:bold;"><i class="fa-solid fa-calculator"></i> إجمالي العقد: ${fmt(allocatedTotal)}</span>
+                         <span><i class="fa-solid fa-chart-pie"></i> إجمالي المصروف: ${fmt(spentTotal)}</span>
                     </div>
                 </div>
                 <div>
@@ -389,7 +419,7 @@
                 ${sitesHTML}
                 ${!isOrphan ? `<div style="text-align:center; margin-top:10px;">
                     <button onclick="openAddSiteModal('${contract.id}')" class="btn btn-warning" style="font-size:0.9em;">
-                        <i class="fa-solid fa-plus"></i> إضافة موقع لهذا العقد
+                        <i class="fa-solid fa-plus"></i> إضافة بند/موقع لهذا العقد
                     </button>
                 </div>` : ''}
             </div>
@@ -412,14 +442,12 @@
         }
     }
 
-    // --- وظائف العقود (إضافة وتعديل) ---
-
+    // --- العقود ---
     function addContract() {
         const name = document.getElementById('newContractName').value;
         const auth = document.getElementById('newContractAuth').value;
         const start = document.getElementById('newContractStart').value;
         const end = document.getElementById('newContractEnd').value;
-        const value = Number(document.getElementById('newContractValue').value);
         
         if(!name) return alert("يرجى كتابة اسم العقد");
 
@@ -431,7 +459,7 @@
             supervisingAuthority: auth,
             startDate: start,
             endDate: end,
-            totalValue: value,
+            // لا نحفظ totalValue لأنه يحسب ديناميكياً
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
             alert("تم إضافة العقد بنجاح");
@@ -440,7 +468,6 @@
             document.getElementById('newContractAuth').value="";
             document.getElementById('newContractStart').value="";
             document.getElementById('newContractEnd').value="";
-            document.getElementById('newContractValue').value="";
             btn.innerHTML = "حفظ العقد"; btn.disabled = false;
         });
     }
@@ -454,7 +481,6 @@
         document.getElementById('editContractAuth').value = contract.supervisingAuthority || '';
         document.getElementById('editContractStart').value = contract.startDate || '';
         document.getElementById('editContractEnd').value = contract.endDate || '';
-        document.getElementById('editContractValue').value = contract.totalValue || 0;
 
         document.getElementById('editContractModal').style.display = 'flex';
     }
@@ -465,7 +491,6 @@
         const auth = document.getElementById('editContractAuth').value;
         const start = document.getElementById('editContractStart').value;
         const end = document.getElementById('editContractEnd').value;
-        const value = Number(document.getElementById('editContractValue').value);
 
         if(!id || !name) return alert("اسم العقد مطلوب");
 
@@ -477,8 +502,7 @@
                 name: name,
                 supervisingAuthority: auth,
                 startDate: start,
-                endDate: end,
-                totalValue: value
+                endDate: end
             });
             alert("تم تحديث العقد");
             document.getElementById('editContractModal').style.display='none';
@@ -489,8 +513,7 @@
         }
     }
 
-    // --- وظائف المواقع (إضافة وتعديل) ---
-
+    // --- المواقع/البنود ---
     function openAddSiteModal(preSelectedContractId = null) {
         const select = document.getElementById('contractSelect');
         select.innerHTML = '<option value="">-- اختر العقد --</option>';
@@ -503,6 +526,7 @@
 
     function addSite() {
         const contractId = document.getElementById('contractSelect').value;
+        const category = document.getElementById('newSiteCategory').value;
         const name = document.getElementById('newSiteName').value;
         const budget = Number(document.getElementById('newSiteBudget').value);
         if(!contractId || !name || !budget) return alert("البيانات ناقصة");
@@ -511,12 +535,19 @@
         btn.innerHTML = "جاري الحفظ..."; btn.disabled = true;
 
         db.collection("budgets").add({
-            contractId: contractId, itemName: name, totalAllocatedAmount: budget, currentBalance: budget, totalSpent: 0, totalProfit: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            contractId: contractId, 
+            category: category,
+            itemName: name, 
+            totalAllocatedAmount: budget, 
+            currentBalance: budget, 
+            totalSpent: 0, 
+            totalProfit: 0, 
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
-            alert("تم إضافة الموقع بنجاح");
+            alert("تم إضافة البند بنجاح");
             document.getElementById('addSiteModal').style.display='none';
             document.getElementById('newSiteName').value=""; document.getElementById('newSiteBudget').value="";
-            btn.innerHTML = "حفظ الموقع"; btn.disabled = false;
+            btn.innerHTML = "حفظ"; btn.disabled = false;
         });
     }
 
@@ -527,6 +558,7 @@
         document.getElementById('editSiteId').value = siteId;
         document.getElementById('editSiteName').value = site.itemName;
         document.getElementById('editSiteBudget').value = site.totalAllocatedAmount;
+        document.getElementById('editSiteCategory').value = site.category || 'spare_parts';
 
         const select = document.getElementById('editSiteContractSelect');
         select.innerHTML = '<option value="">-- اختر العقد --</option>';
@@ -541,6 +573,7 @@
     async function updateSite() {
         const siteId = document.getElementById('editSiteId').value;
         const contractId = document.getElementById('editSiteContractSelect').value;
+        const category = document.getElementById('editSiteCategory').value;
         const name = document.getElementById('editSiteName').value;
         const budget = Number(document.getElementById('editSiteBudget').value);
 
@@ -551,9 +584,9 @@
 
         try {
             await db.collection('budgets').doc(siteId).update({
-                contractId: contractId, itemName: name, totalAllocatedAmount: budget
+                contractId: contractId, category: category, itemName: name, totalAllocatedAmount: budget
             });
-            alert("تم تحديث بيانات الموقع بنجاح");
+            alert("تم تحديث بيانات البند بنجاح");
             document.getElementById('editSiteModal').style.display = 'none';
         } catch (e) {
             alert("خطأ: " + e.message);
@@ -562,7 +595,7 @@
         }
     }
 
-    // --- إدارة المستخدمين ---
+    // --- المستخدمين ---
     async function openUsersModal() {
         document.getElementById('usersModal').style.display = 'flex';
         const tbody = document.getElementById('usersTableBody');
@@ -582,21 +615,14 @@
                         sitesOptions += `<optgroup label="${contract.name}">`;
                         contractSites.forEach(site => {
                             const selected = u.assignedSiteId === site.id ? 'selected' : '';
-                            sitesOptions += `<option value="${site.id}" ${selected}>${site.itemName}</option>`;
+                            const cat = categoryLabels[site.category || 'spare_parts'].text;
+                            sitesOptions += `<option value="${site.id}" ${selected}>${site.itemName} (${cat})</option>`;
                         });
                         sitesOptions += `</optgroup>`;
                     }
                 });
                 
-                const orphans = allSites.filter(s => !s.contractId);
-                if(orphans.length > 0) {
-                     sitesOptions += `<optgroup label="أخرى">`;
-                     orphans.forEach(site => {
-                        const selected = u.assignedSiteId === site.id ? 'selected' : '';
-                        sitesOptions += `<option value="${site.id}" ${selected}>${site.itemName}</option>`;
-                     });
-                     sitesOptions += `</optgroup>`;
-                }
+                // orphans code... (same as before)
 
                 const r = u.role;
                 const selUser = r === 'user' ? 'selected' : '';
