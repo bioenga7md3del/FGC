@@ -14,13 +14,14 @@
 
     <style>
         :root {
-            --primary: #1e3a8a;      /* كحلي غامق احترافي */
+            --primary: #1e3a8a;      
             --primary-light: #3b82f6;
-            --accent: #f59e0b;       /* برتقالي ذهبي */
+            --accent: #f59e0b;       
             --accent-hover: #d97706;
             --danger: #ef4444;
+            --danger-hover: #dc2626;
             --success: #10b981;
-            --bg-body: #f3f4f6;      /* رمادي فاتح للخلفية */
+            --bg-body: #f3f4f6;      
             --bg-card: #ffffff;
             --text-main: #111827;
             --text-secondary: #6b7280;
@@ -65,7 +66,7 @@
         .welcome-section p { color: var(--text-secondary); margin-top: 5px; }
 
         /* --- Admin Grid (Quick Actions) --- */
-        .admin-panel { display: none; margin-bottom: 50px; } /* مخفي ويظهر بالجافاسكريبت */
+        .admin-panel { display: none; margin-bottom: 50px; } 
         
         .actions-grid {
             display: grid;
@@ -137,6 +138,10 @@
         }
         .btn-icon:hover { background: var(--primary); color: white; border-color: var(--primary); }
         .btn-icon.chart:hover { background: var(--accent); border-color: var(--accent); }
+        
+        /* زر الحذف الجديد */
+        .btn-icon.delete:hover { background: var(--danger); border-color: var(--danger); color: white; }
+        
         .btn-icon.toggle { border: none; background: transparent; font-size: 1.2rem; }
 
         /* --- Sites Inside Contract --- */
@@ -167,6 +172,10 @@
         .btn-view:hover { background: var(--primary); color: white; }
         .btn-edit { border-color: #d1d5db; color: #6b7280; background: white; margin-right: 5px; }
         .btn-edit:hover { border-color: var(--primary); color: var(--primary); }
+        
+        /* زر حذف الموقع الصغير */
+        .btn-delete-sm { border-color: #fca5a5; color: #ef4444; background: white; margin-right: 5px; }
+        .btn-delete-sm:hover { background: #ef4444; color: white; border-color: #ef4444; }
 
         .btn-add-site {
             background: var(--accent); color: white; border: none; padding: 10px 25px;
@@ -520,6 +529,7 @@
                             <div style="font-weight:bold; color:${balanceColor}; margin-bottom:5px;">${fmt(site.currentBalance)}</div>
                             <div>
                                 <button onclick="openEditSiteModal('${site.id}')" class="btn-small btn-edit" title="تعديل"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick="deleteSite('${site.id}')" class="btn-small btn-delete-sm" title="حذف"><i class="fa-solid fa-trash"></i></button>
                                 <a href="details.html?id=${site.id}" class="btn-small btn-view">التفاصيل</a>
                             </div>
                         </div>
@@ -551,6 +561,7 @@
                         ${!isOrphan ? `
                             <a href="contract-details.html?id=${contract.id}" onclick="event.stopPropagation();" class="btn-icon chart" title="تحليل العقد"><i class="fa-solid fa-chart-pie"></i></a>
                             <div onclick="openEditContractModal('${contract.id}'); event.stopPropagation();" class="btn-icon" title="تعديل"><i class="fa-solid fa-pen"></i></div>
+                            <div onclick="deleteContract('${contract.id}'); event.stopPropagation();" class="btn-icon delete" title="حذف العقد"><i class="fa-solid fa-trash"></i></div>
                         ` : ''}
                         <button class="btn-icon toggle"><i id="icon-${contract.id}" class="fa-solid fa-chevron-down"></i></button>
                     </div>
@@ -632,6 +643,17 @@
             } catch(e) { alert(e.message); } finally { btn.innerHTML = "حفظ التعديلات"; btn.disabled = false; }
         }
 
+        // دالة حذف العقد
+        async function deleteContract(contractId) {
+            if(!confirm("هل أنت متأكد من حذف هذا العقد؟\nملاحظة: المواقع التابعة له لن تحذف، بل ستنتقل إلى قسم 'مواقع غير مرتبطة'.")) return;
+            try {
+                await db.collection("contracts").doc(contractId).delete();
+                alert("تم حذف العقد بنجاح");
+            } catch(e) {
+                alert("خطأ أثناء الحذف: " + e.message);
+            }
+        }
+
         function openAddSiteModal(preSelectedContractId = null) {
             const select = document.getElementById('contractSelect');
             select.innerHTML = '<option value="">-- اختر العقد --</option>';
@@ -694,6 +716,17 @@
                 });
                 alert("تم التحديث"); document.getElementById('editSiteModal').style.display = 'none';
             } catch (e) { alert(e.message); } finally { btn.innerHTML = "حفظ التعديلات"; btn.disabled = false; }
+        }
+
+        // دالة حذف الموقع/البند
+        async function deleteSite(siteId) {
+            if(!confirm("تحذير هام: هل أنت متأكد من حذف هذا البند/الموقع نهائياً؟\nسيتم فقدان جميع البيانات المالية المرتبطة به.")) return;
+            try {
+                await db.collection("budgets").doc(siteId).delete();
+                alert("تم حذف البند بنجاح");
+            } catch(e) {
+                alert("خطأ أثناء الحذف: " + e.message);
+            }
         }
 
         // Users & Recalculate
