@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - FGC Enterprise</title> 
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root { --primary: #1a3c6d; --accent: #d4af37; --text-gray: #6c757d; --bg-light: #f8f9fd; }
+        body { margin: 0; padding: 0; font-family: 'Tajawal', sans-serif; background-color: var(--bg-light); height: 100vh; overflow: hidden; display: flex; }
+        .brand-section { flex: 1.2; background-image: linear-gradient(135deg, rgba(26, 60, 109, 0.9), rgba(26, 60, 109, 0.7)), url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop'); background-size: cover; background-position: center; color: white; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 60px; position: relative; }
+        .brand-content h1 { font-size: 3.5rem; margin: 0 0 20px 0; font-weight: 800; line-height: 1.2; }
+        .brand-content p { font-size: 1.2rem; opacity: 0.8; max-width: 500px; line-height: 1.6; }
+        .glass-badge { margin-top: 30px; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 15px 25px; border-radius: 50px; border: 1px solid rgba(255, 255, 255, 0.2); display: inline-flex; align-items: center; gap: 10px; font-weight: bold; color: var(--accent); }
+        .login-section { flex: 1; background: white; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px; box-shadow: -10px 0 30px rgba(0,0,0,0.05); }
+        .login-container { width: 100%; max-width: 400px; animation: slideInLeft 1s ease-out; }
+        .logo-area { text-align: center; margin-bottom: 40px; }
+        .logo-img { height: 80px; margin-bottom: 15px; }
+        .welcome-text h2 { color: var(--primary); font-size: 1.8rem; margin: 0; }
+        .welcome-text p { color: var(--text-gray); margin-top: 5px; }
+        .input-group { margin-bottom: 20px; position: relative; }
+        .input-group label { display: block; margin-bottom: 8px; color: var(--primary); font-weight: 600; font-size: 0.9rem; }
+        .input-wrapper { position: relative; }
+        .input-wrapper i { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #b0b0b0; transition: 0.3s; }
+        .input-wrapper input { width: 100%; padding: 14px 50px 14px 15px; border: 2px solid #eee; border-radius: 10px; font-family: 'Tajawal'; font-size: 1rem; transition: all 0.3s; box-sizing: border-box; background: #fdfdfd; }
+        .input-wrapper input:focus { border-color: var(--primary); background: white; outline: none; box-shadow: 0 4px 15px rgba(26, 60, 109, 0.1); }
+        .btn-main { width: 100%; padding: 16px; background: linear-gradient(to right, var(--primary), #2a5298); color: white; border: none; border-radius: 10px; font-family: 'Tajawal'; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.3s; margin-top: 10px; box-shadow: 0 4px 15px rgba(26, 60, 109, 0.3); }
+        .btn-main:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(26, 60, 109, 0.4); }
+        .btn-main:disabled { background: #ccc; transform: none; cursor: not-allowed; }
+        .switch-mode { text-align: center; margin-top: 25px; color: var(--text-gray); font-size: 0.95rem; }
+        .switch-mode a { color: var(--primary); font-weight: bold; text-decoration: none; }
+        #errorMsg { text-align: center; color: #dc3545; font-weight: bold; margin-top: 15px; min-height: 20px; font-size: 0.9em; }
+        
+        /* --- ستايل الخيارات الجديدة (Remember me & Forgot Password) --- */
+        .options-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 0.9rem; }
+        .remember-me { display: flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text-gray); }
+        .remember-me input { cursor: pointer; accent-color: var(--primary); width: 16px; height: 16px; }
+        .forgot-link { color: var(--primary); text-decoration: none; font-weight: bold; font-size: 0.9rem; transition: 0.3s; }
+        .forgot-link:hover { text-decoration: underline; color: var(--accent); }
+
+        @media (max-width: 768px) { body { flex-direction: column; height: auto; overflow-y: auto; } .brand-section { padding: 40px 20px; min-height: 250px; flex: none; align-items: center; text-align: center; } .login-section { padding: 40px 20px; border-radius: 30px 30px 0 0; margin-top: -30px; } }
+        @keyframes slideInLeft { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="brand-section">
+        <div class="brand-content">
+            <h1 style="color: var(--accent);">FGC System</h1>
+            <h1>نظام إدارة المشاريع</h1>
+            <p>منصة متكاملة لإدارة الميزانيات، متابعة التعميدات، والتحكم المالي بدقة واحترافية.</p>
+            <div class="glass-badge"><i class="fa-solid fa-shield-halved"></i> <span>نظام آمن ومحمي 100%</span></div>
+        </div>
+    </div>
+
+    <div class="login-section">
+        <div class="login-container">
+            <div class="logo-area">
+                <img src="FGC.jpeg" alt="FGC Logo" class="logo-img">
+                <div class="welcome-text">
+                    <h2 id="formTitle">مرحباً بك مجدداً 👋</h2>
+                    <p id="formSubtitle">يرجى تسجيل الدخول للمتابعة</p>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>البريد الإلكتروني</label>
+                <div class="input-wrapper">
+                    <input type="email" id="email" placeholder="name@fgc.com">
+                    <i class="fa-regular fa-envelope"></i>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>كلمة المرور</label>
+                <div class="input-wrapper">
+                    <input type="password" id="password" placeholder="••••••••">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+            </div>
+
+            <div class="options-row" id="loginOptions">
+                <label class="remember-me">
+                    <input type="checkbox" id="rememberMe" checked>
+                    <span>البقاء متصلاً</span>
+                </label>
+                <a href="#" onclick="forgotPassword()" class="forgot-link">نسيت كلمة المرور؟</a>
+            </div>
+
+            <button onclick="handleAuth()" id="actionBtn" class="btn-main">
+                دخول للنظام <i class="fa-solid fa-arrow-left" style="margin-right: 10px;"></i>
+            </button>
+            <p id="errorMsg"></p>
+
+            <div class="switch-mode">
+                <span id="toggleText">ليس لديك حساب موظف؟ </span>
+                <a href="#" onclick="toggleMode()">إنشاء حساب جديد</a>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let isLoginMode = true;
+    let isSigningUp = false;
+
+    // التحقق من حالة الدخول
+    auth.onAuthStateChanged(async user => {
+        if(user && !isSigningUp) {
+            const btn = document.getElementById('actionBtn');
+            if(btn) btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> جاري التوجيه...';
+
+            try {
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                if(userDoc.exists) {
+                    const userData = userDoc.data();
+                    if (userData.role === 'admin') {
+                        window.location.href = "dashboard.html";
+                    } else if (userData.role === 'user' && userData.assignedSiteId) {
+                        window.location.href = "details.html?id=" + userData.assignedSiteId;
+                    } else {
+                        window.location.href = "dashboard.html";
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching user role:", error);
+                window.location.href = "dashboard.html";
+            }
+        }
+    });
+
+    // دالة استعادة كلمة المرور
+    function forgotPassword() {
+        const email = document.getElementById('email').value;
+        if (!email) {
+            alert("⚠️ يرجى كتابة بريدك الإلكتروني في خانة البريد أولاً، ثم اضغط على (نسيت كلمة المرور) مرة أخرى.");
+            document.getElementById('email').focus();
+            return;
+        }
+        
+        if(!confirm(`هل تريد إرسال رابط إعادة تعيين كلمة المرور إلى: ${email}؟`)) return;
+
+        auth.sendPasswordResetEmail(email)
+            .then(() => {
+                alert("✅ تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني. يرجى التحقق من الرسائل الواردة (أو الرسائل غير المرغوب فيها).");
+            })
+            .catch((error) => {
+                let msg = error.message;
+                if(error.code === 'auth/user-not-found') msg = "هذا البريد الإلكتروني غير مسجل لدينا.";
+                if(error.code === 'auth/invalid-email') msg = "صيغة البريد الإلكتروني غير صحيحة.";
+                alert("❌ خطأ: " + msg);
+            });
+    }
+
+    function toggleMode() {
+        isLoginMode = !isLoginMode;
+        const title = document.getElementById('formTitle');
+        const sub = document.getElementById('formSubtitle');
+        const btn = document.getElementById('actionBtn');
+        const toggleText = document.getElementById('toggleText');
+        const toggleLink = document.querySelector('.switch-mode a');
+        const loginOptions = document.getElementById('loginOptions'); // الصف الجديد
+        
+        document.getElementById('errorMsg').innerText = "";
+
+        if (isLoginMode) {
+            title.innerText = "مرحباً بك مجدداً 👋";
+            sub.innerText = "يرجى تسجيل الدخول للمتابعة";
+            btn.innerHTML = 'دخول للنظام <i class="fa-solid fa-arrow-left" style="margin-right: 10px;"></i>';
+            toggleText.innerText = "ليس لديك حساب موظف؟ ";
+            toggleLink.innerText = "إنشاء حساب جديد";
+            loginOptions.style.display = "flex"; // إظهار الخيارات في تسجيل الدخول
+        } else {
+            title.innerText = "إنشاء حساب جديد 🚀";
+            sub.innerText = "سجل بياناتك للانضمام لفريق العمل";
+            btn.innerHTML = 'تسجيل حساب <i class="fa-solid fa-user-plus" style="margin-right: 10px;"></i>';
+            toggleText.innerText = "لديك حساب بالفعل؟ ";
+            toggleLink.innerText = "تسجيل الدخول";
+            loginOptions.style.display = "none"; // إخفاء الخيارات عند إنشاء حساب
+        }
+    }
+
+    async function handleAuth() {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
+        const btn = document.getElementById('actionBtn');
+        const errorMsg = document.getElementById('errorMsg');
+        
+        if(!email || !pass) return errorMsg.innerText = "يرجى تعبئة جميع الحقول";
+        if (pass.length < 6) return errorMsg.innerText = "كلمة المرور يجب أن تكون 6 خانات على الأقل";
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> جاري المعالجة...';
+        errorMsg.innerText = "";
+
+        if (isLoginMode) {
+            // منطق "البقاء متصلاً"
+            const rememberMe = document.getElementById('rememberMe').checked;
+            const persistence = rememberMe ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
+
+            auth.setPersistence(persistence)
+                .then(() => {
+                    return auth.signInWithEmailAndPassword(email, pass);
+                })
+                .catch(err => handleError(err, btn));
+        } else {
+            isSigningUp = true;
+            auth.createUserWithEmailAndPassword(email, pass)
+                .then((userCredential) => {
+                    return db.collection('users').doc(userCredential.user.uid).set({
+                        email: email, role: 'user', assignedSiteId: '', createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                })
+                .then(() => {
+                    window.location.href = "dashboard.html";
+                })
+                .catch(err => {
+                    isSigningUp = false;
+                    handleError(err, btn);
+                    if(auth.currentUser) auth.currentUser.delete();
+                });
+        }
+    }
+
+    function handleError(err, btn) {
+        btn.disabled = false;
+        btn.innerHTML = isLoginMode ? 'دخول للنظام <i class="fa-solid fa-arrow-left" style="margin-right: 10px;"></i>' : 'تسجيل حساب <i class="fa-solid fa-user-plus" style="margin-right: 10px;"></i>';
+        let message = err.message;
+        if(err.code === 'auth/user-not-found') message = "بيانات الدخول غير صحيحة";
+        if(err.code === 'auth/wrong-password') message = "كلمة المرور خاطئة";
+        if(err.code === 'auth/email-already-in-use') message = "هذا البريد مسجل مسبقاً";
+        if(err.code === 'auth/too-many-requests') message = "محاولات كثيرة خاطئة، يرجى الانتظار قليلاً";
+        document.getElementById('errorMsg').innerText = message;
+    }
+</script>
+</body>
+</html>
