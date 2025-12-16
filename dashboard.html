@@ -13,37 +13,84 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
+        /* إصلاح الهيدر لمنع التداخل */
+        .contract-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start; /* محاذاة للأعلى عشان لو النص طويل */
+            flex-wrap: wrap; /* يسمح بنزول العناصر لو المساحة ضيقة */
+            height: auto !important; /* إلغاء أي ارتفاع ثابت */
+            min-height: 70px;
+            padding: 20px;
+            gap: 15px; /* مسافة بين النص والزراير */
+        }
+
+        /* تنسيق الجزء الخاص بالنصوص داخل الهيدر */
+        .contract-info-text {
+            flex: 1; 
+            min-width: 250px; /* ضمان مساحة للنص */
+            display: flex;
+            flex-direction: column;
+            gap: 8px; /* مسافة بين العنوان والتفاصيل الصغيرة */
+        }
+
+        /* تنسيق الجزء الخاص بالأزرار داخل الهيدر */
+        .contract-actions-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0; /* منع الزراير من الانكماش */
+        }
+
+        /* تحسين شكل كارت المشروع المجمع */
         .project-group-card {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
             margin-bottom: 15px;
             overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
         }
+        
         .project-header {
-            background: #e9ecef;
-            padding: 10px 15px;
+            background: #f8f9fa;
+            padding: 12px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-weight: bold;
+            font-weight: 700;
             color: var(--primary);
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #eee;
         }
+
         .project-item-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 15px;
-            border-bottom: 1px solid #eee;
+            padding: 15px 20px;
+            border-bottom: 1px solid #f1f1f1;
             background: white;
             transition: 0.2s;
         }
         .project-item-row:last-child { border-bottom: none; }
-        .project-item-row:hover { background: #fdfdfd; }
+        .project-item-row:hover { background: #fafafa; }
         
         .cat-indicator {
-            display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-left: 8px;
+            display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-left: 10px;
+        }
+
+        /* تحسين شكل الموبايل */
+        @media (max-width: 768px) {
+            .project-item-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .project-item-row > div {
+                width: 100%;
+                display: flex;
+                justify-content: space-between;
+            }
         }
     </style>
 </head>
@@ -67,18 +114,18 @@
 
     <div class="container">
         
-        <div id="adminPanel" style="margin-bottom: 20px; display:none;">
-            <div style="display: flex; gap: 15px;">
-                <button onclick="document.getElementById('addContractModal').style.display='flex'" class="btn btn-primary" style="flex: 1; padding: 15px;">
+        <div id="adminPanel" style="margin-bottom: 25px; display:none;">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <button onclick="document.getElementById('addContractModal').style.display='flex'" class="btn btn-primary" style="flex: 2; padding: 15px; font-size: 1.1em;">
                     <i class="fa-solid fa-plus-circle"></i> إضافة عقد جديد
                 </button>
-                <button onclick="openUsersModal()" class="btn btn-outline" style="flex: 0.5;">
+                <button onclick="openUsersModal()" class="btn btn-outline" style="flex: 1; min-width: 150px;">
                     <i class="fa-solid fa-users-gear"></i> المستخدمين
                 </button>
             </div>
         </div>
 
-        <h3 style="border-bottom: 2px solid var(--accent); display: inline-block; padding-bottom: 5px; margin-bottom: 20px;">
+        <h3 style="border-bottom: 3px solid var(--accent); display: inline-block; padding-bottom: 8px; margin-bottom: 25px; color: var(--primary);">
             <i class="fa-solid fa-folder-tree"></i> العقود والمشاريع النشطة
         </h3>
         
@@ -167,7 +214,7 @@
     let allContracts = [];
     let allSites = [];
 
-    // --- تحقق الصلاحية ---
+    // --- التحقق من الصلاحية ---
     auth.onAuthStateChanged(async user => {
         if(!user) { window.location.href = "index.html"; return; }
         const userDoc = await db.collection('users').doc(user.uid).get();
@@ -198,51 +245,49 @@
         });
     }
 
-    // --- العرض (Core Logic) ---
+    // --- رسم الشاشة ---
     function renderDashboard() {
         const container = document.getElementById('contractsGrid');
         container.innerHTML = "";
 
+        if (allContracts.length === 0) {
+            container.innerHTML = `<div style="text-align:center; padding:40px; color:#888;">لا توجد عقود حالياً. ابدأ بإضافة عقد جديد.</div>`;
+            return;
+        }
+
         allContracts.forEach(contract => {
-            // 1. فلترة البنود الخاصة بالعقد ده
+            // فلترة البنود
             const contractItems = allSites.filter(site => site.contractId === contract.id);
             
-            // 2. التجميع: تجميع البنود حسب اسم المشروع (itemName)
-            // الناتج هيكون: object المفتاح بتاعه اسم المشروع، والقيمة مصفوفة فيها ال 3 بنود
+            // التجميع حسب اسم المشروع
             const projectsGrouped = {};
             contractItems.forEach(item => {
-                const name = item.itemName; // اسم المشروع: الفريق المتحرك
+                const name = item.itemName;
                 if(!projectsGrouped[name]) projectsGrouped[name] = [];
                 projectsGrouped[name].push(item);
             });
 
-            // حساب اجمالي العقد للعرض
             const totalContractBudget = contractItems.reduce((sum, i) => sum + (i.totalAllocatedAmount||0), 0);
 
             let projectsHTML = "";
             const projectNames = Object.keys(projectsGrouped);
 
             if (projectNames.length === 0) {
-                projectsHTML = `<div style="text-align:center; padding:15px; color:#999;">لا توجد مشاريع مضافة.</div>`;
+                projectsHTML = `<div style="text-align:center; padding:20px; color:#999; border: 1px dashed #ccc; border-radius: 8px;">لا توجد مشاريع مضافة في هذا العقد.</div>`;
             } else {
-                // لوب على كل مشروع (الفريق المتحرك، المستشفى، الخ)
                 projectNames.forEach(projName => {
-                    const items = projectsGrouped[projName]; // دول ال 3 بنود (قطع غيار، عمالة، مقاولين)
-                    
-                    // توليد صفوف البنود الثلاثة
-                    let itemsRows = "";
-                    
-                    // ترتيب العرض: قطع غيار، عمالة، مقاولين
+                    const items = projectsGrouped[projName];
                     const sortOrder = ['spare_parts', 'labor', 'subcontractors'];
                     items.sort((a, b) => sortOrder.indexOf(a.category) - sortOrder.indexOf(b.category));
 
+                    let itemsRows = "";
                     items.forEach(item => {
                         const cat = getCatDetails(item.category);
                         itemsRows += `
                         <div class="project-item-row">
-                            <div style="flex:1; display:flex; align-items:center;">
+                            <div style="flex:1.5; display:flex; align-items:center;">
                                 <span class="cat-indicator" style="background:${cat.color}"></span>
-                                <span style="margin-right:10px; font-size:0.9em;">${cat.text}</span>
+                                <span style="font-weight:500;">${cat.text}</span>
                             </div>
                             <div style="flex:1; font-size:0.9em; color:#555;">
                                 الميزانية: <b>${fmt(item.totalAllocatedAmount)}</b>
@@ -251,7 +296,7 @@
                                 المصروف: <b style="color:var(--danger)">${fmt(item.totalSpent)}</b>
                             </div>
                             <div>
-                                <a href="details.html?id=${item.id}" class="btn btn-outline" style="padding:4px 10px; font-size:0.8em; text-decoration:none;">التفاصيل</a>
+                                <a href="details.html?id=${item.id}" class="btn btn-outline" style="padding:6px 15px; font-size:0.85em; text-decoration:none; border-radius: 6px;">التفاصيل</a>
                             </div>
                         </div>`;
                     });
@@ -259,8 +304,8 @@
                     projectsHTML += `
                     <div class="project-group-card">
                         <div class="project-header">
-                            <span><i class="fa-solid fa-layer-group"></i> ${projName}</span>
-                            <button onclick="deleteProjectGroup('${contract.id}', '${projName}')" class="btn btn-danger" style="padding:4px 10px; font-size:0.8em;" title="حذف المشروع بالكامل">
+                            <span><i class="fa-solid fa-layer-group" style="margin-left:8px;"></i> ${projName}</span>
+                            <button onclick="deleteProjectGroup('${contract.id}', '${projName}')" class="btn btn-danger" style="padding:5px 12px; font-size:0.8em; display:flex; align-items:center; gap:5px;" title="حذف المشروع بالكامل">
                                 <i class="fa-solid fa-trash"></i> حذف المشروع
                             </button>
                         </div>
@@ -269,30 +314,36 @@
                 });
             }
 
-            // كارت العقد الرئيسي
+            // --- هنا الإصلاح الأساسي للـ Header ---
             const contractHTML = `
             <div class="contract-card">
                 <div class="contract-header" onclick="toggleContract('${contract.id}')">
-                    <div style="flex:1;">
+                    
+                    <div class="contract-info-text">
                         <div class="contract-title">
                             <i class="fa-solid fa-file-contract"></i> ${contract.name}
                         </div>
-                        <small style="color:#666;">الإجمالي: ${fmt(totalContractBudget)} | الجهة: ${contract.supervisingAuthority}</small>
+                        <div style="font-size:0.9em; color:#666; display:flex; gap:15px; flex-wrap:wrap;">
+                            <span><i class="fa-solid fa-coins"></i> الإجمالي: <b>${fmt(totalContractBudget)}</b></span>
+                            <span><i class="fa-solid fa-building-columns"></i> الجهة: ${contract.supervisingAuthority || 'غير محدد'}</span>
+                        </div>
                     </div>
-                    <div class="contract-actions" onclick="event.stopPropagation()">
-                        <a href="contract-details.html?id=${contract.id}" class="btn-outline" style="padding:5px 10px; text-decoration:none; margin-left:5px;">
+
+                    <div class="contract-actions-box" onclick="event.stopPropagation()">
+                        <a href="contract-details.html?id=${contract.id}" class="btn-outline" style="padding:6px 12px; text-decoration:none; display:flex; align-items:center; gap:5px; border-radius:6px; font-size:0.9em; background:white;">
                             <i class="fa-solid fa-chart-pie"></i> تقرير
                         </a>
-                        <button onclick="deleteContract('${contract.id}', '${contract.name}')" class="btn btn-danger" style="padding:5px 10px;" title="حذف العقد">
+                        <button onclick="deleteContract('${contract.id}', '${contract.name}')" class="btn-delete-icon" style="width:36px; height:36px;" title="حذف العقد">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
-                        <i id="icon-${contract.id}" class="fa-solid fa-chevron-down" style="margin-right:10px; color:#aaa;"></i>
+                        <i id="icon-${contract.id}" class="fa-solid fa-chevron-down" style="margin-right:10px; color:#aaa; font-size:1.1em;"></i>
                     </div>
                 </div>
-                <div id="body-${contract.id}" class="sites-container">
+
+                <div id="body-${contract.id}" class="sites-container" style="padding-top: 15px;">
                     ${projectsHTML}
-                    <div style="text-align:center; margin-top:10px;">
-                        <button onclick="openAddSiteModal('${contract.id}')" class="btn btn-warning" style="width:100%;">
+                    <div style="text-align:center; margin-top:20px;">
+                        <button onclick="openAddSiteModal('${contract.id}')" class="btn btn-warning" style="width:100%; padding: 12px; font-size:1em;">
                             <i class="fa-solid fa-plus"></i> إضافة مشروع جديد
                         </button>
                     </div>
@@ -303,9 +354,8 @@
         });
     }
 
-    // --- منطق الحذف والإضافة ---
+    // --- دوال الإضافة والحذف (المنطق البرمجي) ---
 
-    // 1. إضافة مشروع (3 بنود)
     function openAddSiteModal(contractId) {
         document.getElementById('targetContractId').value = contractId;
         document.getElementById('siteNameInput').value = "";
@@ -327,7 +377,6 @@
         const btn = event.target; btn.disabled = true; btn.innerText = "جاري الحفظ...";
         const batch = db.batch();
 
-        // إنشاء 3 وثائق (بنود)
         createBudgetItem(batch, contractId, name, 'spare_parts', bParts);
         createBudgetItem(batch, contractId, name, 'labor', bLabor);
         createBudgetItem(batch, contractId, name, 'subcontractors', bSubs);
@@ -335,86 +384,54 @@
         try {
             await batch.commit();
             document.getElementById('addSiteModal').style.display = 'none';
-            alert("تم إضافة المشروع وبنوده الثلاثة بنجاح");
-        } catch(e) {
-            alert("حدث خطأ: " + e.message);
-        } finally {
-            btn.disabled = false; btn.innerText = "حفظ المشروع";
-        }
+            alert("✅ تم إضافة المشروع وبنوده الثلاثة بنجاح");
+        } catch(e) { alert("حدث خطأ: " + e.message); } 
+        finally { btn.disabled = false; btn.innerText = "حفظ المشروع"; }
     }
 
     function createBudgetItem(batch, contractId, name, cat, amount) {
         const ref = db.collection('budgets').doc();
         batch.set(ref, {
-            contractId: contractId,
-            itemName: name, // نفس الاسم للمشروع
-            category: cat,
-            totalAllocatedAmount: amount || 0,
-            currentBalance: amount || 0,
+            contractId: contractId, itemName: name, category: cat,
+            totalAllocatedAmount: amount || 0, currentBalance: amount || 0,
             totalSpent: 0, totalProfit: 0, createdAt: new Date()
         });
     }
 
-    // 2. إضافة عقد
     function addContract() {
         const name = document.getElementById('newContractName').value;
         const auth = document.getElementById('newContractAuth').value;
         const start = document.getElementById('newContractStart').value;
         const end = document.getElementById('newContractEnd').value;
-        
         if(!name) return alert("الاسم مطلوب");
-        
         db.collection("contracts").add({
             name: name, supervisingAuthority: auth, startDate: start, endDate: end, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => {
-            document.getElementById('addContractModal').style.display='none';
-        });
+        }).then(() => { document.getElementById('addContractModal').style.display='none'; });
     }
 
-    // 3. حذف مشروع بالكامل (حذف ال 3 بنود)
     async function deleteProjectGroup(contractId, projectName) {
         if(!confirm(`هل أنت متأكد من حذف المشروع: (${projectName})؟\nسيتم حذف (قطع الغيار، العمالة، المقاولين) الخاصة به.`)) return;
-
-        // نجيب كل البنود اللي تبع العقد ده واسمها نفس اسم المشروع
-        const snap = await db.collection('budgets')
-            .where('contractId', '==', contractId)
-            .where('itemName', '==', projectName)
-            .get();
-
+        const snap = await db.collection('budgets').where('contractId', '==', contractId).where('itemName', '==', projectName).get();
         const batch = db.batch();
         snap.forEach(doc => batch.delete(doc.ref));
-
-        try {
-            await batch.commit();
-            alert("تم حذف المشروع.");
-        } catch(e) { alert(e.message); }
+        try { await batch.commit(); alert("تم حذف المشروع."); } catch(e) { alert(e.message); }
     }
 
-    // 4. حذف عقد بالكامل
     async function deleteContract(contractId, name) {
         if(!confirm(`تحذير خطير!\nهل تريد حذف العقد (${name}) وكل المشاريع التابعة له نهائياً؟`)) return;
-        
         const batch = db.batch();
-        
-        // حذف العقد
         batch.delete(db.collection('contracts').doc(contractId));
-        
-        // حذف كل البنود المرتبطة
         const snap = await db.collection('budgets').where('contractId', '==', contractId).get();
         snap.forEach(doc => batch.delete(doc.ref));
-
-        try {
-            await batch.commit();
-            alert("تم الحذف بنجاح.");
-        } catch(e) { alert(e.message); }
+        try { await batch.commit(); alert("تم الحذف بنجاح."); } catch(e) { alert(e.message); }
     }
 
-    // --- Helpers ---
     function getCatDetails(cat) {
         if(cat === 'labor') return {text: 'عمالة', color: '#e67e22'};
         if(cat === 'subcontractors') return {text: 'مقاولي باطن', color: '#6c757d'};
         return {text: 'قطع غيار', color: '#1a3c6d'};
     }
+    
     function toggleContract(id) {
         const el = document.getElementById(`body-${id}`);
         const icon = document.getElementById(`icon-${id}`);
@@ -423,17 +440,17 @@
     }
     function fmt(n) { return Number(n || 0).toLocaleString('ar-EG'); }
     function logout() { auth.signOut().then(() => window.location.href = "index.html"); }
-
-    // --- Users (Code Kept Brief for Logic) ---
+    
+    // مستخدمين (نفس المنطق)
     async function openUsersModal() {
         document.getElementById('usersModal').style.display='flex';
+        // (الكود هنا مختصر للعرض، المنطق موجود في النسخ السابقة ويعمل بنفس الطريقة)
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = '<tr><td colspan="4">تحميل...</td></tr>';
         const snaps = await db.collection('users').get();
         tbody.innerHTML = '';
         snaps.forEach(doc => {
             const u = doc.data();
-            // يمكنك إضافة خيارات المواقع هنا كما في الكود السابق
             tbody.innerHTML += `<tr><td>${u.email}</td><td>${u.role}</td><td>-</td><td>-</td></tr>`; 
         });
     }
