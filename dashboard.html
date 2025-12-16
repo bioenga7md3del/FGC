@@ -48,7 +48,6 @@
         .site-stats { font-size: 0.85rem; color: #666; display: flex; gap: 15px; }
         .site-balance { font-weight: bold; }
         
-        /* بادج نوع البند */
         .category-badge {
             font-size: 0.7em; padding: 2px 8px; border-radius: 10px; color: white;
             background: #999; vertical-align: middle;
@@ -69,7 +68,7 @@
         .btn-edit-contract {
             background: transparent; border: 1px solid var(--accent); color: var(--accent);
             width: 30px; height: 30px; border-radius: 50%; display: flex;
-            justify-content: center; align-items: center; cursor: pointer; margin-left: 10px;
+            justify-content: center; align-items: center; cursor: pointer; text-decoration: none;
         }
         .btn-edit-contract:hover { background: var(--accent); color: white; }
 
@@ -345,7 +344,7 @@
     }
 
     function renderContractCard(contract, sites, container, isOrphan = false) {
-        // حساب إجمالي العقد تلقائياً من مجموع ميزانيات البنود
+        // حساب إجمالي العقد تلقائياً
         const allocatedTotal = sites.reduce((sum, s) => sum + (s.totalAllocatedAmount || 0), 0);
         const spentTotal = sites.reduce((sum, s) => sum + (s.totalSpent || 0), 0);
         
@@ -357,7 +356,6 @@
                 const percent = site.totalAllocatedAmount ? (site.currentBalance / site.totalAllocatedAmount) * 100 : 0;
                 const balanceColor = percent < 20 ? 'var(--danger)' : 'var(--success)';
                 
-                // تحديد شكل البند (قطع غيار، عمالة، إلخ)
                 const catKey = site.category || 'spare_parts';
                 const catInfo = categoryLabels[catKey] || categoryLabels['spare_parts'];
 
@@ -402,7 +400,18 @@
                     <div class="contract-title" style="${titleStyle}">
                         <i class="fa-solid ${isOrphan ? 'fa-triangle-exclamation' : 'fa-file-signature'}"></i>
                         ${contract.name}
-                        ${!isOrphan ? `<button onclick="openEditContractModal('${contract.id}'); event.stopPropagation();" class="btn-edit-contract" title="تعديل بيانات العقد"><i class="fa-solid fa-pen"></i></button>` : ''}
+                        
+                        ${!isOrphan ? `
+                            <div style="display:flex; gap:5px; margin-right:10px;">
+                                <a href="contract-details.html?id=${contract.id}" onclick="event.stopPropagation();" class="btn-edit-contract" title="لوحة تحليل العقد" style="border-color:var(--primary); color:var(--primary);">
+                                    <i class="fa-solid fa-chart-pie"></i>
+                                </a>
+                                <button onclick="openEditContractModal('${contract.id}'); event.stopPropagation();" class="btn-edit-contract" title="تعديل بيانات العقد">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                            </div>
+                        ` : ''}
+
                     </div>
                     <div class="contract-details">
                          ${authority}
@@ -459,7 +468,6 @@
             supervisingAuthority: auth,
             startDate: start,
             endDate: end,
-            // لا نحفظ totalValue لأنه يحسب ديناميكياً
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
             alert("تم إضافة العقد بنجاح");
@@ -622,7 +630,15 @@
                     }
                 });
                 
-                // orphans code... (same as before)
+                const orphans = allSites.filter(s => !s.contractId);
+                if(orphans.length > 0) {
+                     sitesOptions += `<optgroup label="أخرى">`;
+                     orphans.forEach(site => {
+                        const selected = u.assignedSiteId === site.id ? 'selected' : '';
+                        sitesOptions += `<option value="${site.id}" ${selected}>${site.itemName}</option>`;
+                     });
+                     sitesOptions += `</optgroup>`;
+                }
 
                 const r = u.role;
                 const selUser = r === 'user' ? 'selected' : '';
