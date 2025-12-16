@@ -16,9 +16,45 @@
     <link rel="stylesheet" href="style.css">
 
     <style>
-        /* تنسيقات إضافية خاصة بهذه الصفحة فقط */
+        /* --- تخصيص الجدول لهذه الصفحة فقط --- */
+        .details-table-container {
+            background: white; 
+            border-radius: var(--radius); 
+            box-shadow: var(--shadow-sm); 
+            border: 1px solid var(--border-color); 
+            overflow: hidden;
+        }
+
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px; /* ضمان عدم انكماش الجدول أكثر من اللازم */
+        }
+
+        .details-table th {
+            background-color: #f8fafc;
+            color: var(--text-secondary);
+            font-weight: 700;
+            font-size: 0.9rem;
+            padding: 18px 15px; /* تكبير المساحة */
+            text-align: right;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .details-table td {
+            padding: 15px;
+            border-bottom: 1px solid #f1f5f9;
+            color: var(--text-main);
+            vertical-align: middle;
+            font-size: 0.95rem;
+        }
+
+        .details-table tr:last-child td { border-bottom: none; }
+        .details-table tr:hover td { background-color: #fcfcfc; }
+
+        /* --- باقي التنسيقات --- */
         .print-header { display: none; text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 15px; }
-        
         .charts-row { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
         .chart-box { 
             background: white; border-radius: var(--radius); padding: 20px; 
@@ -27,7 +63,6 @@
         }
         .chart-box h4 { margin-top: 0; color: var(--text-secondary); margin-bottom: 15px; }
         
-        /* تحسين شكل بطاقات الإحصائيات العلوية */
         .stats-grid { 
             display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
             gap: 20px; margin-bottom: 30px; 
@@ -44,13 +79,12 @@
         .stat-card.success { border-bottom: 4px solid var(--success); }
         .stat-card.accent { border-bottom: 4px solid var(--accent); }
 
-        /* حالة الطباعة */
         @media print {
             body { background: white; font-size: 12pt; }
             .navbar, .btn-print, .btn-back { display: none !important; }
             .print-header { display: block; }
             .container { max-width: 100%; margin: 0; padding: 0; }
-            .chart-box, .stat-card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+            .chart-box, .stat-card, .details-table-container { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
             table { width: 100%; border: 1px solid #000; }
             th, td { border: 1px solid #000; padding: 5px; color: black; }
         }
@@ -128,17 +162,18 @@
         <i class="fa-solid fa-list-check"></i> تفاصيل المواقع والبنود المدرجة بالعقد
     </h3>
 
-    <div style="background:white; border-radius:var(--radius); box-shadow:var(--shadow-sm); border:1px solid var(--border-color); overflow:hidden;">
+    <div class="details-table-container">
         <div style="overflow-x:auto;">
-            <table class="users-table" style="margin:0;"> <thead style="background: #f9fafb;">
+            <table class="details-table">
+                <thead>
                     <tr>
-                        <th style="padding:15px;">الموقع / البند</th>
-                        <th>التصنيف</th>
-                        <th>الميزانية</th>
-                        <th>المصروف</th>
-                        <th>المتبقي</th>
-                        <th>نسبة الصرف</th>
-                        <th>الحالة</th>
+                        <th style="width: 30%;">الموقع / البند</th>
+                        <th style="width: 10%;">التصنيف</th>
+                        <th style="width: 15%;">الميزانية</th>
+                        <th style="width: 15%;">المصروف</th>
+                        <th style="width: 15%;">المتبقي</th>
+                        <th style="width: 10%;">نسبة الصرف</th>
+                        <th style="width: 5%;">الحالة</th>
                     </tr>
                 </thead>
                 <tbody id="sitesTableBody"></tbody>
@@ -146,7 +181,8 @@
         </div>
     </div>
     
-    <div style="height: 50px;"></div> </div>
+    <div style="height: 50px;"></div>
+</div>
 
 <script>
     const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
@@ -162,7 +198,6 @@
         'subcontractors': '<span class="cat-badge" style="background:#6b7280">مقاولي باطن</span>' 
     };
 
-    // تحميل البيانات
     Promise.all([
         db.collection('contracts').doc(contractId).get(),
         db.collection('budgets').where('contractId', '==', contractId).get()
@@ -186,7 +221,6 @@
         if(contract.startDate) info.push(`<span><i class="fa-regular fa-calendar"></i> المدة: <b>${contract.startDate}</b> إلى <b>${contract.endDate}</b></span>`);
         document.getElementById('contractMeta').innerHTML = info.join('');
 
-        // الحسابات المجمعة
         let totalAllocated = 0, totalSpent = 0, totalProfit = 0;
         let catStats = { 'spare_parts': 0, 'labor': 0, 'subcontractors': 0 };
 
@@ -194,7 +228,7 @@
         tbody.innerHTML = '';
 
         if(sites.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;">لا توجد بنود في هذا العقد.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#888;">لا توجد بنود في هذا العقد.</td></tr>';
         }
 
         sites.forEach(site => {
@@ -211,30 +245,30 @@
 
             tbody.innerHTML += `
             <tr>
-                <td style="font-weight:bold; color:var(--primary);">${site.itemName}</td>
+                <td style="font-weight:bold; color:var(--primary); font-size:1rem;">
+                    <a href="details.html?id=${site.id}" style="text-decoration:none; color:inherit;">${site.itemName}</a>
+                </td>
                 <td>${catLabels[cat] || cat}</td>
-                <td>${fmt(site.totalAllocatedAmount)}</td>
-                <td style="color:var(--danger);">${fmt(site.totalSpent)}</td>
-                <td style="color:var(--success); font-weight:bold;">${fmt(site.currentBalance)}</td>
+                <td style="font-family:'Tajawal';">${fmt(site.totalAllocatedAmount)}</td>
+                <td style="color:var(--danger); font-family:'Tajawal';">${fmt(site.totalSpent)}</td>
+                <td style="color:var(--success); font-weight:bold; font-family:'Tajawal';">${fmt(site.currentBalance)}</td>
                 <td>
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <div style="background:#e5e7eb; height:6px; border-radius:10px; width:80px; overflow:hidden;">
+                        <div style="background:#e5e7eb; height:8px; border-radius:10px; width:100px; overflow:hidden;">
                             <div style="background:${statusColor}; width:${Math.min(percent,100)}%; height:100%;"></div>
                         </div>
-                        <small>${percent.toFixed(1)}%</small>
+                        <small style="min-width:35px;">${percent.toFixed(1)}%</small>
                     </div>
                 </td>
                 <td><span style="color:${statusColor}; font-weight:bold; font-size:0.85em;">${statusText}</span></td>
             </tr>`;
         });
 
-        // تحديث البطاقات
         document.getElementById('totalVal').innerText = fmt(totalAllocated);
         document.getElementById('totalSpent').innerText = fmt(totalSpent);
         document.getElementById('totalBal').innerText = fmt(totalAllocated - totalSpent);
         document.getElementById('totalProfit').innerText = fmt(totalProfit);
 
-        // الرسم البياني 1: المصروف
         new Chart(document.getElementById('progressChart'), {
             type: 'doughnut',
             data: {
@@ -252,7 +286,6 @@
             }
         });
 
-        // الرسم البياني 2: التوزيع
         new Chart(document.getElementById('categoryChart'), {
             type: 'bar',
             data: {
