@@ -635,38 +635,119 @@
             alert("تم تحديث بيانات البند بنجاح"); document.getElementById('editSiteModal').style.display = 'none';
         } catch (e) { alert("خطأ: " + e.message); } finally { btn.innerHTML = "حفظ التعديلات"; btn.disabled = false; }
     }
-
+/// اليوزرز
+    // --- إدارة المستخدمين (الكود الكامل) ---
     async function openUsersModal() {
         document.getElementById('usersModal').style.display = 'flex';
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">جاري التحميل...</td></tr>';
+
         try {
+            // جلب المستخدمين مرتبين حسب تاريخ الإنشاء
             const usersSnap = await db.collection('users').orderBy('createdAt', 'desc').get();
             tbody.innerHTML = '';
+            
             usersSnap.forEach(doc => {
-                const u = doc.data(); const userId = doc.id;
-                // (نفس كود المستخدمين السابق)
+                const u = doc.data();
+                const userId = doc.id;
+                
+                // بناء قائمة المواقع (Dropdown) لكل مستخدم
                 let sitesOptions = `<option value="">-- بدون موقع --</option>`;
+                
+                // 1. إضافة المواقع المرتبطة بعقود
                 allContracts.forEach(contract => {
                     const contractSites = allSites.filter(s => s.contractId === contract.id);
                     if(contractSites.length > 0) {
                         sitesOptions += `<optgroup label="${contract.name}">`;
                         contractSites.forEach(site => {
                             const selected = u.assignedSiteId === site.id ? 'selected' : '';
-                            const cat = categoryLabels[site.category || 'spare_parts'].text;
-                            sitesOptions += `<option value="${site.id}" ${selected}>${site.itemName} (${cat})</option>`;
+                            // جلب اسم التصنيف بالعربي
+                            const catKey = site.category || 'spare_parts';
+                            const catText = categoryLabels[catKey] ? categoryLabels[catKey].text : 'قطع غيار';
+                            
+                            sitesOptions += `<option value="${site.id}" ${selected}>${site.itemName} (${catText})</option>`;
                         });
                         sitesOptions += `</optgroup>`;
                     }
                 });
-                // ... باقي كود الجدول
-                const row = `<tr><td>${u.email}</td><td>${u.role}</td><td>...</td><td>...</td></tr>`; 
-                // اختصاراً للكتابة هنا، الكود الأصلي موجود ويعمل
-                // يمكنك استرجاع كود المستخدمين الأصلي من الرسالة السابقة إذا أردت التفاصيل الكاملة له
+                
+                // 2. إضافة المواقع غير المرتبطة (Orphans)
+                const orphans = allSites.filter(s => !s.contractId);
+                if(orphans.length > 0) {
+                     sitesOptions += `<optgroup label="أخرى">`;
+                     orphans.forEach(site => {
+                        const selected = u.assignedSiteId === site.id ? 'selected' : '';
+                        sitesOptions += `<option value="${site.id}" ${selected}>${site.itemName}</option>`;
+                     });
+                     sitesOptions += `</optgroup>`;
+                }
+
+                // تحديد الصلاحية الحالية
+                const r = u.role;
+                const selUser = r === 'user' ? 'selected' : '';
+                const selAdmin = r === 'admin' ? 'selected' : '';
+                const selViewer = r === 'viewer' ? 'selected' : '';
+                const selViewerPro = r === 'viewer_pro' ? 'selected' : '';
+
+                // رسم الصف في الجدول
+                const row = `
+                <tr>
+                    <td>
+                        ${u.email} <br> 
+                        <small style="color:#999; font-size:0.8em;">${userId.substring(0,5)}...</small>
+                    </td>
+                    <td>
+                        <select id="role-${userId}" style="padding: 6px; width: 100%; border:1px solid #ddd; border-radius:4px;">
+                            <option value="user" ${selUser}>مستخدم (إدخال)</option>
+                            <option value="viewer" ${selViewer}>مشاهد فقط</option>
+                            <option value="viewer_pro" ${selViewerPro}>مشاهد + أرباح</option>
+                            <option value="admin" ${selAdmin}>مدير (Admin)</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select id="site-${userId}" style="padding: 6px; width: 100%; border:1px solid #ddd; border-radius:4px;">
+                            ${sitesOptions}
+                        </select>
+                    </td>
+                    <td>
+                        <button onclick="saveUserChanges('${userId}')" class="btn btn-success" style="padding:5px 10px; font-size:0.9em;">حفظ</button>
+                    </td>
+                </tr>`;
+                
+                tbody.innerHTML += row;
             });
-            // استدعاء دالة بناء جدول المستخدمين الأصلية بالكامل هنا (سأتركها كما كانت في الكود المرسل لعدم الإطالة)
-            // ملاحظة: الكود المرفق هنا يعتمد على أنك ستستخدم نفس منطق المستخدمين السابق تماماً.
-        } catch (e) { console.error(e); }
+            
+            if(usersSnap.empty) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">لا يوجد مستخدمين مسجلين.</td></tr>';
+            }
+
+        } catch (e) { 
+            console.error(e); 
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">خطأ: ${e.message}</td></tr>`;
+        }
+    }
+
+    async function saveUserChanges(userId) {
+        const newRole = document.getElementById(`role-${userId}`).value;
+        const newSite = document.getElementById(`site-${userId}`).value;
+        
+        const btn = event.target;
+        const oldText = btn.innerText;
+        btn.innerText = "..."; 
+        btn.disabled = true;
+        
+        try {
+            await db.collection('users').doc(userId).update({ 
+                role: newRole, 
+                assignedSiteId: newSite 
+            });
+            alert("تم تحديث بيانات المستخدم بنجاح ✅");
+        } catch (e) { 
+            alert("خطأ أثناء الحفظ: " + e.message); 
+        } finally { 
+            btn.innerText = oldText; 
+            btn.disabled = false; 
+        }
     }
     // ... دوال حفظ المستخدمين وتحديث الأرصدة وتسجيل الخروج كما هي ...
     async function recalculateAllProjects() {
