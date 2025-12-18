@@ -69,18 +69,18 @@
                 <h3>الميزانية المعتمدة</h3><p id="statBudget">0</p>
             </div>
             <div class="card" style="border-bottom:4px solid var(--danger);">
-                <h3>إجمالي المصروف</h3><p id="statSpent" style="color:var(--danger)">0</p>
+                <h3>المصروف (فلترة)</h3><p id="statSpent" style="color:var(--danger)">0</p>
             </div>
             <div class="card" style="border-bottom:4px solid var(--success);">
                 <h3>الرصيد المتبقي</h3><p id="statBalance" style="color:var(--success)">0</p>
             </div>
             <div class="card" id="cardProfit" style="border-bottom:4px solid var(--accent); display:none;">
-                <h3>مبلغ التمويل</h3><p id="statProfit" style="color:var(--accent)">0</p>
+                <h3>التمويل (فلترة)</h3><p id="statProfit" style="color:var(--accent)">0</p>
             </div>
         </div>
 
         <div class="chart-area">
-            <h4 style="margin-top:0; color:#888;">تحليل الميزانية</h4>
+            <h4 style="margin-top:0; color:#888;">تحليل الميزانية (حسب الفلتر)</h4>
             <div class="chart-container">
                 <canvas id="budgetChart"></canvas>
             </div>
@@ -175,6 +175,7 @@
 
     let budgetChart = null;
     let currentUserRole = 'user'; 
+    let globalTotalBudget = 0; // متغير لحفظ الميزانية الكلية
 
     function initChart() {
         const ctx = document.getElementById('budgetChart').getContext('2d');
@@ -201,54 +202,7 @@
         document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
     }
 
-    function exportTableToCSV(filename) {
-        let csv = []; csv.push('\uFEFF'); let rows = document.querySelectorAll("table tr");
-        for (let i = 0; i < rows.length; i++) {
-            let row = [], cols = rows[i].querySelectorAll("td, th");
-            // الفلترة عند التصدير
-            const canSeeProfit = (currentUserRole === 'admin' || currentUserRole === 'viewer_pro');
-            
-            // عدد الأعمدة الكلي يعتمد على HTML، لكننا نعرف ترتيبهم
-            // 0:تعميد, 1:تاريخ, 2:PO, 3:مستخلص, 4:مورد, 5:فاتورة, 6:تاريخ فاتورة, 7:مبلغ
-            // 8:نسبة (مخفي للبعض), 9:ربح (مخفي للبعض), 10:تحكم
-            
-            for (let j = 0; j < cols.length; j++) {
-                // تخطي عمود التحكم (الأخير) دائماً
-                if (cols[j].innerText === 'تحكم' || cols[j].querySelector('button')) continue;
-
-                // تخطي أعمدة الربح والنسبة إذا لم تكن لديه صلاحية
-                // العمود 8 (نسبة) والعمود 9 (ربح) تقريبياً حسب الترتيب الجديد
-                // الأفضل الاعتماد على الـ display style في الجدول
-                if (cols[j].style.display === 'none') continue;
-
-                let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/,/g, ""); 
-                row.push('"' + data + '"');
-            }
-            csv.push(row.join(","));
-        }
-        downloadCSV(csv.join("\n"), filename);
-    }
-
-    function downloadCSV(csv, filename) {
-        let csvFile = new Blob([csv], {type: "text/csv"});
-        let downloadLink = document.createElement("a");
-        downloadLink.download = filename;
-        downloadLink.href = window.URL.createObjectURL(csvFile);
-        downloadLink.style.display = "none";
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-    }
-
-    function formatDateForInput(dateString) {
-        if (!dateString) return "";
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return ""; 
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0'); 
-        const day = String(date.getDate()).padStart(2, '0');        
-        return `${year}-${month}-${day}`;
-    }
-
+    // --- الصلاحيات والتحميل ---
     auth.onAuthStateChanged(async user => {
         if(user) {
             const u = await db.collection('users').doc(user.uid).get();
@@ -256,32 +210,19 @@
             
             if(u.exists) currentUserRole = userData.role;
 
-            // --- منطق الصلاحيات الجديد ---
             const canSeeProfit = (currentUserRole === 'admin' || currentUserRole === 'viewer_pro');
             const canEdit = (currentUserRole === 'admin' || currentUserRole === 'user');
 
-            // 1. الأزرار العامة (الظهور للي له علاقة بالموقع)
             document.getElementById('actionButtons').style.display = 'flex';
-            
-            // زر العودة للرئيسية للأدمن فقط
             if(currentUserRole === 'admin') document.getElementById('homeBtn').style.display = 'inline-flex';
 
-            // 2. أزرار التعديل والإضافة (تظهر فقط للأدمن واليوزر)
             const editBtnGroup = document.getElementById('editButtons');
-            if(canEdit) {
-                editBtnGroup.style.display = 'flex'; // استخدام flex عشان الـ gap يشتغل
-            } else {
-                editBtnGroup.style.display = 'none';
-            }
+            if(canEdit) { editBtnGroup.style.display = 'flex'; } 
+            else { editBtnGroup.style.display = 'none'; }
 
-            // 3. عرض الأرباح (للأدمن والمشاهد برو)
-            const profitDisplay = canSeeProfit ? '' : 'none'; // '' يعني Default (block/table-cell)
-            
             document.getElementById('cardProfit').style.display = canSeeProfit ? 'block' : 'none';
             document.getElementById('headerProfit').style.display = canSeeProfit ? 'table-cell' : 'none';
             document.getElementById('headerRatio').style.display = canSeeProfit ? 'table-cell' : 'none';
-
-            // 4. عمود التحكم (تعديل/حذف)
             document.getElementById('headerActions').style.display = canEdit ? 'table-cell' : 'none';
 
             loadPageData(canSeeProfit, canEdit);
@@ -292,32 +233,35 @@
     });
 
     function loadPageData(canSeeProfit, canEdit) {
+        // 1. جلب بيانات الميزانية الأساسية
         db.collection("budgets").doc(siteId).onSnapshot(doc => {
             if(!doc.exists) return;
             const d = doc.data();
             document.getElementById('siteTitle').innerText = d.itemName;
-            document.getElementById('statBudget').innerText = fmt(d.totalAllocatedAmount);
-            document.getElementById('statSpent').innerText = fmt(d.totalSpent);
-            document.getElementById('statBalance').innerText = fmt(d.currentBalance);
-            document.getElementById('statProfit').innerText = fmt(d.totalProfit);
-
-            updateChart(d.totalSpent || 0, d.currentBalance || 0);
+            
+            // حفظ الميزانية في المتغير العام
+            globalTotalBudget = d.totalAllocatedAmount || 0;
+            document.getElementById('statBudget').innerText = fmt(globalTotalBudget);
+            
             updatePrintHeader(d.itemName);
+            
+            // تحديث الفلتر لأول مرة ليعرض البيانات الافتراضية
+            applyFilters(); 
         });
 
+        // 2. جلب الحركات (Transactions)
         db.collection("budgets").doc(siteId).collection("transactions").orderBy("orderNumber", "desc").onSnapshot(snap => {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = "";
+            
             snap.forEach(doc => {
                 const val = doc.data();
                 
-                // خلايا الأرباح
                 let profitCells = '';
                 if(canSeeProfit) {
                     profitCells = `<td>${val.companyRatio || 0}</td><td>${fmt(val.companyProfit)}</td>`;
                 }
 
-                // خلية التحكم
                 let actionCell = '';
                 if(canEdit) {
                     actionCell = `
@@ -327,8 +271,9 @@
                     </td>`;
                 }
 
+                // إضافة data-amount و data-profit ليسهل جمعها في الفلترة
                 tbody.innerHTML += `
-                <tr class="data-row">
+                <tr class="data-row" data-amount="${val.amountExclTax || 0}" data-profit="${val.companyProfit || 0}">
                     <td>${val.orderNumber}</td>
                     <td class="col-date">${val.date}</td>
                     <td class="col-po">${val.poNumber || '-'}</td>
@@ -342,16 +287,60 @@
                     ${actionCell}
                 </tr>`;
             });
+            // استدعاء الفلتر بعد تحميل البيانات
             applyFilters();
         });
     }
 
+    // --- دالة الفلترة وتحديث الداشبورد ---
+    function applyFilters() { 
+        const inv = document.getElementById('filterInvoice').value.toLowerCase();
+        const po = document.getElementById('filterPO').value.toLowerCase();
+        const sup = document.getElementById('filterSupplier').value.toLowerCase();
+        const batch = document.getElementById('filterBatch').value.toLowerCase();
+        const date = document.getElementById('filterDate').value;
+
+        let visibleSpent = 0;
+        let visibleProfit = 0;
+
+        document.querySelectorAll('.data-row').forEach(row => {
+            const i = row.querySelector('.col-invoice').innerText.toLowerCase();
+            const p = row.querySelector('.col-po').innerText.toLowerCase();
+            const s = row.querySelector('.col-supplier').innerText.toLowerCase();
+            const b = row.querySelector('.col-batch').innerText.toLowerCase();
+            const d = row.querySelector('.col-date').innerText;
+            
+            const isVisible = (i.includes(inv) && p.includes(po) && s.includes(sup) && b.includes(batch) && (!date || d === date));
+            
+            if (isVisible) {
+                row.style.display = '';
+                // جمع القيم من السمات المخفية (data-attributes)
+                visibleSpent += parseFloat(row.getAttribute('data-amount')) || 0;
+                visibleProfit += parseFloat(row.getAttribute('data-profit')) || 0;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // تحديث إحصائيات الداشبورد بناءً على الفلترة
+        document.getElementById('statSpent').innerText = fmt(visibleSpent);
+        document.getElementById('statProfit').innerText = fmt(visibleProfit);
+        
+        // حساب المتبقي (الميزانية الكلية - المصروف الظاهر في الفلتر)
+        const currentBalance = globalTotalBudget - visibleSpent;
+        document.getElementById('statBalance').innerText = fmt(currentBalance);
+
+        // تحديث الرسم البياني
+        updateChart(visibleSpent, currentBalance);
+    }
+
+    // --- باقي الدوال (Modal, Save, CSV, etc.) كما هي ---
+    
     function openModal() { 
         document.getElementById('editTransId').value=""; 
         document.getElementById('modalTitle').innerText="تسجيل معاملة جديدة"; 
         document.querySelectorAll('#transactionModal input').forEach(i=>i.value=""); 
         
-        // التحكم في ظهور خانة النسبة في المودال (للأدمن فقط هو من يعدل النسبة)
         if(currentUserRole === 'admin') {
             document.getElementById('divRatio').style.display = 'block';
         } else {
@@ -362,24 +351,6 @@
     }
     
     function closeModal() { document.getElementById('transactionModal').classList.remove('show'); }
-    
-    function applyFilters() { 
-        const inv=document.getElementById('filterInvoice').value.toLowerCase();
-        const po=document.getElementById('filterPO').value.toLowerCase();
-        const sup=document.getElementById('filterSupplier').value.toLowerCase();
-        const batch=document.getElementById('filterBatch').value.toLowerCase();
-        const date=document.getElementById('filterDate').value;
-
-        document.querySelectorAll('.data-row').forEach(row=>{
-            const i=row.querySelector('.col-invoice').innerText.toLowerCase();
-            const p=row.querySelector('.col-po').innerText.toLowerCase();
-            const s=row.querySelector('.col-supplier').innerText.toLowerCase();
-            const b=row.querySelector('.col-batch').innerText.toLowerCase();
-            const d=row.querySelector('.col-date').innerText;
-            
-            row.style.display = (i.includes(inv)&&p.includes(po)&&s.includes(sup)&&b.includes(batch)&&(!date||d===date))?'':'none';
-        });
-    }
 
     async function saveTransaction() {
         const id=document.getElementById('editTransId').value;
@@ -467,6 +438,32 @@
         const r=db.collection("budgets").doc(siteId), s=await r.collection("transactions").get(), b=db.batch();
         s.forEach(d=>b.delete(d.ref)); const org=(await r.get()).data().totalAllocatedAmount;
         b.update(r,{totalSpent:0,totalProfit:0,currentBalance:org}); await b.commit(); location.reload();
+    }
+
+    function exportTableToCSV(filename) {
+        let csv = []; csv.push('\uFEFF'); let rows = document.querySelectorAll("table tr");
+        for (let i = 0; i < rows.length; i++) {
+            if(rows[i].style.display === 'none') continue; // تخطي الصفوف المخفية عند التصدير
+            let row = [], cols = rows[i].querySelectorAll("td, th");
+            for (let j = 0; j < cols.length; j++) {
+                if (cols[j].innerText === 'تحكم' || cols[j].querySelector('button')) continue;
+                if (cols[j].style.display === 'none') continue;
+                let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/,/g, ""); 
+                row.push('"' + data + '"');
+            }
+            csv.push(row.join(","));
+        }
+        downloadCSV(csv.join("\n"), filename);
+    }
+
+    function downloadCSV(csv, filename) {
+        let csvFile = new Blob([csv], {type: "text/csv"});
+        let downloadLink = document.createElement("a");
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
     }
 
     function logout() { auth.signOut().then(()=>window.location.href="index.html"); }
