@@ -209,7 +209,6 @@
         document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
     }
 
-    // --- دالة تنسيق التاريخ الناقصة التي سببت الخطأ ---
     function formatDateForInput(dateString) {
         if (!dateString) return "";
         const date = new Date(dateString);
@@ -412,7 +411,6 @@
         document.getElementById('editTransId').value=id; document.getElementById('modalTitle').innerText="تعديل المعاملة";
         document.getElementById('orderNum').value=d.orderNumber; document.getElementById('supplier').value=d.supplierName; document.getElementById('amount').value=d.amountExclTax; document.getElementById('ratio').value=d.companyRatio; document.getElementById('batch').value=d.batchNumber||''; document.getElementById('invoiceNum').value=d.invoiceNum||''; document.getElementById('poNumber').value=d.poNumber||''; 
         
-        // استخدام دالة التنسيق التي تمت إضافتها
         document.getElementById('orderDate').value=formatDateForInput(d.date); 
         document.getElementById('invoiceDate').value=formatDateForInput(d.invoiceDate);
         
@@ -453,6 +451,15 @@
         b.update(r,{totalSpent:0,totalProfit:0,currentBalance:org}); await b.commit(); location.reload();
     }
 
+    // دالة لتنظيف الأرقام العربية وتحويلها إلى إنجليزية
+    function cleanArabicNum(str) {
+        if(!str) return "";
+        return str
+            .replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)])
+            .replace(/٫/g, '.')
+            .replace(/٬/g, '');
+    }
+
     function exportTableToCSV(filename) {
         let csv = []; csv.push('\uFEFF'); let rows = document.querySelectorAll("table tr");
         for (let i = 0; i < rows.length; i++) {
@@ -461,8 +468,12 @@
             for (let j = 0; j < cols.length; j++) {
                 if (cols[j].innerText === 'تحكم' || cols[j].querySelector('button')) continue;
                 if (cols[j].style.display === 'none') continue;
-                let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/,/g, ""); 
-                row.push('"' + data + '"');
+                
+                // تنظيف البيانات من التنسيق العربي قبل التصدير
+                let rawData = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/,/g, ""); 
+                let cleanData = cleanArabicNum(rawData);
+                
+                row.push('"' + cleanData + '"');
             }
             csv.push(row.join(","));
         }
