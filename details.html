@@ -89,11 +89,18 @@
 
     <div class="action-bar">
         <div class="filter-container">
-            <div class="filter-group"><label>بحث برقم المستخلص</label><input type="text" id="filterBatch" onkeyup="applyFilters()" placeholder="رقم المستخلص..."></div>
-            <div class="filter-group"><label>بحث برقم الفاتورة</label><input type="text" id="filterInvoice" onkeyup="applyFilters()" placeholder="اكتب الرقم..."></div>
-            <div class="filter-group"><label>بحث برقم PO</label><input type="text" id="filterPO" onkeyup="applyFilters()" placeholder="رقم الـ PO..."></div>
-            <div class="filter-group"><label>المورد</label><input type="text" id="filterSupplier" onkeyup="applyFilters()" placeholder="اسم المورد..."></div>
-            <div class="filter-group"><label>التاريخ</label><input type="date" id="filterDate" onchange="applyFilters()"></div>
+            <div class="filter-group" style="flex: 1.5;">
+                <label>بحث شامل (مورد / فاتورة / مستخلص / PO)</label>
+                <input type="text" id="filterGeneral" onkeyup="applyFilters()" placeholder="اكتب للبحث...">
+            </div>
+            <div class="filter-group">
+                <label>من تاريخ</label>
+                <input type="date" id="filterDateFrom" onchange="applyFilters()">
+            </div>
+            <div class="filter-group">
+                <label>إلى تاريخ</label>
+                <input type="date" id="filterDateTo" onchange="applyFilters()">
+            </div>
         </div>
     </div>
 
@@ -175,7 +182,7 @@
 
     let budgetChart = null;
     let currentUserRole = 'user'; 
-    let globalTotalBudget = 0; // متغير لحفظ الميزانية الكلية
+    let globalTotalBudget = 0; 
 
     function initChart() {
         const ctx = document.getElementById('budgetChart').getContext('2d');
@@ -202,7 +209,17 @@
         document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
     }
 
-    // --- الصلاحيات والتحميل ---
+    // --- دالة تنسيق التاريخ الناقصة التي سببت الخطأ ---
+    function formatDateForInput(dateString) {
+        if (!dateString) return "";
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return ""; 
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
     auth.onAuthStateChanged(async user => {
         if(user) {
             const u = await db.collection('users').doc(user.uid).get();
@@ -233,23 +250,18 @@
     });
 
     function loadPageData(canSeeProfit, canEdit) {
-        // 1. جلب بيانات الميزانية الأساسية
         db.collection("budgets").doc(siteId).onSnapshot(doc => {
             if(!doc.exists) return;
             const d = doc.data();
             document.getElementById('siteTitle').innerText = d.itemName;
             
-            // حفظ الميزانية في المتغير العام
             globalTotalBudget = d.totalAllocatedAmount || 0;
             document.getElementById('statBudget').innerText = fmt(globalTotalBudget);
             
             updatePrintHeader(d.itemName);
-            
-            // تحديث الفلتر لأول مرة ليعرض البيانات الافتراضية
             applyFilters(); 
         });
 
-        // 2. جلب الحركات (Transactions)
         db.collection("budgets").doc(siteId).collection("transactions").orderBy("orderNumber", "desc").onSnapshot(snap => {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = "";
@@ -271,7 +283,6 @@
                     </td>`;
                 }
 
-                // إضافة data-amount و data-profit ليسهل جمعها في الفلترة
                 tbody.innerHTML += `
                 <tr class="data-row" data-amount="${val.amountExclTax || 0}" data-profit="${val.companyProfit || 0}">
                     <td>${val.orderNumber}</td>
@@ -287,34 +298,38 @@
                     ${actionCell}
                 </tr>`;
             });
-            // استدعاء الفلتر بعد تحميل البيانات
             applyFilters();
         });
     }
 
-    // --- دالة الفلترة وتحديث الداشبورد ---
     function applyFilters() { 
-        const inv = document.getElementById('filterInvoice').value.toLowerCase();
-        const po = document.getElementById('filterPO').value.toLowerCase();
-        const sup = document.getElementById('filterSupplier').value.toLowerCase();
-        const batch = document.getElementById('filterBatch').value.toLowerCase();
-        const date = document.getElementById('filterDate').value;
+        const search = document.getElementById('filterGeneral').value.toLowerCase();
+        const dateFrom = document.getElementById('filterDateFrom').value;
+        const dateTo = document.getElementById('filterDateTo').value;
 
         let visibleSpent = 0;
         let visibleProfit = 0;
 
         document.querySelectorAll('.data-row').forEach(row => {
-            const i = row.querySelector('.col-invoice').innerText.toLowerCase();
-            const p = row.querySelector('.col-po').innerText.toLowerCase();
-            const s = row.querySelector('.col-supplier').innerText.toLowerCase();
-            const b = row.querySelector('.col-batch').innerText.toLowerCase();
-            const d = row.querySelector('.col-date').innerText;
+            const batch = row.querySelector('.col-batch').innerText.toLowerCase();
+            const supplier = row.querySelector('.col-supplier').innerText.toLowerCase();
+            const invoice = row.querySelector('.col-invoice').innerText.toLowerCase();
+            const po = row.querySelector('.col-po').innerText.toLowerCase();
+            const rowDate = row.querySelector('.col-date').innerText;
             
-            const isVisible = (i.includes(inv) && p.includes(po) && s.includes(sup) && b.includes(batch) && (!date || d === date));
+            const textMatch = (
+                batch.includes(search) || 
+                supplier.includes(search) || 
+                invoice.includes(search) || 
+                po.includes(search)
+            );
+
+            let dateMatch = true;
+            if (dateFrom && rowDate < dateFrom) dateMatch = false;
+            if (dateTo && rowDate > dateTo) dateMatch = false;
             
-            if (isVisible) {
+            if (textMatch && dateMatch) {
                 row.style.display = '';
-                // جمع القيم من السمات المخفية (data-attributes)
                 visibleSpent += parseFloat(row.getAttribute('data-amount')) || 0;
                 visibleProfit += parseFloat(row.getAttribute('data-profit')) || 0;
             } else {
@@ -322,20 +337,15 @@
             }
         });
 
-        // تحديث إحصائيات الداشبورد بناءً على الفلترة
         document.getElementById('statSpent').innerText = fmt(visibleSpent);
         document.getElementById('statProfit').innerText = fmt(visibleProfit);
         
-        // حساب المتبقي (الميزانية الكلية - المصروف الظاهر في الفلتر)
         const currentBalance = globalTotalBudget - visibleSpent;
         document.getElementById('statBalance').innerText = fmt(currentBalance);
 
-        // تحديث الرسم البياني
         updateChart(visibleSpent, currentBalance);
     }
 
-    // --- باقي الدوال (Modal, Save, CSV, etc.) كما هي ---
-    
     function openModal() { 
         document.getElementById('editTransId').value=""; 
         document.getElementById('modalTitle').innerText="تسجيل معاملة جديدة"; 
@@ -401,7 +411,10 @@
         const doc=await db.collection("budgets").doc(siteId).collection("transactions").doc(id).get(), d=doc.data();
         document.getElementById('editTransId').value=id; document.getElementById('modalTitle').innerText="تعديل المعاملة";
         document.getElementById('orderNum').value=d.orderNumber; document.getElementById('supplier').value=d.supplierName; document.getElementById('amount').value=d.amountExclTax; document.getElementById('ratio').value=d.companyRatio; document.getElementById('batch').value=d.batchNumber||''; document.getElementById('invoiceNum').value=d.invoiceNum||''; document.getElementById('poNumber').value=d.poNumber||''; 
-        document.getElementById('orderDate').value=formatDateForInput(d.date); document.getElementById('invoiceDate').value=formatDateForInput(d.invoiceDate);
+        
+        // استخدام دالة التنسيق التي تمت إضافتها
+        document.getElementById('orderDate').value=formatDateForInput(d.date); 
+        document.getElementById('invoiceDate').value=formatDateForInput(d.invoiceDate);
         
         if(currentUserRole === 'admin') {
             document.getElementById('divRatio').style.display = 'block';
@@ -443,7 +456,7 @@
     function exportTableToCSV(filename) {
         let csv = []; csv.push('\uFEFF'); let rows = document.querySelectorAll("table tr");
         for (let i = 0; i < rows.length; i++) {
-            if(rows[i].style.display === 'none') continue; // تخطي الصفوف المخفية عند التصدير
+            if(rows[i].style.display === 'none') continue; 
             let row = [], cols = rows[i].querySelectorAll("td, th");
             for (let j = 0; j < cols.length; j++) {
                 if (cols[j].innerText === 'تحكم' || cols[j].querySelector('button')) continue;
