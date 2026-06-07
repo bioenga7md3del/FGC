@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة خطط الإجازات - FGC</title>
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: bold; color: white; display: inline-block;}
+        .badge-pending { background-color: #f39c12; }
+        .badge-approved { background-color: #27ae60; }
+        .badge-rejected { background-color: #c0392b; }
+        .notes-text { font-size: 0.8em; color: #555; display: block; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="print-header">
+    <h1>خطة إجازات الموظفين</h1>
+    <p>تاريخ التقرير: <span id="printDate"></span></p>
+</div>
+
+<div class="container">
+    
+    <div class="header-bar">
+        <div class="header-title-box">
+            <img src="FGC.jpeg" alt="Logo" class="logo-img" style="max-height: 60px;">
+            <div>
+                <h2 style="margin:0; color: var(--primary);">إدارة خطط الإجازات</h2>
+                <div style="margin-top: 5px;">
+                    <a href="dashboard.html" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px;">
+                        <i class="fa-solid fa-house"></i> الرئيسية
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div id="actionButtons" style="display:flex; gap: 10px;">
+            <button onclick="openAddModal()" class="btn btn-primary">
+                <i class="fa-solid fa-plane-departure"></i> تقديم طلب إجازة
+            </button>
+            <button onclick="exportTableToCSV('خطة_الاجازات.csv')" class="btn btn-success" style="background: #217346;">
+                <i class="fa-solid fa-file-excel"></i> تصدير Excel
+            </button>
+            <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333;">
+                <i class="fa-solid fa-print"></i> طباعة
+            </button>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <div class="filter-container">
+            <div class="filter-group"><label>بحث بالاسم / الرقم الوظيفي</label><input type="text" id="filterName" onkeyup="applyFilters()" placeholder="بحث..."></div>
+            <div class="filter-group"><label>الموقع</label><input type="text" id="filterSite" onkeyup="applyFilters()" placeholder="اسم الموقع..."></div>
+            <div class="filter-group">
+                <label>الحالة</label>
+                <select id="filterStatus" onchange="applyFilters()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                    <option value="all">الكل</option>
+                    <option value="pending">قيد المراجعة</option>
+                    <option value="approved">معتمد</option>
+                    <option value="rejected">مرفوض</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <div class="table-container" style="box-shadow: none; border-radius: 0;">
+            <table id="vacationsTable">
+                <thead>
+                    <tr>
+                        <th>الموظف</th>
+                        <th>الرقم الوظيفي</th>
+                        <th>الوظيفة</th>
+                        <th>الموقع</th>
+                        <th>آخر إجازة</th>
+                        <th>الرصيد المتاح</th>
+                        <th>البداية المقترحة</th>
+                        <th>النهاية</th>
+                        <th>أيام</th>
+                        <th>الموظف البديل</th>
+                        <th>الحالة والملاحظات</th>
+                        <th class="col-action">تحكم</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="addVacationModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 700px;">
+        <span class="close-modal" onclick="document.getElementById('addVacationModal').style.display='none'">&times;</span>
+        <h3 style="color:var(--primary); margin-top:0;">تقديم طلب إجازة جديد</h3>
+        
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+            <div class="input-box"><label>اسم الموظف *</label><input type="text" id="empName"></div>
+            <div class="input-box"><label>الرقم الوظيفي *</label><input type="number" id="empId"></div>
+            <div class="input-box"><label>المسمى الوظيفي</label><input type="text" id="jobTitle"></div>
+            <div class="input-box"><label>المنطقة / الموقع *</label><input type="text" id="siteName"></div>
+            <div class="input-box"><label>تاريخ آخر إجازة</label><input type="date" id="lastVacation"></div>
+            <div class="input-box"><label>رصيد الإجازات المتاح (أيام)</label><input type="number" id="balance"></div>
+        </div>
+        
+        <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin: 15px 0; border: 1px dashed #ddd;">
+            <h4 style="margin:0 0 10px 0; color:var(--primary-light);">تفاصيل الإجازة المطلوبة</h4>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                <div class="input-box"><label>بداية الإجازة *</label><input type="date" id="startDate" onchange="calcDays()"></div>
+                <div class="input-box"><label>نهاية الإجازة *</label><input type="date" id="endDate" onchange="calcDays()"></div>
+                <div class="input-box"><label>عدد الأيام</label><input type="number" id="reqDays" readonly style="background:#eee;"></div>
+            </div>
+            <div class="input-box" style="margin-top: 10px;">
+                <label>الموظف البديل (التغطية) *</label><input type="text" id="coverEmp">
+            </div>
+        </div>
+        
+        <div style="text-align: left; margin-top: 15px;">
+            <button onclick="saveVacation()" class="btn btn-success" style="width: 150px;">حفظ الطلب</button>
+        </div>
+    </div>
+</div>
+
+<div id="reviewModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 400px;">
+        <span class="close-modal" onclick="document.getElementById('reviewModal').style.display='none'">&times;</span>
+        <h3 style="color:var(--primary); margin-top:0;">مراجعة طلب الإجازة</h3>
+        <input type="hidden" id="reviewDocId">
+        
+        <div class="input-box">
+            <label>حالة الطلب</label>
+            <select id="reviewStatus" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
+                <option value="pending">قيد المراجعة</option>
+                <option value="approved">معتمد</option>
+                <option value="rejected">مرفوض</option>
+            </select>
+        </div>
+        <div class="input-box" style="margin-top:15px;">
+            <label>ملاحظات (اختياري)</label>
+            <textarea id="reviewNotes" rows="3" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;"></textarea>
+        </div>
+        
+        <div style="text-align: left; margin-top: 15px;">
+            <button onclick="submitReview()" class="btn btn-primary" style="width: 100%;">تحديث الحالة</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // إعدادات Firebase
+    const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    let currentUserRole = 'user'; 
+
+    document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
+
+    // التحقق من الصلاحيات وجلب البيانات
+    auth.onAuthStateChanged(async user => {
+        if(user) {
+            const u = await db.collection('users').doc(user.uid).get();
+            if(u.exists) currentUserRole = u.data().role;
+            loadVacations();
+        } else {
+            window.location.href = "index.html";
+        }
+    });
+
+    // حساب عدد الأيام تلقائياً
+    function calcDays() {
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+        if(start && end) {
+            const d1 = new Date(start);
+            const d2 = new Date(end);
+            const timeDiff = d2.getTime() - d1.getTime();
+            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 لحساب يوم البداية
+            document.getElementById('reqDays').value = daysDiff > 0 ? daysDiff : 0;
+        }
+    }
+
+    function openAddModal() {
+        document.querySelectorAll('#addVacationModal input').forEach(i => i.value = '');
+        document.getElementById('addVacationModal').style.display = 'flex';
+    }
+
+    // حفظ طلب جديد
+    async function saveVacation() {
+        const data = {
+            empName: document.getElementById('empName').value,
+            empId: document.getElementById('empId').value,
+            jobTitle: document.getElementById('jobTitle').value,
+            siteName: document.getElementById('siteName').value,
+            lastVacation: document.getElementById('lastVacation').value,
+            balance: Number(document.getElementById('balance').value),
+            startDate: document.getElementById('startDate').value,
+            endDate: document.getElementById('endDate').value,
+            reqDays: Number(document.getElementById('reqDays').value),
+            coverEmp: document.getElementById('coverEmp').value,
+            status: 'pending', // افتراضي
+            notes: '',
+            createdAt: new Date().toISOString()
+        };
+
+        if(!data.empName || !data.empId || !data.startDate || !data.endDate) {
+            return alert("يرجى تعبئة الحقول الأساسية!");
+        }
+
+        const btn = event.target; btn.disabled = true; btn.innerText = "...";
+        try {
+            await db.collection("vacations").add(data);
+            alert("تم تقديم الطلب بنجاح!");
+            document.getElementById('addVacationModal').style.display = 'none';
+        } catch(e) { alert("خطأ: " + e.message); }
+        finally { btn.disabled = false; btn.innerText = "حفظ الطلب"; }
+    }
+
+    // جلب ورسم البيانات
+    function loadVacations() {
+        db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = "";
+            
+            snap.forEach(doc => {
+                const val = doc.data();
+                
+                // تحديد شكل حالة الطلب
+                let statusBadge = '';
+                let statusRaw = val.status || 'pending';
+                if(statusRaw === 'pending') statusBadge = '<span class="badge badge-pending">قيد المراجعة</span>';
+                if(statusRaw === 'approved') statusBadge = '<span class="badge badge-approved">معتمد</span>';
+                if(statusRaw === 'rejected') statusBadge = '<span class="badge badge-rejected">مرفوض</span>';
+
+                // أزرار التحكم
+                let actions = '';
+                if(currentUserRole === 'admin') {
+                    actions = `<button onclick="openReview('${doc.id}', '${statusRaw}', '${val.notes||''}')" class="btn btn-outline" style="padding:4px 8px; font-size:0.8em; margin-bottom:5px;">مراجعة/اعتماد</button><br>`;
+                }
+                if(currentUserRole === 'admin' || statusRaw === 'pending') {
+                     actions += `<button onclick="deleteVacation('${doc.id}')" class="btn btn-danger" style="padding:4px 8px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>`;
+                }
+
+                tbody.innerHTML += `
+                <tr class="data-row" data-status="${statusRaw}">
+                    <td class="col-name">${val.empName}</td>
+                    <td class="col-id">${val.empId}</td>
+                    <td>${val.jobTitle || '-'}</td>
+                    <td class="col-site">${val.siteName}</td>
+                    <td>${val.lastVacation || '-'}</td>
+                    <td>${val.balance || 0}</td>
+                    <td>${val.startDate}</td>
+                    <td>${val.endDate}</td>
+                    <td style="font-weight:bold;">${val.reqDays}</td>
+                    <td>${val.coverEmp || '-'}</td>
+                    <td>
+                        ${statusBadge}
+                        ${val.notes ? `<span class="notes-text">${val.notes}</span>` : ''}
+                    </td>
+                    <td class="col-action">${actions}</td>
+                </tr>`;
+            });
+            applyFilters();
+        });
+    }
+
+    // فتح مودال المراجعة (للأدمن)
+    function openReview(id, currentStatus, currentNotes) {
+        document.getElementById('reviewDocId').value = id;
+        document.getElementById('reviewStatus').value = currentStatus;
+        document.getElementById('reviewNotes').value = currentNotes;
+        document.getElementById('reviewModal').style.display = 'flex';
+    }
+
+    // حفظ مراجعة الطلب (للأدمن)
+    async function submitReview() {
+        const id = document.getElementById('reviewDocId').value;
+        const newStatus = document.getElementById('reviewStatus').value;
+        const newNotes = document.getElementById('reviewNotes').value;
+        
+        try {
+            await db.collection("vacations").doc(id).update({
+                status: newStatus,
+                notes: newNotes
+            });
+            document.getElementById('reviewModal').style.display = 'none';
+        } catch(e) { alert("خطأ: " + e.message); }
+    }
+
+    // حذف الطلب
+    async function deleteVacation(id) {
+        if(confirm("هل أنت متأكد من حذف هذا الطلب؟")) {
+            await db.collection("vacations").doc(id).delete();
+        }
+    }
+
+    // الفلاتر
+    function applyFilters() {
+        const nameFilter = document.getElementById('filterName').value.toLowerCase();
+        const siteFilter = document.getElementById('filterSite').value.toLowerCase();
+        const statusFilter = document.getElementById('filterStatus').value;
+
+        document.querySelectorAll('.data-row').forEach(row => {
+            const name = row.querySelector('.col-name').innerText.toLowerCase();
+            const id = row.querySelector('.col-id').innerText.toLowerCase();
+            const site = row.querySelector('.col-site').innerText.toLowerCase();
+            const status = row.getAttribute('data-status');
+
+            const nameMatch = name.includes(nameFilter) || id.includes(nameFilter);
+            const siteMatch = site.includes(siteFilter);
+            const statusMatch = statusFilter === 'all' || status === statusFilter;
+
+            if(nameMatch && siteMatch && statusMatch) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // التصدير للإكسل
+    function cleanArabicNum(str) {
+        if(!str) return "";
+        return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.').replace(/٬/g, '');
+    }
+
+    function exportTableToCSV(filename) {
+        let csv = []; csv.push('\uFEFF'); let rows = document.querySelectorAll("#vacationsTable tr");
+        for (let i = 0; i < rows.length; i++) {
+            if(rows[i].style.display === 'none') continue; 
+            let row = [], cols = rows[i].querySelectorAll("td, th");
+            for (let j = 0; j < cols.length; j++) {
+                if (cols[j].classList.contains('col-action')) continue; // استثناء عمود التحكم
+                let rawData = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, " ").replace(/,/g, "-"); 
+                row.push('"' + cleanArabicNum(rawData) + '"');
+            }
+            csv.push(row.join(","));
+        }
+        
+        let csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
+        let downloadLink = document.createElement("a");
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+    }
+</script>
+</body>
+</html>
