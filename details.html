@@ -14,6 +14,15 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* ستايلات إضافية للإجازات */
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: bold; color: white; display: inline-block;}
+        .badge-pending { background-color: #f39c12; }
+        .badge-approved { background-color: #27ae60; }
+        .badge-rejected { background-color: #c0392b; }
+        .notes-text { font-size: 0.8em; color: #555; display: block; margin-top: 5px; font-style: italic; }
+    </style>
 </head>
 <body>
 
@@ -51,13 +60,16 @@
             
             <span id="editButtons" style="display:none; gap: 10px;">
                 <button onclick="openModal()" class="btn btn-primary">
-                    <i class="fa-solid fa-plus"></i> إضافة جديد
+                    <i class="fa-solid fa-plus"></i> إضافة حركة مالية
+                </button>
+                <button onclick="openVacationModal()" class="btn btn-warning" style="color:white; background-color: #e67e22;">
+                    <i class="fa-solid fa-plane-departure"></i> تقديم طلب إجازة
                 </button>
                 <button onclick="document.getElementById('importModal').style.display='flex'" class="btn btn-warning">
-                    <i class="fa-solid fa-file-csv"></i> استيراد
+                    <i class="fa-solid fa-file-csv"></i> استيراد مالية
                 </button>
                 <button onclick="clearAllData()" class="btn btn-danger">
-                    <i class="fa-solid fa-trash"></i> تصفير
+                    <i class="fa-solid fa-trash"></i> تصفير المالية
                 </button>
             </span>
         </div>
@@ -90,7 +102,7 @@
     <div class="action-bar">
         <div class="filter-container">
             <div class="filter-group" style="flex: 1.5;">
-                <label>بحث شامل (مورد / فاتورة / مستخلص / PO)</label>
+                <label>بحث شامل في المالية (مورد / فاتورة / مستخلص / PO)</label>
                 <input type="text" id="filterGeneral" onkeyup="applyFilters()" placeholder="اكتب للبحث...">
             </div>
             <div class="filter-group">
@@ -104,17 +116,15 @@
         </div>
     </div>
 
-    <div class="card" style="padding: 0; overflow: hidden;">
-        <h3 style="padding: 20px; margin: 0; background: #fdfdfd; border-bottom: 1px solid #eee;"><i class="fa-solid fa-list"></i> سجل الحركات والتكاليف</h3>
+    <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 30px;">
+        <h3 style="padding: 20px; margin: 0; background: #fdfdfd; border-bottom: 1px solid #eee;"><i class="fa-solid fa-list"></i> سجل الحركات والتكاليف المالية</h3>
         <div class="table-container" style="box-shadow: none; border-radius: 0;">
             <table id="transTable">
                 <thead>
                     <tr>
                         <th>التعميد</th><th>التاريخ</th><th>PO #</th>
                         <th>رقم المستخلص</th>
-                        
                         <th>المورد</th><th>فاتورة #</th><th>تاريخ الفاتورة</th><th>المبلغ</th>
-                        
                         <th id="headerRatio" style="display:none;">النسبة</th>
                         <th id="headerProfit" style="display:none;">التمويل</th>
                         <th id="headerActions" style="display:none;">تحكم</th>
@@ -124,6 +134,31 @@
             </table>
         </div>
     </div>
+
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <h3 style="padding: 20px; margin: 0; background: #fdfdfd; border-bottom: 1px solid #eee;"><i class="fa-solid fa-umbrella-beach"></i> خطة إجازات موظفي الموقع</h3>
+        <div class="table-container" style="box-shadow: none; border-radius: 0;">
+            <table id="vacationsTable">
+                <thead>
+                    <tr>
+                        <th>الموظف</th>
+                        <th>الرقم الوظيفي</th>
+                        <th>المسمى الوظيفي</th>
+                        <th>آخر إجازة</th>
+                        <th>الرصيد المتاح</th>
+                        <th>البداية المقترحة</th>
+                        <th>النهاية</th>
+                        <th>الأيام</th>
+                        <th>الموظف البديل</th>
+                        <th>الحالة والملاحظات</th>
+                        <th id="headerVacActions" style="display:none;">تحكم</th>
+                    </tr>
+                </thead>
+                <tbody id="vacationTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
 </div>
 
 <div id="transactionModal" class="modal-overlay">
@@ -156,6 +191,52 @@
         <div style="margin-top: 20px; text-align: left; display: flex; justify-content: flex-end; gap: 10px;">
             <button onclick="closeModal()" class="btn btn-outline">إلغاء</button>
             <button onclick="saveTransaction()" class="btn btn-success" style="width: 150px;">حفظ</button>
+        </div>
+    </div>
+</div>
+
+<div id="vacationModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 650px;">
+        <span class="close-modal" onclick="closeVacationModal()">&times;</span>
+        <h3 id="vacationModalTitle" style="color:var(--primary); margin-top:0;">تقديم طلب إجازة</h3>
+        <input type="hidden" id="editVacationId">
+        
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+            <div class="input-box"><label>اسم الموظف *</label><input type="text" id="vacEmpName"></div>
+            <div class="input-box"><label>الرقم الوظيفي *</label><input type="number" id="vacEmpId"></div>
+            <div class="input-box"><label>المسمى الوظيفي</label><input type="text" id="vacJobTitle"></div>
+            <div class="input-box"><label>رصيد الإجازات المتاح</label><input type="number" id="vacBalance"></div>
+            <div class="input-box"><label>تاريخ آخر إجازة</label><input type="date" id="vacLastDate"></div>
+            <div class="input-box"><label>الموظف البديل (التغطية) *</label><input type="text" id="vacCoverEmp"></div>
+        </div>
+        
+        <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin: 15px 0; border: 1px dashed #ddd; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            <div class="input-box"><label>بداية الإجازة *</label><input type="date" id="vacStartDate" onchange="calcVacationDays()"></div>
+            <div class="input-box"><label>نهاية الإجازة *</label><input type="date" id="vacEndDate" onchange="calcVacationDays()"></div>
+            <div class="input-box"><label>عدد الأيام</label><input type="number" id="vacReqDays" readonly style="background:#eee;"></div>
+        </div>
+
+        <div id="adminVacationFields" style="display:none; background:#fff3cd; padding:15px; border-radius:10px; border:1px solid #ffeeba; margin-top:10px;">
+            <h4 style="margin:0 0 10px 0; color:#856404;">مراجعة الإدارة (Admin)</h4>
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap:15px;">
+                <div class="input-box">
+                    <label>حالة الطلب</label>
+                    <select id="vacStatus" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
+                        <option value="pending">قيد المراجعة</option>
+                        <option value="approved">معتمد ✅</option>
+                        <option value="rejected">مرفوض ❌</option>
+                    </select>
+                </div>
+                <div class="input-box">
+                    <label>ملاحظات الإدارة</label>
+                    <input type="text" id="vacNotes" placeholder="سبب الرفض أو القبول...">
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px; text-align: left; display: flex; justify-content: flex-end; gap: 10px;">
+            <button onclick="closeVacationModal()" class="btn btn-outline">إلغاء</button>
+            <button onclick="saveVacation()" class="btn btn-success" style="width: 150px;">حفظ الطلب</button>
         </div>
     </div>
 </div>
@@ -219,6 +300,19 @@
         return `${year}-${month}-${day}`;
     }
 
+    // حساب أيام الإجازة تلقائياً
+    function calcVacationDays() {
+        const start = document.getElementById('vacStartDate').value;
+        const end = document.getElementById('vacEndDate').value;
+        if(start && end) {
+            const d1 = new Date(start);
+            const d2 = new Date(end);
+            const diff = d2.getTime() - d1.getTime();
+            const days = Math.ceil(diff / (1000 * 3600 * 24)) + 1;
+            document.getElementById('vacReqDays').value = days > 0 ? days : 0;
+        }
+    }
+
     auth.onAuthStateChanged(async user => {
         if(user) {
             const u = await db.collection('users').doc(user.uid).get();
@@ -240,6 +334,9 @@
             document.getElementById('headerProfit').style.display = canSeeProfit ? 'table-cell' : 'none';
             document.getElementById('headerRatio').style.display = canSeeProfit ? 'table-cell' : 'none';
             document.getElementById('headerActions').style.display = canEdit ? 'table-cell' : 'none';
+            
+            // إظهار عمود التحكم بالإجازات للأدمن واليوزر
+            document.getElementById('headerVacActions').style.display = canEdit ? 'table-cell' : 'none';
 
             loadPageData(canSeeProfit, canEdit);
             initChart();
@@ -261,13 +358,13 @@
             applyFilters(); 
         });
 
+        // جلب المعاملات المالية
         db.collection("budgets").doc(siteId).collection("transactions").orderBy("orderNumber", "desc").onSnapshot(snap => {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = "";
             
             snap.forEach(doc => {
                 const val = doc.data();
-                
                 let profitCells = '';
                 if(canSeeProfit) {
                     profitCells = `<td>${val.companyRatio || 0}</td><td>${fmt(val.companyProfit)}</td>`;
@@ -299,6 +396,53 @@
             });
             applyFilters();
         });
+
+        // جلب خطة الإجازات (المرتبطة بهذا الموقع فقط)
+        db.collection("vacations").where("siteId", "==", siteId).onSnapshot(snap => {
+            const vacTbody = document.getElementById('vacationTableBody');
+            vacTbody.innerHTML = "";
+            
+            snap.forEach(doc => {
+                const val = doc.data();
+                
+                let badge = '';
+                if(val.status === 'pending') badge = '<span class="badge badge-pending">قيد المراجعة</span>';
+                if(val.status === 'approved') badge = '<span class="badge badge-approved">معتمد ✅</span>';
+                if(val.status === 'rejected') badge = '<span class="badge badge-rejected">مرفوض ❌</span>';
+
+                let actionCell = '';
+                if(canEdit) {
+                    // يسمح بالتعديل للأدمن دائماً، ولليوزر فقط إذا كانت المعاملة قيد الانتظار
+                    if(currentUserRole === 'admin' || val.status === 'pending') {
+                        actionCell = `
+                        <td>
+                            <button onclick="editVacation('${doc.id}')" class="btn btn-outline" style="padding:4px 6px; font-size:0.8em;"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteVacation('${doc.id}')" class="btn btn-danger" style="padding:4px 6px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                        </td>`;
+                    } else {
+                        actionCell = `<td>-</td>`;
+                    }
+                }
+
+                vacTbody.innerHTML += `
+                <tr>
+                    <td><b>${val.empName}</b></td>
+                    <td>${val.empId}</td>
+                    <td>${val.jobTitle || '-'}</td>
+                    <td>${val.lastVacation || '-'}</td>
+                    <td>${val.balance || 0}</td>
+                    <td>${val.startDate}</td>
+                    <td>${val.endDate}</td>
+                    <td>${val.reqDays}</td>
+                    <td>${val.coverEmp || '-'}</td>
+                    <td>
+                        ${badge}
+                        ${val.notes ? `<span class="notes-text">${val.notes}</span>` : ''}
+                    </td>
+                    ${canEdit ? actionCell : ''}
+                </tr>`;
+            });
+        });
     }
 
     function applyFilters() { 
@@ -316,12 +460,7 @@
             const po = row.querySelector('.col-po').innerText.toLowerCase();
             const rowDate = row.querySelector('.col-date').innerText;
             
-            const textMatch = (
-                batch.includes(search) || 
-                supplier.includes(search) || 
-                invoice.includes(search) || 
-                po.includes(search)
-            );
+            const textMatch = (batch.includes(search) || supplier.includes(search) || invoice.includes(search) || po.includes(search));
 
             let dateMatch = true;
             if (dateFrom && rowDate < dateFrom) dateMatch = false;
@@ -345,21 +484,102 @@
         updateChart(visibleSpent, currentBalance);
     }
 
+    // --- دالات التحكم بالإجازات ---
+    function openVacationModal() {
+        document.getElementById('editVacationId').value = "";
+        document.getElementById('vacationModalTitle').innerText = "تقديم طلب إجازة جديد";
+        document.querySelectorAll('#vacationModal input').forEach(i => i.value = "");
+        document.getElementById('vacStatus').value = "pending";
+        document.getElementById('vacNotes').value = "";
+
+        if(currentUserRole === 'admin') {
+            document.getElementById('adminVacationFields').style.display = 'block';
+        } else {
+            document.getElementById('adminVacationFields').style.display = 'none';
+        }
+        document.getElementById('vacationModal').classList.add('show');
+    }
+
+    function closeModal() { document.getElementById('transactionModal').classList.remove('show'); }
+    function Gav(id) { return document.getElementById(id).value; }
+
+    function closeVacationModal() { document.getElementById('vacationModal').classList.remove('show'); }
+
+    async function saveVacation() {
+        const id = document.getElementById('editVacationId').value;
+        const data = {
+            siteId: siteId,
+            empName: Gav('vacEmpName'),
+            empId: Gav('vacEmpId'),
+            jobTitle: Gav('vacJobTitle'),
+            balance: Number(Gav('vacBalance')),
+            lastVacation: Gav('vacLastDate'),
+            coverEmp: Gav('vacCoverEmp'),
+            startDate: Gav('vacStartDate'),
+            endDate: Gav('vacEndDate'),
+            reqDays: Number(Gav('vacReqDays')),
+            status: Gav('vacStatus') || 'pending',
+            notes: Gav('vacNotes') || ''
+        };
+
+        if(!data.empName || !data.empId || !data.startDate || !data.endDate) return alert("الحقول الأساسية مطلوبة!");
+
+        const btn = event.target; btn.disabled = true; btn.innerText = "...";
+        try {
+            if(id) {
+                await db.collection("vacations").doc(id).update(data);
+            } else {
+                data.createdAt = new Date().toISOString();
+                await db.collection("vacations").add(data);
+            }
+            closeVacationModal();
+        } catch(e) { alert("خطأ: " + e.message); }
+        finally { btn.disabled = false; btn.innerText = "حفظ الطلب"; }
+    }
+
+    async function editVacation(id) {
+        const doc = await db.collection("vacations").doc(id).get();
+        const d = doc.data();
+        
+        document.getElementById('editVacationId').value = id;
+        document.getElementById('vacationModalTitle').innerText = "تعديل ومراجعة طلب الإجازة";
+        
+        document.getElementById('vacEmpName').value = d.empName;
+        document.getElementById('vacEmpId').value = d.empId;
+        document.getElementById('vacJobTitle').value = d.jobTitle || '';
+        document.getElementById('vacBalance').value = d.balance || 0;
+        document.getElementById('vacCoverEmp').value = d.coverEmp || '';
+        document.getElementById('vacReqDays').value = d.reqDays;
+        document.getElementById('vacStatus').value = d.status || 'pending';
+        document.getElementById('vacNotes').value = d.notes || '';
+
+        document.getElementById('vacLastDate').value = formatDateForInput(d.lastVacation);
+        document.getElementById('vacStartDate').value = formatDateForInput(d.startDate);
+        document.getElementById('vacEndDate').value = formatDateForInput(d.endDate);
+
+        if(currentUserRole === 'admin') {
+            document.getElementById('adminVacationFields').style.display = 'block';
+        } else {
+            document.getElementById('adminVacationFields').style.display = 'none';
+        }
+        document.getElementById('vacationModal').classList.add('show');
+    }
+
+    async function deleteVacation(id) {
+        if(confirm("هل أنت متأكد من حذف هذا الطلب؟")) {
+            await db.collection("vacations").doc(id).delete();
+        }
+    }
+
+    // --- دالات المالية التابعة للنظام الأساسي ---
     function openModal() { 
         document.getElementById('editTransId').value=""; 
         document.getElementById('modalTitle').innerText="تسجيل معاملة جديدة"; 
         document.querySelectorAll('#transactionModal input').forEach(i=>i.value=""); 
-        
-        if(currentUserRole === 'admin') {
-            document.getElementById('divRatio').style.display = 'block';
-        } else {
-            document.getElementById('divRatio').style.display = 'none';
-        }
-        
+        if(currentUserRole === 'admin') { document.getElementById('divRatio').style.display = 'block'; } 
+        else { document.getElementById('divRatio').style.display = 'none'; }
         document.getElementById('transactionModal').classList.add('show'); 
     }
-    
-    function closeModal() { document.getElementById('transactionModal').classList.remove('show'); }
 
     async function saveTransaction() {
         const id=document.getElementById('editTransId').value;
@@ -378,14 +598,12 @@
             invoiceDate:document.getElementById('invoiceDate').value, 
             poNumber:document.getElementById('poNumber').value 
         };
-        
         if(!amt||!data.orderNumber) return alert("بيانات ناقصة");
         
         try {
             await db.runTransaction(async t=>{
                 const ref=db.collection("budgets").doc(siteId), doc=await t.get(ref), cur=doc.data();
                 let sp=cur.totalSpent||0, pr=cur.totalProfit||0, bl=cur.currentBalance||0;
-                
                 if(id){ 
                     const oldDoc = await t.get(ref.collection("transactions").doc(id));
                     const od = oldDoc.data();
@@ -395,8 +613,7 @@
                     }
                     sp-=(od.amountExclTax||0); pr-=(od.companyProfit||0); bl+=(od.amountExclTax||0); 
                     t.update(ref.collection("transactions").doc(id),data); 
-                }
-                else { 
+                } else { 
                     data.createdAt=new Date(); 
                     t.set(ref.collection("transactions").doc(),data); 
                 }
@@ -410,16 +627,9 @@
         const doc=await db.collection("budgets").doc(siteId).collection("transactions").doc(id).get(), d=doc.data();
         document.getElementById('editTransId').value=id; document.getElementById('modalTitle').innerText="تعديل المعاملة";
         document.getElementById('orderNum').value=d.orderNumber; document.getElementById('supplier').value=d.supplierName; document.getElementById('amount').value=d.amountExclTax; document.getElementById('ratio').value=d.companyRatio; document.getElementById('batch').value=d.batchNumber||''; document.getElementById('invoiceNum').value=d.invoiceNum||''; document.getElementById('poNumber').value=d.poNumber||''; 
-        
-        document.getElementById('orderDate').value=formatDateForInput(d.date); 
-        document.getElementById('invoiceDate').value=formatDateForInput(d.invoiceDate);
-        
-        if(currentUserRole === 'admin') {
-            document.getElementById('divRatio').style.display = 'block';
-        } else {
-            document.getElementById('divRatio').style.display = 'none';
-        }
-
+        document.getElementById('orderDate').value=formatDateForInput(d.date); document.getElementById('invoiceDate').value=formatDateForInput(d.invoiceDate);
+        if(currentUserRole === 'admin') { document.getElementById('divRatio').style.display = 'block'; } 
+        else { document.getElementById('divRatio').style.display = 'none'; }
         document.getElementById('transactionModal').classList.add('show');
     }
 
@@ -451,28 +661,21 @@
         b.update(r,{totalSpent:0,totalProfit:0,currentBalance:org}); await b.commit(); location.reload();
     }
 
-    // دالة لتنظيف الأرقام العربية وتحويلها إلى إنجليزية
     function cleanArabicNum(str) {
         if(!str) return "";
-        return str
-            .replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)])
-            .replace(/٫/g, '.')
-            .replace(/٬/g, '');
+        return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.').replace(/٬/g, '');
     }
 
     function exportTableToCSV(filename) {
-        let csv = []; csv.push('\uFEFF'); let rows = document.querySelectorAll("table tr");
+        let csv = []; csv.push('\uFEFF'); let rows = document.querySelectorAll("#transTable tr");
         for (let i = 0; i < rows.length; i++) {
             if(rows[i].style.display === 'none') continue; 
             let row = [], cols = rows[i].querySelectorAll("td, th");
             for (let j = 0; j < cols.length; j++) {
                 if (cols[j].innerText === 'تحكم' || cols[j].querySelector('button')) continue;
                 if (cols[j].style.display === 'none') continue;
-                
-                // تنظيف البيانات من التنسيق العربي قبل التصدير
                 let rawData = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/,/g, ""); 
                 let cleanData = cleanArabicNum(rawData);
-                
                 row.push('"' + cleanData + '"');
             }
             csv.push(row.join(","));
