@@ -85,7 +85,6 @@
         }
         .project-group-title { font-weight: bold; color: var(--primary); font-size: 1.1em; }
 
-        /* ستايل مخصص لزر خطة الإجازات الجديد */
         .btn-vacation-plan {
             background-color: #e67e22; color: white; border: none;
             padding: 12px; border-radius: 8px; font-weight: bold;
@@ -93,6 +92,14 @@
             display: flex; align-items: center; justify-content: center; gap: 10px;
         }
         .btn-vacation-plan:hover { background-color: #d35400; box-shadow: 0 4px 10px rgba(230,126,34,0.3); }
+
+        .btn-backup {
+            background-color: #27ae60; color: white; border: none;
+            padding: 12px; border-radius: 8px; font-weight: bold;
+            cursor: pointer; width: 100%; transition: 0.3s; font-size: 1rem;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-backup:hover { background-color: #219653; box-shadow: 0 4px 10px rgba(39,174,96,0.3); }
 
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -133,14 +140,19 @@
             <h3 style="margin-top: 0; color: var(--primary);">👑 <span id="txt_admin_panel">لوحة تحكم المدير</span></h3>
             
             <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px;">
-                <div style="flex: 1;">
-                     <button onclick="openUsersModal()" class="btn-users">
-                        <i class="fa-solid fa-users-gear"></i> <span id="txt_manage_users">إدارة المستخدمين</span>
+                <div style="flex: 1; min-width: 150px;">
+                     <button onclick="openUsersModal()" class="btn-users" style="width: 100%; padding: 12px; border-radius: 8px;">
+                        <i class="fa-solid fa-users-gear"></i> <span id="txt_manage_users">المستخدمين</span>
                     </button>
                 </div>
-                <div style="flex: 1;">
-                    <button onclick="recalculateAllProjects()" class="btn-sync">
+                <div style="flex: 1; min-width: 150px;">
+                    <button onclick="recalculateAllProjects()" class="btn-sync" style="width: 100%; padding: 12px; border-radius: 8px;">
                         <i class="fa-solid fa-rotate"></i> <span id="txt_refresh_balance">تحديث الأرصدة</span>
+                    </button>
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <button onclick="startBackup()" id="backupBtn" class="btn-backup">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> <span id="txt_backup">نسخة احتياطية</span>
                     </button>
                 </div>
             </div>
@@ -329,9 +341,10 @@
             nav_subtitle: "إدارة العقود والمواقع",
             logout: "خروج",
             admin_panel: "لوحة تحكم المدير",
-            manage_users: "إدارة المستخدمين",
+            manage_users: "المستخدمين",
             refresh_balance: "تحديث الأرصدة",
-            vacations_plan: "إدارة خطط إجازات الموظفين", // ترجمة الزر الجديد
+            vacations_plan: "إدارة خطط إجازات الموظفين",
+            backup: "نسخة احتياطية",
             add_contract: "إضافة عقد جديد",
             add_site: "إضافة موقع / بند",
             contracts_title: "العقود والمشاريع",
@@ -387,9 +400,10 @@
             nav_subtitle: "Contract & Site Management",
             logout: "Logout",
             admin_panel: "Admin Control Panel",
-            manage_users: "Manage Users",
-            refresh_balance: "Refresh Balances",
-            vacations_plan: "Employee Vacations Plan Management", // ترجمة الزر بالإنجليزية
+            manage_users: "Users",
+            refresh_balance: "Sync Balances",
+            vacations_plan: "Vacations Plan Management",
+            backup: "Backup Data",
             add_contract: "Add New Contract",
             add_site: "Add Site / Item",
             contracts_title: "Contracts & Projects",
@@ -454,7 +468,8 @@
         document.getElementById('txt_admin_panel').innerText = t('admin_panel');
         document.getElementById('txt_manage_users').innerText = t('manage_users');
         document.getElementById('txt_refresh_balance').innerText = t('refresh_balance');
-        document.getElementById('txt_vacations_plan').innerText = t('vacations_plan'); // تحديث نص زر الإجازات
+        document.getElementById('txt_vacations_plan').innerText = t('vacations_plan');
+        document.getElementById('txt_backup').innerText = t('backup');
         document.getElementById('txt_add_contract').innerText = t('add_contract');
         document.getElementById('txt_add_site').innerText = t('add_site');
         document.getElementById('txt_contracts_title').innerText = t('contracts_title');
@@ -883,6 +898,65 @@
            });
            await Promise.all(promises); alert(t('msg_success_update'));
        } catch(e) { alert(e.message); } finally { document.getElementById('loader').style.display = 'none'; }
+    }
+
+    // --- دالة أخذ النسخة الاحتياطية (Backup) ---
+    async function startBackup() {
+        const btn = document.getElementById('backupBtn');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحميل...';
+        
+        let backupData = {
+            users: [],
+            contracts: [],
+            budgets: [],
+            transactions: [],
+            vacations: []
+        };
+
+        try {
+            // سحب المستخدمين
+            const usersSnap = await db.collection('users').get();
+            usersSnap.forEach(doc => backupData.users.push({ id: doc.id, ...doc.data() }));
+
+            // سحب العقود
+            const contractsSnap = await db.collection('contracts').get();
+            contractsSnap.forEach(doc => backupData.contracts.push({ id: doc.id, ...doc.data() }));
+
+            // سحب المواقع والحركات المالية
+            const budgetsSnap = await db.collection('budgets').get();
+            for (let doc of budgetsSnap.docs) {
+                backupData.budgets.push({ id: doc.id, ...doc.data() });
+                const transSnap = await db.collection('budgets').doc(doc.id).collection('transactions').get();
+                transSnap.forEach(tDoc => {
+                    backupData.transactions.push({ budgetId: doc.id, transactionId: tDoc.id, ...tDoc.data() });
+                });
+            }
+
+            // سحب الإجازات
+            const vacSnap = await db.collection('vacations').get();
+            vacSnap.forEach(doc => backupData.vacations.push({ id: doc.id, ...doc.data() }));
+
+            // تجهيز وتنزيل الملف
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            const date = new Date().toISOString().slice(0, 10);
+            downloadAnchorNode.setAttribute("download", "FGC_Backup_" + date + ".json");
+            
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+
+            alert('تم تحميل النسخة الاحتياطية بنجاح! 💾✅');
+
+        } catch (error) {
+            alert("❌ حدث خطأ أثناء تحميل النسخة الاحتياطية: " + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
     }
 
     function logout() { auth.signOut().then(() => window.location.href = "index.html"); }
