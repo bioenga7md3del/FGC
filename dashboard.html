@@ -99,7 +99,15 @@
             cursor: pointer; width: 100%; transition: 0.3s; font-size: 1rem;
             display: flex; align-items: center; justify-content: center; gap: 10px;
         }
-        .btn-backup:hover { background-color: #219653; box-shadow: 0 4px 10px rgba(39,174,96,0.3); }
+        .btn-backup:hover { background-color: #219653; }
+        
+        .btn-restore {
+            background-color: #c0392b; color: white; border: none;
+            padding: 12px; border-radius: 8px; font-weight: bold;
+            cursor: pointer; width: 100%; transition: 0.3s; font-size: 1rem;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-restore:hover { background-color: #a93226; }
 
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -150,10 +158,14 @@
                         <i class="fa-solid fa-rotate"></i> <span id="txt_refresh_balance">تحديث الأرصدة</span>
                     </button>
                 </div>
-                <div style="flex: 1; min-width: 150px;">
-                    <button onclick="startBackup()" id="backupBtn" class="btn-backup">
+                <div style="flex: 1.5; min-width: 250px; display: flex; gap: 10px;">
+                    <button onclick="startBackup()" id="backupBtn" class="btn-backup" style="flex: 1;">
                         <i class="fa-solid fa-cloud-arrow-down"></i> <span id="txt_backup">نسخة احتياطية</span>
                     </button>
+                    <button onclick="document.getElementById('restoreFileInput').click()" id="restoreBtn" class="btn-restore" style="flex: 1;">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> <span id="txt_restore">استعادة</span>
+                    </button>
+                    <input type="file" id="restoreFileInput" accept=".json" style="display:none" onchange="processRestore(event)">
                 </div>
             </div>
 
@@ -345,6 +357,7 @@
             refresh_balance: "تحديث الأرصدة",
             vacations_plan: "إدارة خطط إجازات الموظفين",
             backup: "نسخة احتياطية",
+            restore: "استعادة",
             add_contract: "إضافة عقد جديد",
             add_site: "إضافة موقع / بند",
             contracts_title: "العقود والمشاريع",
@@ -404,6 +417,7 @@
             refresh_balance: "Sync Balances",
             vacations_plan: "Vacations Plan Management",
             backup: "Backup Data",
+            restore: "Restore",
             add_contract: "Add New Contract",
             add_site: "Add Site / Item",
             contracts_title: "Contracts & Projects",
@@ -470,6 +484,7 @@
         document.getElementById('txt_refresh_balance').innerText = t('refresh_balance');
         document.getElementById('txt_vacations_plan').innerText = t('vacations_plan');
         document.getElementById('txt_backup').innerText = t('backup');
+        document.getElementById('txt_restore').innerText = t('restore');
         document.getElementById('txt_add_contract').innerText = t('add_contract');
         document.getElementById('txt_add_site').innerText = t('add_site');
         document.getElementById('txt_contracts_title').innerText = t('contracts_title');
@@ -957,6 +972,79 @@
             btn.disabled = false;
             btn.innerHTML = originalText;
         }
+    }
+
+    // --- دالة استعادة البيانات (Restore) ---
+    async function processRestore(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!confirm('⚠️ تحذير هام جداً: استعادة البيانات ستقوم بتحديث أو إضافة البيانات من الملف إلى قاعدة البيانات الحالية. هل أنت متأكد أنك تريد المتابعة؟')) {
+            event.target.value = ''; // تفريغ الملف
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            document.getElementById('loader').style.display = 'flex';
+            document.getElementById('txt_loading').innerText = 'جاري استعادة البيانات... برجاء عدم إغلاق الصفحة';
+            
+            try {
+                const data = JSON.parse(e.target.result);
+                
+                // استعادة المستخدمين
+                if (data.users) {
+                    for (let u of data.users) {
+                        const { id, ...userData } = u;
+                        await db.collection('users').doc(id).set(userData, { merge: true });
+                    }
+                }
+                
+                // استعادة العقود
+                if (data.contracts) {
+                    for (let c of data.contracts) {
+                        const { id, ...contractData } = c;
+                        await db.collection('contracts').doc(id).set(contractData, { merge: true });
+                    }
+                }
+                
+                // استعادة المواقع
+                if (data.budgets) {
+                    for (let b of data.budgets) {
+                        const { id, ...budgetData } = b;
+                        await db.collection('budgets').doc(id).set(budgetData, { merge: true });
+                    }
+                }
+                
+                // استعادة الحركات المالية
+                if (data.transactions) {
+                    for (let t of data.transactions) {
+                        const { budgetId, transactionId, ...transData } = t;
+                        if (budgetId && transactionId) {
+                            await db.collection('budgets').doc(budgetId).collection('transactions').doc(transactionId).set(transData, { merge: true });
+                        }
+                    }
+                }
+                
+                // استعادة الإجازات
+                if (data.vacations) {
+                    for (let v of data.vacations) {
+                        const { id, ...vacData } = v;
+                        await db.collection('vacations').doc(id).set(vacData, { merge: true });
+                    }
+                }
+
+                alert('✅ تمت استعادة البيانات بنجاح!');
+                location.reload(); // إعادة تحميل الصفحة لتحديث البيانات
+            } catch (err) {
+                alert('❌ حدث خطأ أثناء الاستعادة: تأكد من أن الملف هو ملف النسخة الاحتياطية الصحيح. التفاصيل: ' + err.message);
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('txt_loading').innerText = 'جاري المعالجة...';
+                event.target.value = '';
+            }
+        };
+        reader.readAsText(file);
     }
 
     function logout() { auth.signOut().then(() => window.location.href = "index.html"); }
