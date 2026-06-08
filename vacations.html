@@ -195,22 +195,39 @@
     }
 
     // حفظ طلب جديد
+    
+    
     async function saveVacation() {
-        const data = {
-            empName: document.getElementById('empName').value,
-            empId: document.getElementById('empId').value,
-            jobTitle: document.getElementById('jobTitle').value,
-            siteName: document.getElementById('siteName').value,
-            lastVacation: document.getElementById('lastVacation').value,
-            balance: Number(document.getElementById('balance').value),
-            startDate: document.getElementById('startDate').value,
-            endDate: document.getElementById('endDate').value,
-            reqDays: Number(document.getElementById('reqDays').value),
-            coverEmp: document.getElementById('coverEmp').value,
-            status: 'pending', // افتراضي
-            notes: '',
-            createdAt: new Date().toISOString()
-        };
+    // 1. التقاط الحقول بدقة
+    const siteInput = document.getElementById('siteName'); // تأكد أن الـ ID في HTML هو siteName
+    const siteValue = siteInput ? siteInput.value : null;
+
+    // 2. التحقق قبل الحفظ (Diagnostic Log)
+    console.log("قيمة الموقع المستخرجة هي:", siteValue);
+
+    if (!siteValue) {
+        alert("خطأ: قيمة الموقع غير موجودة (null/undefined). تأكد من الـ ID في HTML.");
+        return;
+    }
+
+    const data = {
+        empName: document.getElementById('empName').value,
+        empId: document.getElementById('empId').value,
+        siteName: siteValue, // حفظ القيمة التي التقطناها
+        status: 'pending',
+        createdAt: new Date().toISOString()
+    };
+
+    try {
+        await db.collection("vacations").add(data);
+        alert("تم الحفظ بنجاح");
+    } catch(e) { 
+        console.error("خطأ Firebase:", e);
+        alert("خطأ: " + e.message); 
+    }
+}
+    
+    
 
         if(!data.empName || !data.empId || !data.startDate || !data.endDate) {
             return alert("يرجى تعبئة الحقول الأساسية!");
