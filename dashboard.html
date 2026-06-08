@@ -5,16 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FGC Dashboard</title>
     
+    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
     
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
-        /* (نفس الستايلات السابقة تماماً للحفاظ على الشكل) */
         .contract-card {
             background: white; border-radius: 12px; margin-bottom: 20px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden;
@@ -86,15 +85,22 @@
         }
         .project-group-title { font-weight: bold; color: var(--primary); font-size: 1.1em; }
 
+        /* ستايل مخصص لزر خطة الإجازات الجديد */
+        .btn-vacation-plan {
+            background-color: #e67e22; color: white; border: none;
+            padding: 12px; border-radius: 8px; font-weight: bold;
+            cursor: pointer; width: 100%; transition: 0.3s; font-size: 1rem;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-vacation-plan:hover { background-color: #d35400; box-shadow: 0 4px 10px rgba(230,126,34,0.3); }
+
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* ستايل زر اللغة */
         .lang-btn {
             background: transparent; border: 1px solid #fff; color: var(--primary); 
             font-weight: bold; cursor: pointer; padding: 5px 10px; border-radius: 5px; 
             border: 1px solid var(--primary); margin-left: 10px;
         }
-        /* تعديلات بسيطة للغة الإنجليزية */
         html[dir="ltr"] .site-mini-card:hover { transform: translateX(5px); }
         html[dir="ltr"] .nav-brand { gap: 15px; }
         html[dir="ltr"] .contract-title { flex-direction: row; }
@@ -125,10 +131,8 @@
         
         <div id="adminPanel" class="admin-panel">
             <h3 style="margin-top: 0; color: var(--primary);">👑 <span id="txt_admin_panel">لوحة تحكم المدير</span></h3>
-            <button onclick="window.location.href='vacations.html'" class="btn btn-outline" style="margin-bottom: 20px; color: #1a3c6d; border-color: #1a3c6d;">
-    <i class="fa-solid fa-umbrella-beach"></i> إدارة خطط إجازات الموظفين
-</button>
-            <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px;">
+            
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px;">
                 <div style="flex: 1;">
                      <button onclick="openUsersModal()" class="btn-users">
                         <i class="fa-solid fa-users-gear"></i> <span id="txt_manage_users">إدارة المستخدمين</span>
@@ -139,6 +143,12 @@
                         <i class="fa-solid fa-rotate"></i> <span id="txt_refresh_balance">تحديث الأرصدة</span>
                     </button>
                 </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <button onclick="window.location.href='vacations.html'" class="btn-vacation-plan">
+                    <i class="fa-solid fa-umbrella-beach"></i> <span id="txt_vacations_plan">إدارة خطط إجازات الموظفين</span>
+                </button>
             </div>
             
             <hr style="border: 0; border-top: 1px dashed #ddd; margin: 20px 0;">
@@ -312,9 +322,8 @@
 
     let allContracts = [];
     let allSites = [];
-    let currentLang = localStorage.getItem('lang') || 'ar'; // اللغة الافتراضية
+    let currentLang = localStorage.getItem('lang') || 'ar';
 
-    // قاموس الكلمات
     const i18n = {
         ar: {
             nav_subtitle: "إدارة العقود والمواقع",
@@ -322,6 +331,7 @@
             admin_panel: "لوحة تحكم المدير",
             manage_users: "إدارة المستخدمين",
             refresh_balance: "تحديث الأرصدة",
+            vacations_plan: "إدارة خطط إجازات الموظفين", // ترجمة الزر الجديد
             add_contract: "إضافة عقد جديد",
             add_site: "إضافة موقع / بند",
             contracts_title: "العقود والمشاريع",
@@ -379,6 +389,7 @@
             admin_panel: "Admin Control Panel",
             manage_users: "Manage Users",
             refresh_balance: "Refresh Balances",
+            vacations_plan: "Employee Vacations Plan Management", // ترجمة الزر بالإنجليزية
             add_contract: "Add New Contract",
             add_site: "Add Site / Item",
             contracts_title: "Contracts & Projects",
@@ -438,18 +449,17 @@
         document.documentElement.lang = currentLang;
         document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
         
-        // تحديث النصوص الثابتة
         document.getElementById('txt_nav_subtitle').innerText = t('nav_subtitle');
         document.getElementById('txt_logout').innerText = t('logout');
         document.getElementById('txt_admin_panel').innerText = t('admin_panel');
         document.getElementById('txt_manage_users').innerText = t('manage_users');
         document.getElementById('txt_refresh_balance').innerText = t('refresh_balance');
+        document.getElementById('txt_vacations_plan').innerText = t('vacations_plan'); // تحديث نص زر الإجازات
         document.getElementById('txt_add_contract').innerText = t('add_contract');
         document.getElementById('txt_add_site').innerText = t('add_site');
         document.getElementById('txt_contracts_title').innerText = t('contracts_title');
         document.getElementById('txt_loading_contracts').innerText = t('loading_contracts');
         
-        // Modals
         document.getElementById('txt_modal_add_contract').innerText = t('modal_add_contract');
         document.getElementById('lbl_contract_name').innerText = t('lbl_name');
         document.getElementById('lbl_contract_auth').innerText = t('lbl_auth');
@@ -485,7 +495,6 @@
         document.getElementById('th_site').innerText = t('th_site');
         document.getElementById('th_action').innerText = t('th_action');
 
-        // إعادة رسم الداشبورد
         renderDashboard();
     }
 
@@ -495,7 +504,6 @@
         updateLanguageUI();
     }
 
-    // تهيئة اللغة عند البدء
     document.addEventListener('DOMContentLoaded', updateLanguageUI);
 
     auth.onAuthStateChanged(async user => {
@@ -585,9 +593,7 @@
                     const balanceColor = percent < 20 ? 'var(--danger)' : 'var(--success)';
                     const catKey = site.category || 'spare_parts';
                     
-                    // استخدام القاموس للترجمة
                     const catName = t(catKey);
-                    // تحديد الأيقونة والكلاس
                     let icon = 'fa-cogs';
                     let badgeClass = 'cat-spare_parts';
                     if(catKey === 'labor') { icon = 'fa-hard-hat'; badgeClass = 'cat-labor'; }
@@ -682,7 +688,6 @@
         }
     }
 
-    // --- العمليات (إضافة وحذف) ---
     async function deleteContract(contractId, name) {
         if(!confirm(t('confirm_delete_contract'))) return;
         try {
