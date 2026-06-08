@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>نسخة احتياطية - FGC</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        body { font-family: Tahoma, Arial; text-align: center; padding: 50px; background: #f4f7f6; }
+        button { padding: 15px 30px; font-size: 18px; background: #27ae60; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        button:disabled { background: #95a5a6; cursor: not-allowed; }
+        #status { margin-top: 20px; font-size: 18px; color: #2c3e50; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2>أداة سحب النسخة الاحتياطية (Backup)</h2>
+    <button id="backupBtn" onclick="startBackup()">تحميل النسخة الاحتياطية الآن</button>
+    <div id="status"></div>
+
+<script>
+    // إعدادات قاعدة بياناتك
+    const firebaseConfig = { 
+        apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", 
+        authDomain: "fgcbio.firebaseapp.com", 
+        projectId: "fgcbio", 
+        storageBucket: "fgcbio.firebasestorage.app", 
+        messagingSenderId: "924334872806", 
+        appId: "1:924334872806:web:fac89ce388b1ff2de24327" 
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function startBackup() {
+        const btn = document.getElementById('backupBtn');
+        const status = document.getElementById('status');
+        btn.disabled = true;
+        
+        let backupData = {
+            users: [],
+            contracts: [],
+            budgets: [],
+            transactions: []
+        };
+
+        try {
+            status.innerText = "جاري سحب بيانات المستخدمين...";
+            const usersSnap = await db.collection('users').get();
+            usersSnap.forEach(doc => backupData.users.push({ id: doc.id, ...doc.data() }));
+
+            status.innerText = "جاري سحب بيانات العقود...";
+            const contractsSnap = await db.collection('contracts').get();
+            contractsSnap.forEach(doc => backupData.contracts.push({ id: doc.id, ...doc.data() }));
+
+            status.innerText = "جاري سحب بيانات المواقع والحركات المالية...";
+            const budgetsSnap = await db.collection('budgets').get();
+            
+            for (let doc of budgetsSnap.docs) {
+                backupData.budgets.push({ id: doc.id, ...doc.data() });
+                
+                // سحب الحركات المالية الخاصة بكل موقع
+                const transSnap = await db.collection('budgets').doc(doc.id).collection('transactions').get();
+                transSnap.forEach(tDoc => {
+                    backupData.transactions.push({ 
+                        budgetId: doc.id, 
+                        transactionId: tDoc.id, 
+                        ...tDoc.data() 
+                    });
+                });
+            }
+
+            status.innerText = "تم سحب البيانات بنجاح! جاري تجهيز الملف للتحميل...";
+
+            // تحويل البيانات لملف JSON وتحميله
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            
+            // تسمية الملف بالتاريخ
+            const date = new Date().toISOString().slice(0, 10);
+            downloadAnchorNode.setAttribute("download", "FGC_Backup_" + date + ".json");
+            
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+
+            status.innerText = "✅ تم تحميل النسخة الاحتياطية بنجاح!";
+            status.style.color = "#27ae60";
+
+        } catch (error) {
+            status.innerText = "❌ حدث خطأ: " + error.message;
+            status.style.color = "#c0392b";
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "تحميل نسخة أخرى";
+        }
+    }
+</script>
+</body>
+</html>
