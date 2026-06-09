@@ -60,7 +60,7 @@
             
             <span id="editButtons" style="display:none; gap: 10px;">
                 <button onclick="openModal()" class="btn btn-primary">
-                    <i class="fa-solid fa-plus"></i> إضافة حركة مالية
+                    <i class="fa-solid fa-plus"></i> إضافة تعميد
                 </button>
                 <button onclick="openVacationModal()" class="btn btn-warning" style="color:white; background-color: #e67e22;">
                     <i class="fa-solid fa-plane-departure"></i> تقديم طلب إجازة
@@ -204,10 +204,27 @@
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
             <div class="input-box"><label>اسم الموظف *</label><input type="text" id="vacEmpName"></div>
             <div class="input-box"><label>الرقم الوظيفي *</label><input type="number" id="vacEmpId"></div>
-            <div class="input-box"><label>المسمى الوظيفي</label><input type="text" id="vacJobTitle"></div>
+            
+            <div class="input-box">
+                <label>المسمى الوظيفي *</label>
+                <select id="vacJobTitle" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
+                    <option value="مدير الموقع">مدير الموقع</option>
+                    <option value="مهندس (س)">مهندس (س)</option>
+                    <option value="مهندس (ج)">مهندس (ج)</option>
+                    <option value="فني (س)">فني (س)</option>
+                    <option value="فني (ج)">فني (ج)</option>
+                </select>
+            </div>
+            
             <div class="input-box"><label>رصيد الإجازات المتاح</label><input type="number" id="vacBalance"></div>
             <div class="input-box"><label>تاريخ آخر إجازة</label><input type="date" id="vacLastDate"></div>
-            <div class="input-box"><label>الموظف البديل (التغطية) *</label><input type="text" id="vacCoverEmp"></div>
+            
+            <div class="input-box">
+                <label>الموظف البديل (التغطية) *</label>
+                <select id="vacCoverEmp" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
+                    <option value="">-- اختر الموظف البديل --</option>
+                </select>
+            </div>
         </div>
         
         <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin: 15px 0; border: 1px dashed #ddd; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
@@ -313,6 +330,17 @@
         }
     }
 
+    // جلب قائمة الموظفين البدلاء من الداتا بيز
+    function loadCoverEmps() {
+        db.collection("alternative_employees").onSnapshot(snap => {
+            const coverSelect = document.getElementById('vacCoverEmp');
+            coverSelect.innerHTML = '<option value="">-- اختر الموظف البديل --</option>';
+            snap.forEach(doc => {
+                coverSelect.innerHTML += `<option value="${doc.data().name}">${doc.data().name}</option>`;
+            });
+        });
+    }
+
     auth.onAuthStateChanged(async user => {
         if(user) {
             const u = await db.collection('users').doc(user.uid).get();
@@ -338,6 +366,7 @@
             // إظهار عمود التحكم بالإجازات للأدمن واليوزر
             document.getElementById('headerVacActions').style.display = canEdit ? 'table-cell' : 'none';
 
+            loadCoverEmps(); // تحميل الموظفين البدلاء
             loadPageData(canSeeProfit, canEdit);
             initChart();
         } else {
@@ -489,6 +518,8 @@
         document.getElementById('editVacationId').value = "";
         document.getElementById('vacationModalTitle').innerText = "تقديم طلب إجازة جديد";
         document.querySelectorAll('#vacationModal input').forEach(i => i.value = "");
+        document.getElementById('vacJobTitle').selectedIndex = 0;
+        document.getElementById('vacCoverEmp').selectedIndex = 0;
         document.getElementById('vacStatus').value = "pending";
         document.getElementById('vacNotes').value = "";
 
@@ -507,22 +538,47 @@
 
     async function saveVacation() {
         const id = document.getElementById('editVacationId').value;
+        const cEmp = Gav('vacCoverEmp');
+        const sDate = Gav('vacStartDate');
+        const eDate = Gav('vacEndDate');
+
+        // التحقق من تداخل الموظف البديل (عدم السماح بتغطية إجازتين متعارضتين)
+        if(cEmp && sDate && eDate) {
+            const coverCheck = await db.collection("vacations")
+                .where("coverEmp", "==", cEmp)
+                .where("status", "in", ["pending", "approved"])
+                .get();
+            
+            let hasOverlap = false;
+            coverCheck.forEach(doc => {
+                if(id && doc.id === id) return; // استثناء الطلب الحالي لو كنا بنعدله
+                const v = doc.data();
+                if (sDate <= v.endDate && eDate >= v.startDate) { hasOverlap = true; }
+            });
+
+            if(hasOverlap) {
+                return alert(`عذراً، الموظف البديل (${cEmp}) يغطي بالفعل إجازة أخرى في هذه الفترة الزمنية! يرجى اختيار بديل آخر أو تغيير التواريخ.`);
+            }
+        }
+
         const data = {
             siteId: siteId,
             empName: Gav('vacEmpName'),
             empId: Gav('vacEmpId'),
             jobTitle: Gav('vacJobTitle'),
-            balance: Number(Gav('vacBalance')),
+            balance: Number(Gav('vacBalance')) || 0,
             lastVacation: Gav('vacLastDate'),
-            coverEmp: Gav('vacCoverEmp'),
-            startDate: Gav('vacStartDate'),
-            endDate: Gav('vacEndDate'),
-            reqDays: Number(Gav('vacReqDays')),
+            coverEmp: cEmp,
+            startDate: sDate,
+            endDate: eDate,
+            reqDays: Number(Gav('vacReqDays')) || 0,
             status: Gav('vacStatus') || 'pending',
             notes: Gav('vacNotes') || ''
         };
 
-        if(!data.empName || !data.empId || !data.startDate || !data.endDate) return alert("الحقول الأساسية مطلوبة!");
+        if(!data.empName || !data.empId || !data.startDate || !data.endDate || !data.coverEmp) {
+            return alert("يرجى تعبئة الحقول الأساسية (بما فيها الموظف البديل)!");
+        }
 
         const btn = event.target; btn.disabled = true; btn.innerText = "...";
         try {
@@ -546,9 +602,12 @@
         
         document.getElementById('vacEmpName').value = d.empName;
         document.getElementById('vacEmpId').value = d.empId;
-        document.getElementById('vacJobTitle').value = d.jobTitle || '';
+        document.getElementById('vacJobTitle').value = d.jobTitle || 'مدير الموقع';
         document.getElementById('vacBalance').value = d.balance || 0;
-        document.getElementById('vacCoverEmp').value = d.coverEmp || '';
+        
+        // محاولة تحديد الموظف البديل في القائمة المنسدلة
+        setTimeout(() => { document.getElementById('vacCoverEmp').value = d.coverEmp || ''; }, 500);
+
         document.getElementById('vacReqDays').value = d.reqDays;
         document.getElementById('vacStatus').value = d.status || 'pending';
         document.getElementById('vacNotes').value = d.notes || '';
