@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الخط الزمني وجدولة الإجازات - FGC</title>
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        .timeline-container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-top: 20px; overflow-x: auto; }
+        
+        /* ستايل جدول التقويم الأفقي */
+        .gantt-table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: 0.9em; }
+        .gantt-table th, .gantt-table td { border: 1px solid #e2e8f0; text-align: center; padding: 8px 4px; }
+        .gantt-table th { background: #f8fafc; color: #475569; font-weight: bold; }
+        
+        .emp-col { width: 180px; text-align: right !important; padding-right: 12px !important; font-weight: bold; background: #fff; position: sticky; right: 0; box-shadow: -2px 0 5px rgba(0,0,0,0.02); }
+        .day-header { width: 30px; min-width: 30px; }
+        
+        /* تمثيل أشرطة وحالات الإجازة داخل المربعات */
+        .v-day { transition: 0.2s; }
+        .v-day-pending { background-color: #f39c12 !important; color: white; cursor: pointer; font-size: 0.75em; font-weight: bold; }
+        .v-day-approved { background-color: #27ae60 !important; color: white; cursor: pointer; font-size: 0.75em; font-weight: bold; }
+        .v-day-conflict { background-color: #dc3545 !important; color: white; cursor: pointer; font-size: 0.75em; font-weight: bold; animation: pulse 2s infinite; }
+        
+        .legend-box { display: flex; gap: 20px; margin-bottom: 15px; padding: 10px; background: #f8fafc; border-radius: 5px; font-size: 0.85em; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .color-block { width: 16px; height: 16px; border-radius: 3px; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-bar">
+        <div class="header-title-box">
+            <img src="FGC.jpeg" alt="Logo" class="logo-img" style="max-height: 60px;">
+            <div>
+                <h2 style="margin:0; color: var(--primary);">التقويم والخط الزمني الرقمي (Calendar)</h2>
+                <div style="margin-top: 5px;">
+                    <a href="vacations.html" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px;">
+                        <i class="fa-solid fa-arrow-right"></i> العودة لإدارة الإجازات
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <div class="filter-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div class="filter-group">
+                <label>تصفية بحسب الموقع</label>
+                <select id="calSiteFilter" onchange="drawCalendar()" style="padding: 10px; border-radius: 5px; border: 1px solid #ccc; width: 100%;">
+                    <option value="all">كل المواقع المتاحة</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>الشهر</label>
+                <select id="calMonthFilter" onchange="drawCalendar()" style="padding: 10px; border-radius: 5px; border: 1px solid #ccc; width: 100%;">
+                    <option value="0">يناير (01)</option><option value="1">فبراير (02)</option><option value="2">مارس (03)</option>
+                    <option value="3">أبريل (04)</option><option value="4">مايو (05)</option><option value="5">يونيو (06)</option>
+                    <option value="6">يوليو (07)</option><option value="7">أغسطس (08)</option><option value="8">سبتمبر (09)</option>
+                    <option value="9">أكتوبر (10)</option><option value="10">نوفمبر (11)</option><option value="11">ديسمبر (12)</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>السنة</label>
+                <select id="calYearFilter" onchange="drawCalendar()" style="padding: 10px; border-radius: 5px; border: 1px solid #ccc; width: 100%;">
+                    <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="legend-box">
+        <div class="legend-item"><div class="color-block" style="background: #27ae60;"></div> إجازة معتمدة</div>
+        <div class="legend-item"><div class="color-block" style="background: #f39c12;"></div> طلب قيد المراجعة</div>
+        <div class="legend-item"><div class="color-block" style="background: #dc3545;"></div> تعارض (البديل مشغول) ⚠️</div>
+    </div>
+
+    <div class="timeline-container">
+        <table class="gantt-table" id="ganttTable">
+            <thead id="ganttThead"></thead>
+            <tbody id="ganttTbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    let sitesMap = {};
+    let cachedVacations = [];
+
+    // تعيين الشهر والسنة الحالية تلقائياً عند الفتح
+    const currentInitDate = new Date();
+    document.getElementById('calMonthFilter').value = currentInitDate.getMonth();
+    document.getElementById('calYearFilter').value = currentInitDate.getFullYear();
+
+    async function initCalendarPage() {
+        try {
+            // تحميل المواقع ديناميكياً
+            const budgetsSnap = await db.collection('budgets').get();
+            const filterSelect = document.getElementById('calSiteFilter');
+            budgetsSnap.forEach(doc => {
+                sitesMap[doc.id] = doc.data().itemName || "موقع بدون اسم";
+                filterSelect.innerHTML += `<option value="${doc.id}">${sitesMap[doc.id]}</option>`;
+            });
+
+            // مراقبة خطة الإجازات مباشرة بالسيرفر حياً
+            db.collection("vacations").onSnapshot(snap => {
+                cachedVacations = [];
+                snap.forEach(doc => cachedVacations.push({id: doc.id, ...doc.data()}));
+                drawCalendar(); // إعادة الرسم فوراً عند حدوث أي تعديل بالسيرفر
+            });
+
+        } catch(e) { console.error(e); }
+
+        auth.onAuthStateChanged(user => {
+            if(!user) window.location.href = "index.html";
+        });
+    }
+
+    // بناء وتوليد خلايا التقويم
+    function drawCalendar() {
+        const selectedSite = document.getElementById('calSiteFilter').value;
+        const selectedMonth = parseInt(document.getElementById('calMonthFilter').value);
+        const selectedYear = parseInt(document.getElementById('calYearFilter').value);
+
+        const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+
+        // 1. رسم الهيدر (أيام الشهر)
+        const thead = document.getElementById('ganttThead');
+        let headerHtml = `<tr><th class="emp-col">الموظف / الموقع</th>`;
+        for (let d = 1; d <= daysInMonth; d++) {
+            headerHtml += `<th class="day-header">${d}</th>`;
+        }
+        headerHtml += `</tr>`;
+        thead.innerHTML = headerHtml;
+
+        // 2. تصفية الإجازات بحسب الموقع المالي المختار
+        let filteredVacs = cachedVacations.filter(v => v.status !== 'rejected');
+        if (selectedSite !== 'all') {
+            filteredVacs = filteredVacs.filter(v => (v.siteId || v.siteName) === selectedSite);
+        }
+
+        // 3. رادار كشف تداخل البدلاء لحساب خلايا التعارض
+        let conflictedIds = new Set();
+        for(let i=0; i<filteredVacs.length; i++) {
+            for(let j=i+1; j<filteredVacs.length; j++) {
+                let v1 = filteredVacs[i]; let v2 = filteredVacs[j];
+                if(v1.coverEmp && v1.coverEmp === v2.coverEmp) {
+                    if(v1.startDate <= v2.endDate && v1.endDate >= v2.startDate) {
+                        conflictedIds.add(v1.id);
+                        conflictedIds.add(v2.id);
+                    }
+                }
+            }
+        }
+
+        // 4. بناء الصفوف لكل موظف
+        const tbody = document.getElementById('ganttTbody');
+        tbody.innerHTML = "";
+
+        if(filteredVacs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${daysInMonth + 1}" style="text-align:center; color:#aaa; padding:20px;">لا توجد طلبات إجازات مسجلة لهذه الفترة المحددة.</td></tr>`;
+            return;
+        }
+
+        filteredVacs.forEach(vac => {
+            const siteDisplay = sitesMap[vac.siteId || vac.siteName] || vac.siteName || 'غير محدد';
+            let rowHtml = `<tr><td class="emp-col">${vac.empName}<br><span style="font-size:0.75em; font-weight:normal; color:var(--primary-light);">${siteDisplay}</span></td>`;
+            
+            // قراءة تواريخ الطلب
+            const startDate = new Date(vac.startDate);
+            const endDate = new Date(vac.endDate);
+
+            // المرور على كل يوم في الشهر ورسم الحالة بداخل المربع المقابل
+            for (let day = 1; day <= daysInMonth; day++) {
+                const currentDate = new Date(selectedYear, selectedMonth, day);
+                
+                let cellClass = "v-day";
+                let cellContent = "";
+                let cellTitle = "";
+
+                // هل يقع هذا اليوم داخل نطاق تواريخ طلب هذا الموظف؟
+                if (currentDate >= startDate && currentDate <= endDate) {
+                    if (conflictedIds.has(vac.id)) {
+                        cellClass += " v-day-conflict";
+                        cellContent = "⚠️";
+                        cellTitle = `تعارض: البديل (${vac.coverEmp || 'لم يحدد'}) مرتبط بطلبين متعارضين!`;
+                    } else if (vac.status === 'approved') {
+                        cellClass += " v-day-approved";
+                        cellContent = "✅";
+                        cellTitle = `إجازة معتمدة - البديل: ${vac.coverEmp || 'لم يحدد'}`;
+                    } else {
+                        cellClass += " v-day-pending";
+                        cellContent = "⏳";
+                        cellTitle = `طلب قيد المراجعة - البديل: ${vac.coverEmp || 'لم يحدد'}`;
+                    }
+                }
+
+                rowHtml += `<td class="${cellClass}" title="${cellTitle}">${cellContent}</td>`;
+            }
+            rowHtml += `</tr>`;
+            tbody.innerHTML += rowHtml;
+        });
+    }
+
+    // تشغيل الإعدادات الأولى عند تحميل الصفحة
+    window.onload = initCalendarPage;
+</script>
+</body>
+</html>
