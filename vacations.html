@@ -201,6 +201,13 @@
 
         <input type="hidden" id="reviewDocId">
         
+        <div class="input-box" style="margin-bottom:15px;">
+            <label>الموظف البديل (تحديد أو تعديل)</label>
+            <select id="reviewCoverEmp" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
+                <option value="">-- لم يحدد --</option>
+            </select>
+        </div>
+
         <div class="input-box">
             <label>حالة الطلب</label>
             <select id="reviewStatus" onchange="toggleRejectionNote()" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
@@ -240,8 +247,8 @@
 
     let currentUserRole = 'user'; 
     let sitesMap = {}; 
-    let conflictMessagesMap = {}; // خريطة لتخزين تفاصيل التعارضات
-    let activeStatFilter = 'all'; // الفلتر النشط من الإحصائيات
+    let conflictMessagesMap = {}; 
+    let activeStatFilter = 'all'; 
 
     document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
 
@@ -266,7 +273,7 @@
                 if(u.exists && u.data().role === 'admin') {
                     currentUserRole = 'admin';
                     document.getElementById('btnAddCoverEmp').style.display = 'block';
-                    document.getElementById('adminStatsArea').style.display = 'flex'; // إظهار الإحصائيات للأدمن
+                    document.getElementById('adminStatsArea').style.display = 'flex'; 
                 }
                 loadVacations(); 
             } else {
@@ -280,9 +287,15 @@
     function loadCoverEmps() {
         db.collection("alternative_employees").onSnapshot(snap => {
             const coverSelect = document.getElementById('coverEmp');
+            const reviewCoverSelect = document.getElementById('reviewCoverEmp'); // قائمة المودال للأدمن
+            
             coverSelect.innerHTML = '<option value="">-- يحدد لاحقاً --</option>';
+            reviewCoverSelect.innerHTML = '<option value="">-- لم يحدد --</option>';
+            
             snap.forEach(doc => {
-                coverSelect.innerHTML += `<option value="${doc.data().name}">${doc.data().name}</option>`;
+                const name = doc.data().name;
+                coverSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                reviewCoverSelect.innerHTML += `<option value="${name}">${name}</option>`;
             });
         });
     }
@@ -359,7 +372,6 @@
         }
     }
 
-    // فلترة سريعة عبر أزرار الإحصائيات
     function filterByStat(statType) {
         activeStatFilter = statType;
         applyFilters();
@@ -373,7 +385,7 @@
             let allVacs = [];
             let pCount = 0;
             let aCount = 0;
-            conflictMessagesMap = {}; // تفريغ الخريطة
+            conflictMessagesMap = {}; 
 
             snap.forEach(doc => {
                 let d = doc.data();
@@ -382,7 +394,6 @@
                 if(d.status === 'approved') aCount++;
             });
 
-            // اكتشاف التعارضات وحفظ التفاصيل
             let coverConflicts = new Set();
             for(let i=0; i<allVacs.length; i++) {
                 for(let j=i+1; j<allVacs.length; j++) {
@@ -393,7 +404,6 @@
                             coverConflicts.add(v1.id);
                             coverConflicts.add(v2.id);
                             
-                            // تسجيل تفاصيل رسالة التحذير لكل طلب
                             conflictMessagesMap[v1.id] = `⚠️ تنبيه: البديل (${v1.coverEmp}) مطلوب أيضاً لتغطية إجازة "${v2.empName}" في نفس الفترة تقريباً.`;
                             conflictMessagesMap[v2.id] = `⚠️ تنبيه: البديل (${v2.coverEmp}) مطلوب أيضاً لتغطية إجازة "${v1.empName}" في نفس الفترة تقريباً.`;
                         }
@@ -401,7 +411,6 @@
                 }
             }
             
-            // تحديث العدادات للأدمن
             document.getElementById('countPending').innerText = pCount;
             document.getElementById('countApproved').innerText = aCount;
             document.getElementById('countConflict').innerText = coverConflicts.size;
@@ -418,13 +427,13 @@
 
                 let actions = '';
                 if(currentUserRole === 'admin') {
-                    actions = `<button onclick="openReview('${val.id}', '${statusRaw}', '${val.notes||''}')" class="btn btn-outline" style="padding:4px 8px; font-size:0.8em; margin-bottom:5px;">مراجعة/اعتماد</button><br>`;
+                    // تم تعديل الاستدعاء ليرسل الـ ID فقط لنجلب أحدث البيانات من السيرفر فوراً
+                    actions = `<button onclick="openReview('${val.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:0.8em; margin-bottom:5px;">مراجعة/اعتماد</button><br>`;
                 }
                 if(currentUserRole === 'admin' || statusRaw === 'pending') {
                      actions += `<button onclick="deleteVacation('${val.id}')" class="btn btn-danger" style="padding:4px 8px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>`;
                 }
 
-                // عرض التحذير للأدمن
                 let conflictWarning = '';
                 let rowClass = 'data-row';
                 let isConflicted = 'false';
@@ -475,13 +484,17 @@
         }
     }
 
-    function openReview(id, currentStatus, currentNotes) {
+    // تم تعديل دالة المراجعة لتجلب وتحدث بيانات البديل
+    async function openReview(id) {
+        const doc = await db.collection("vacations").doc(id).get();
+        const d = doc.data();
+
         document.getElementById('reviewDocId').value = id;
-        document.getElementById('reviewStatus').value = currentStatus;
-        document.getElementById('reviewNotes').value = currentNotes;
+        document.getElementById('reviewStatus').value = d.status || 'pending';
+        document.getElementById('reviewNotes').value = d.notes || '';
+        document.getElementById('reviewCoverEmp').value = d.coverEmp || ''; // تعبئة البديل الحالي إن وجد
         toggleRejectionNote();
         
-        // إظهار الرسالة الذكية إذا كان هناك تعارض
         const alertBox = document.getElementById('modalConflictAlert');
         if(conflictMessagesMap[id]) {
             alertBox.innerText = conflictMessagesMap[id];
@@ -497,6 +510,7 @@
         const id = document.getElementById('reviewDocId').value;
         const newStatus = document.getElementById('reviewStatus').value;
         const newNotes = document.getElementById('reviewNotes').value;
+        const newCover = document.getElementById('reviewCoverEmp').value; // حفظ التعديل الذي قام به الأدمن
         
         if(newStatus === 'rejected' && newNotes.trim() === '') {
             return alert("يجب كتابة سبب الرفض في خانة الملاحظات للموظف!");
@@ -505,7 +519,8 @@
         try {
             await db.collection("vacations").doc(id).update({
                 status: newStatus,
-                notes: newNotes
+                notes: newNotes,
+                coverEmp: newCover
             });
             document.getElementById('reviewModal').style.display = 'none';
         } catch(e) { alert("خطأ: " + e.message); }
@@ -532,12 +547,10 @@
             const nameMatch = name.includes(nameFilter) || id.includes(nameFilter);
             const siteMatch = site.includes(siteFilter);
             
-            // فلتر الإحصائيات (زر التعارضات أو غيره)
             let statMatch = true;
             if(activeStatFilter === 'conflict') statMatch = (hasConflict === 'true');
             else if(activeStatFilter !== 'all') statMatch = (status === activeStatFilter);
 
-            // فلتر الحالة من الـ Dropdown العادي
             const normalStatusMatch = statusFilter === 'all' || status === statusFilter;
 
             if(nameMatch && siteMatch && statMatch && normalStatusMatch) {
