@@ -22,6 +22,25 @@
         
         /* ستايل التعارض الجديد للأدمن */
         .conflict-row { background-color: #fff3cd !important; border-right: 4px solid #ffc107; }
+        
+        /* ستايلات الإحصائيات التفاعلية */
+        .stats-cards-container { display: flex; gap: 15px; margin-bottom: 20px; }
+        .stat-card { flex: 1; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; cursor: pointer; transition: 0.3s; border: 1px solid transparent; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .stat-card h3 { margin: 0; font-size: 1em; color: #555; }
+        .stat-card p { margin: 10px 0 0 0; font-size: 1.8em; font-weight: bold; }
+        
+        .card-pending { border-bottom: 4px solid #f39c12; }
+        .card-pending p { color: #f39c12; }
+        
+        .card-approved { border-bottom: 4px solid #27ae60; }
+        .card-approved p { color: #27ae60; }
+        
+        .card-conflict { border-bottom: 4px solid #dc3545; background-color: #fff8f8; }
+        .card-conflict p { color: #dc3545; }
+        .card-conflict:hover { border-color: #dc3545; }
+
+        .modal-alert { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #f5c6cb; font-size: 0.9em; display: none; }
     </style>
 </head>
 <body>
@@ -59,6 +78,25 @@
             <button id="btnAddCoverEmp" onclick="openAddCoverEmpModal()" class="btn btn-warning" style="display: none; color: white;">
                 <i class="fa-solid fa-user-plus"></i> إضافة موظف بديل للقائمة
             </button>
+        </div>
+    </div>
+
+    <div class="stats-cards-container" id="adminStatsArea" style="display:none;">
+        <div class="stat-card card-pending" onclick="filterByStat('pending')">
+            <h3>قيد المراجعة</h3>
+            <p id="countPending">0</p>
+        </div>
+        <div class="stat-card card-approved" onclick="filterByStat('approved')">
+            <h3>تم الاعتماد</h3>
+            <p id="countApproved">0</p>
+        </div>
+        <div class="stat-card card-conflict" onclick="filterByStat('conflict')" title="اضغط لعرض التعارضات فقط">
+            <h3>تعارضات تحتاج تدخلك ⚠️</h3>
+            <p id="countConflict">0</p>
+        </div>
+        <div class="stat-card" style="border-bottom: 4px solid var(--primary);" onclick="filterByStat('all')">
+            <h3>عرض الكل</h3>
+            <p style="color:var(--primary); font-size: 1.2em; margin-top: 15px;"><i class="fa-solid fa-list"></i></p>
         </div>
     </div>
 
@@ -126,7 +164,7 @@
             <div class="input-box">
                 <label>المنطقة / الموقع *</label>
                 <select id="siteIdSelect" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
-                    </select>
+                </select>
             </div>
             
             <div class="input-box"><label>تاريخ آخر إجازة</label><input type="date" id="lastVacation"></div>
@@ -158,6 +196,9 @@
     <div class="modal-content" style="max-width: 400px;">
         <span class="close-modal" onclick="document.getElementById('reviewModal').style.display='none'">&times;</span>
         <h3 style="color:var(--primary); margin-top:0;">مراجعة طلب الإجازة</h3>
+        
+        <div id="modalConflictAlert" class="modal-alert"></div>
+
         <input type="hidden" id="reviewDocId">
         
         <div class="input-box">
@@ -199,12 +240,13 @@
 
     let currentUserRole = 'user'; 
     let sitesMap = {}; 
+    let conflictMessagesMap = {}; // خريطة لتخزين تفاصيل التعارضات
+    let activeStatFilter = 'all'; // الفلتر النشط من الإحصائيات
 
     document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
 
     async function initSystem() {
         try {
-            // جلب أسماء المواقع للقاموس وللقائمة المنسدلة
             const budgetsSnap = await db.collection('budgets').get();
             const siteSelect = document.getElementById('siteIdSelect');
             siteSelect.innerHTML = '<option value="">-- اختر الموقع --</option>';
@@ -224,6 +266,7 @@
                 if(u.exists && u.data().role === 'admin') {
                     currentUserRole = 'admin';
                     document.getElementById('btnAddCoverEmp').style.display = 'block';
+                    document.getElementById('adminStatsArea').style.display = 'flex'; // إظهار الإحصائيات للأدمن
                 }
                 loadVacations(); 
             } else {
@@ -279,26 +322,25 @@
         document.getElementById('addVacationModal').style.display = 'flex';
     }
 
-    // حفظ الطلب بدون منع، البديل اختياري
     async function saveVacation() {
         const data = {
             empName: document.getElementById('empName').value,
             empId: document.getElementById('empId').value,
             jobTitle: document.getElementById('jobTitle').value,
-            siteId: document.getElementById('siteIdSelect').value, // نحفظ الـ ID للموقع
+            siteId: document.getElementById('siteIdSelect').value,
             lastVacation: document.getElementById('lastVacation').value,
             balance: Number(document.getElementById('balance').value) || 0,
             startDate: document.getElementById('startDate').value,
             endDate: document.getElementById('endDate').value,
             reqDays: Number(document.getElementById('reqDays').value) || 0,
-            coverEmp: document.getElementById('coverEmp').value, // يمكن أن يكون فارغاً
+            coverEmp: document.getElementById('coverEmp').value, 
             status: 'pending',
             notes: '',
             createdAt: new Date().toISOString()
         };
 
         if(!data.empName || !data.empId || !data.siteId || !data.startDate || !data.endDate) {
-            return alert("يرجى تعبئة الحقول الأساسية (الاسم، الرقم الوظيفي، الموقع، والتواريخ)!");
+            return alert("يرجى تعبئة الحقول الأساسية المطلوبة!");
         }
 
         const btn = document.getElementById('saveVacBtn'); 
@@ -317,16 +359,30 @@
         }
     }
 
-    // جلب البيانات مع رادار التعارض
+    // فلترة سريعة عبر أزرار الإحصائيات
+    function filterByStat(statType) {
+        activeStatFilter = statType;
+        applyFilters();
+    }
+
     function loadVacations() {
         db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = "";
             
             let allVacs = [];
-            snap.forEach(doc => allVacs.push({id: doc.id, ...doc.data()}));
+            let pCount = 0;
+            let aCount = 0;
+            conflictMessagesMap = {}; // تفريغ الخريطة
 
-            // اكتشاف تعارض الموظف البديل لتنبيه الأدمن
+            snap.forEach(doc => {
+                let d = doc.data();
+                allVacs.push({id: doc.id, ...d});
+                if(d.status === 'pending') pCount++;
+                if(d.status === 'approved') aCount++;
+            });
+
+            // اكتشاف التعارضات وحفظ التفاصيل
             let coverConflicts = new Set();
             for(let i=0; i<allVacs.length; i++) {
                 for(let j=i+1; j<allVacs.length; j++) {
@@ -336,10 +392,19 @@
                         if(v1.startDate <= v2.endDate && v1.endDate >= v2.startDate) {
                             coverConflicts.add(v1.id);
                             coverConflicts.add(v2.id);
+                            
+                            // تسجيل تفاصيل رسالة التحذير لكل طلب
+                            conflictMessagesMap[v1.id] = `⚠️ تنبيه: البديل (${v1.coverEmp}) مطلوب أيضاً لتغطية إجازة "${v2.empName}" في نفس الفترة تقريباً.`;
+                            conflictMessagesMap[v2.id] = `⚠️ تنبيه: البديل (${v2.coverEmp}) مطلوب أيضاً لتغطية إجازة "${v1.empName}" في نفس الفترة تقريباً.`;
                         }
                     }
                 }
             }
+            
+            // تحديث العدادات للأدمن
+            document.getElementById('countPending').innerText = pCount;
+            document.getElementById('countApproved').innerText = aCount;
+            document.getElementById('countConflict').innerText = coverConflicts.size;
             
             allVacs.forEach(val => {
                 const savedSite = val.siteId || val.siteName; 
@@ -362,13 +427,16 @@
                 // عرض التحذير للأدمن
                 let conflictWarning = '';
                 let rowClass = 'data-row';
+                let isConflicted = 'false';
+
                 if(currentUserRole === 'admin' && coverConflicts.has(val.id)) {
                     rowClass += ' conflict-row';
+                    isConflicted = 'true';
                     conflictWarning = `<div style="color: #dc3545; font-size: 0.75em; font-weight: bold; margin-top: 5px;"><i class="fa-solid fa-triangle-exclamation"></i> البديل يغطي إجازة أخرى</div>`;
                 }
 
                 tbody.innerHTML += `
-                <tr class="${rowClass}" data-status="${statusRaw}">
+                <tr class="${rowClass}" data-status="${statusRaw}" data-conflict="${isConflicted}">
                     <td class="col-name">${val.empName || ''}</td>
                     <td class="col-id">${val.empId || ''}</td>
                     <td>${val.jobTitle || '-'}</td>
@@ -412,6 +480,16 @@
         document.getElementById('reviewStatus').value = currentStatus;
         document.getElementById('reviewNotes').value = currentNotes;
         toggleRejectionNote();
+        
+        // إظهار الرسالة الذكية إذا كان هناك تعارض
+        const alertBox = document.getElementById('modalConflictAlert');
+        if(conflictMessagesMap[id]) {
+            alertBox.innerText = conflictMessagesMap[id];
+            alertBox.style.display = 'block';
+        } else {
+            alertBox.style.display = 'none';
+        }
+
         document.getElementById('reviewModal').style.display = 'flex';
     }
 
@@ -449,12 +527,20 @@
             const id = row.querySelector('.col-id').innerText.toLowerCase();
             const site = row.querySelector('.col-site').innerText.toLowerCase();
             const status = row.getAttribute('data-status');
+            const hasConflict = row.getAttribute('data-conflict');
 
             const nameMatch = name.includes(nameFilter) || id.includes(nameFilter);
             const siteMatch = site.includes(siteFilter);
-            const statusMatch = statusFilter === 'all' || status === statusFilter;
+            
+            // فلتر الإحصائيات (زر التعارضات أو غيره)
+            let statMatch = true;
+            if(activeStatFilter === 'conflict') statMatch = (hasConflict === 'true');
+            else if(activeStatFilter !== 'all') statMatch = (status === activeStatFilter);
 
-            if(nameMatch && siteMatch && statusMatch) {
+            // فلتر الحالة من الـ Dropdown العادي
+            const normalStatusMatch = statusFilter === 'all' || status === statusFilter;
+
+            if(nameMatch && siteMatch && statMatch && normalStatusMatch) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
