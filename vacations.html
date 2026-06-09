@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة خطط الإجازات - FGC</title>
+    <title>إدارة خطط الإجازات المركزية - FGC</title>
     
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -20,18 +20,14 @@
         .badge-rejected { background-color: #c0392b; }
         .notes-text { font-size: 0.8em; color: #555; display: block; margin-top: 5px; }
         
-        /* شارات التوصيات والتعارض */
+        /* ستايل التعارض الجديد للأدمن */
         .conflict-row { background-color: #fff3cd !important; border-right: 4px solid #ffc107; }
-        .badge-conflict { background-color: #dc3545; font-size: 0.75em; margin-top: 5px; }
-        .badge-recommend { background-color: #17a2b8; font-size: 0.75em; margin-top: 5px; }
-        .recommendation-text { font-size: 0.8em; color: #17a2b8; font-weight: bold; margin-top: 5px; display: block; }
-        .conflict-text { font-size: 0.8em; color: #dc3545; font-weight: bold; margin-top: 5px; display: block; }
     </style>
 </head>
 <body>
 
 <div class="print-header">
-    <h1>خطة إجازات الموظفين</h1>
+    <h1>خطة إجازات الموظفين (المركزية)</h1>
     <p>تاريخ التقرير: <span id="printDate"></span></p>
 </div>
 
@@ -61,7 +57,7 @@
                 <i class="fa-solid fa-print"></i> طباعة
             </button>
             <button id="btnAddCoverEmp" onclick="openAddCoverEmpModal()" class="btn btn-warning" style="display: none; color: white;">
-                <i class="fa-solid fa-user-plus"></i> إضافة موظف بديل
+                <i class="fa-solid fa-user-plus"></i> إضافة موظف بديل للقائمة
             </button>
         </div>
     </div>
@@ -145,15 +141,15 @@
                 <div class="input-box"><label>عدد الأيام</label><input type="number" id="reqDays" readonly style="background:#eee;"></div>
             </div>
             <div class="input-box" style="margin-top: 10px;">
-                <label>الموظف البديل (التغطية) *</label>
+                <label>الموظف البديل (التغطية - اختياري)</label>
                 <select id="coverEmp" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
-                    <option value="">-- اختر الموظف البديل --</option>
-                    </select>
+                    <option value="">-- يحدد لاحقاً --</option>
+                </select>
             </div>
         </div>
         
         <div style="text-align: left; margin-top: 15px;">
-            <button onclick="saveVacation()" class="btn btn-success" style="width: 150px;">حفظ الطلب</button>
+            <button id="saveVacBtn" onclick="saveVacation()" class="btn btn-success" style="width: 150px;">حفظ الطلب</button>
         </div>
     </div>
 </div>
@@ -186,7 +182,7 @@
 <div id="addCoverEmpModal" class="modal-overlay">
     <div class="modal-content" style="max-width: 400px;">
         <span class="close-modal" onclick="document.getElementById('addCoverEmpModal').style.display='none'">&times;</span>
-        <h3 style="color:var(--primary); margin-top:0;">إضافة موظف بديل جديد للقائمة</h3>
+        <h3 style="color:var(--primary); margin-top:0;">إضافة موظف بديل جديد</h3>
         <div class="input-box">
             <label>اسم الموظف البديل *</label>
             <input type="text" id="newCoverEmpName">
@@ -208,7 +204,7 @@
 
     async function initSystem() {
         try {
-            // جلب المواقع
+            // جلب أسماء المواقع للقاموس وللقائمة المنسدلة
             const budgetsSnap = await db.collection('budgets').get();
             const siteSelect = document.getElementById('siteIdSelect');
             siteSelect.innerHTML = '<option value="">-- اختر الموقع --</option>';
@@ -218,10 +214,9 @@
                 siteSelect.innerHTML += `<option value="${doc.id}">${sitesMap[doc.id]}</option>`;
             });
 
-            // جلب قائمة الموظفين البدلاء
             loadCoverEmps();
 
-        } catch (e) { console.error("Error loading init data:", e); }
+        } catch (e) { console.error("Error:", e); }
 
         auth.onAuthStateChanged(async user => {
             if(user) {
@@ -239,11 +234,10 @@
 
     initSystem();
 
-    // جلب قائمة الموظفين البدلاء
     function loadCoverEmps() {
         db.collection("alternative_employees").onSnapshot(snap => {
             const coverSelect = document.getElementById('coverEmp');
-            coverSelect.innerHTML = '<option value="">-- اختر الموظف البديل --</option>';
+            coverSelect.innerHTML = '<option value="">-- يحدد لاحقاً --</option>';
             snap.forEach(doc => {
                 coverSelect.innerHTML += `<option value="${doc.data().name}">${doc.data().name}</option>`;
             });
@@ -285,110 +279,69 @@
         document.getElementById('addVacationModal').style.display = 'flex';
     }
 
+    // حفظ الطلب بدون منع، البديل اختياري
     async function saveVacation() {
-        const cEmp = document.getElementById('coverEmp').value;
-        const sDate = document.getElementById('startDate').value;
-        const eDate = document.getElementById('endDate').value;
-
-        // التحقق من تداخل الموظف البديل
-        if(cEmp && sDate && eDate) {
-            const coverCheck = await db.collection("vacations")
-                .where("coverEmp", "==", cEmp)
-                .where("status", "in", ["pending", "approved"])
-                .get();
-            
-            let hasOverlap = false;
-            coverCheck.forEach(doc => {
-                const v = doc.data();
-                if (sDate <= v.endDate && eDate >= v.startDate) { hasOverlap = true; }
-            });
-
-            if(hasOverlap) {
-                return alert(`عذراً، الموظف البديل (${cEmp}) يغطي بالفعل إجازة أخرى في هذه الفترة الزمنية! يرجى اختيار بديل آخر أو تغيير التواريخ.`);
-            }
-        }
-
         const data = {
             empName: document.getElementById('empName').value,
             empId: document.getElementById('empId').value,
             jobTitle: document.getElementById('jobTitle').value,
-            siteId: document.getElementById('siteIdSelect').value, // حفظ الـ ID
+            siteId: document.getElementById('siteIdSelect').value, // نحفظ الـ ID للموقع
             lastVacation: document.getElementById('lastVacation').value,
             balance: Number(document.getElementById('balance').value) || 0,
-            startDate: sDate,
-            endDate: eDate,
+            startDate: document.getElementById('startDate').value,
+            endDate: document.getElementById('endDate').value,
             reqDays: Number(document.getElementById('reqDays').value) || 0,
-            coverEmp: cEmp,
+            coverEmp: document.getElementById('coverEmp').value, // يمكن أن يكون فارغاً
             status: 'pending',
             notes: '',
             createdAt: new Date().toISOString()
         };
 
-        if(!data.empName || !data.empId || !data.siteId || !data.startDate || !data.endDate || !data.coverEmp) {
-            return alert("يرجى تعبئة الحقول الأساسية (بما فيها الموظف البديل)!");
+        if(!data.empName || !data.empId || !data.siteId || !data.startDate || !data.endDate) {
+            return alert("يرجى تعبئة الحقول الأساسية (الاسم، الرقم الوظيفي، الموقع، والتواريخ)!");
         }
 
-        const btn = event.target; 
-        btn.disabled = true; btn.innerText = "جاري الحفظ...";
+        const btn = document.getElementById('saveVacBtn'); 
+        btn.disabled = true; 
+        btn.innerText = "جاري الحفظ...";
 
         try {
             await db.collection("vacations").add(data);
             alert("تم تقديم الطلب بنجاح!");
             document.getElementById('addVacationModal').style.display = 'none';
-        } catch(e) { alert("خطأ أثناء الحفظ: " + e.message); } 
-        finally { btn.disabled = false; btn.innerText = "حفظ الطلب"; }
+        } catch(e) { 
+            alert("خطأ أثناء الحفظ: " + e.message); 
+        } finally { 
+            btn.disabled = false; 
+            btn.innerText = "حفظ الطلب"; 
+        }
     }
 
+    // جلب البيانات مع رادار التعارض
     function loadVacations() {
         db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = "";
             
-            let allVacations = [];
-            snap.forEach(doc => allVacations.push({id: doc.id, ...doc.data()}));
+            let allVacs = [];
+            snap.forEach(doc => allVacs.push({id: doc.id, ...doc.data()}));
 
-            // 1. حساب التعارضات والتوصيات
-            let siteGroups = {};
-            allVacations.forEach(v => {
-                if(v.status !== 'rejected') { 
-                   const sId = v.siteId || v.siteName;
-                   if(!siteGroups[sId]) siteGroups[sId] = [];
-                   siteGroups[sId].push(v);
-                }
-            });
-
-            let conflicts = {}; 
-            Object.keys(siteGroups).forEach(site => {
-                let siteVacs = siteGroups[site];
-                let siteConflictGroup = new Set();
-                for(let i=0; i<siteVacs.length; i++) {
-                    for(let j=i+1; j<siteVacs.length; j++) {
-                        if(siteVacs[i].startDate <= siteVacs[j].endDate && siteVacs[i].endDate >= siteVacs[j].startDate) {
-                            siteConflictGroup.add(siteVacs[i]);
-                            siteConflictGroup.add(siteVacs[j]);
+            // اكتشاف تعارض الموظف البديل لتنبيه الأدمن
+            let coverConflicts = new Set();
+            for(let i=0; i<allVacs.length; i++) {
+                for(let j=i+1; j<allVacs.length; j++) {
+                    let v1 = allVacs[i];
+                    let v2 = allVacs[j];
+                    if(v1.status !== 'rejected' && v2.status !== 'rejected' && v1.coverEmp && v1.coverEmp === v2.coverEmp) {
+                        if(v1.startDate <= v2.endDate && v1.endDate >= v2.startDate) {
+                            coverConflicts.add(v1.id);
+                            coverConflicts.add(v2.id);
                         }
                     }
                 }
-                
-                if(siteConflictGroup.size > 0) {
-                    let conflictArr = Array.from(siteConflictGroup);
-                    // الأولوية: تاريخ أقدم، ثم رصيد أعلى
-                    conflictArr.sort((a, b) => {
-                        let dateA = a.lastVacation || '1970-01-01'; // لو مفيش تاريخ، نعتبره قديم جداً أولوية
-                        let dateB = b.lastVacation || '1970-01-01';
-                        if(dateA !== dateB) return dateA.localeCompare(dateB); 
-                        return (b.balance || 0) - (a.balance || 0); 
-                    });
-
-                    let bestId = conflictArr[0].id;
-                    conflictArr.forEach(v => {
-                       conflicts[v.id] = { isConflict: true, isRecommended: (v.id === bestId) };
-                    });
-                }
-            });
-
-            // 2. رسم الجدول
-            allVacations.forEach(val => {
+            }
+            
+            allVacs.forEach(val => {
                 const savedSite = val.siteId || val.siteName; 
                 const displaySiteName = sitesMap[savedSite] ? sitesMap[savedSite] : (savedSite || 'غير محدد');
 
@@ -406,16 +359,12 @@
                      actions += `<button onclick="deleteVacation('${val.id}')" class="btn btn-danger" style="padding:4px 8px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>`;
                 }
 
-                // علامات التعارض والتوصية للأدمن
-                let conflictMsg = '';
+                // عرض التحذير للأدمن
+                let conflictWarning = '';
                 let rowClass = 'data-row';
-                if(currentUserRole === 'admin' && conflicts[val.id]) {
+                if(currentUserRole === 'admin' && coverConflicts.has(val.id)) {
                     rowClass += ' conflict-row';
-                    if(conflicts[val.id].isRecommended) {
-                        conflictMsg = `<span class="badge badge-recommend"><i class="fa-solid fa-star"></i> يوصى بالموافقة (الأولوية)</span>`;
-                    } else {
-                        conflictMsg = `<span class="badge badge-conflict"><i class="fa-solid fa-triangle-exclamation"></i> تعارض تواريخ في نفس الموقع</span>`;
-                    }
+                    conflictWarning = `<div style="color: #dc3545; font-size: 0.75em; font-weight: bold; margin-top: 5px;"><i class="fa-solid fa-triangle-exclamation"></i> البديل يغطي إجازة أخرى</div>`;
                 }
 
                 tbody.innerHTML += `
@@ -423,16 +372,16 @@
                     <td class="col-name">${val.empName || ''}</td>
                     <td class="col-id">${val.empId || ''}</td>
                     <td>${val.jobTitle || '-'}</td>
-                    <td class="col-site">${displaySiteName}</td>
+                    <td class="col-site" style="font-weight:bold; color:var(--primary);">${displaySiteName}</td>
                     <td>${val.lastVacation || '-'}</td>
                     <td>${val.balance || 0}</td>
                     <td>${val.startDate || ''}</td>
                     <td>${val.endDate || ''}</td>
                     <td style="font-weight:bold;">${val.reqDays || 0}</td>
-                    <td>${val.coverEmp || '-'}</td>
+                    <td>${val.coverEmp || '<span style="color:#aaa;">لم يحدد</span>'}</td>
                     <td>
                         ${statusBadge}
-                        ${conflictMsg}
+                        ${conflictWarning}
                         ${val.notes ? `<span class="notes-text">${val.notes}</span>` : ''}
                     </td>
                     <td class="col-action">${actions}</td>
@@ -442,7 +391,6 @@
         });
     }
 
-    // إجبار الملاحظات في حالة الرفض
     function toggleRejectionNote() {
         const status = document.getElementById('reviewStatus').value;
         const notesField = document.getElementById('reviewNotes');
@@ -477,7 +425,10 @@
         }
 
         try {
-            await db.collection("vacations").doc(id).update({ status: newStatus, notes: newNotes });
+            await db.collection("vacations").doc(id).update({
+                status: newStatus,
+                notes: newNotes
+            });
             document.getElementById('reviewModal').style.display = 'none';
         } catch(e) { alert("خطأ: " + e.message); }
     }
@@ -503,8 +454,11 @@
             const siteMatch = site.includes(siteFilter);
             const statusMatch = statusFilter === 'all' || status === statusFilter;
 
-            if(nameMatch && siteMatch && statusMatch) row.style.display = '';
-            else row.style.display = 'none';
+            if(nameMatch && siteMatch && statusMatch) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
         });
     }
 
