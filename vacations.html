@@ -19,6 +19,13 @@
         .badge-approved { background-color: #27ae60; }
         .badge-rejected { background-color: #c0392b; }
         .notes-text { font-size: 0.8em; color: #555; display: block; margin-top: 5px; }
+        
+        /* شارات التوصيات والتعارض */
+        .conflict-row { background-color: #fff3cd !important; border-right: 4px solid #ffc107; }
+        .badge-conflict { background-color: #dc3545; font-size: 0.75em; margin-top: 5px; }
+        .badge-recommend { background-color: #17a2b8; font-size: 0.75em; margin-top: 5px; }
+        .recommendation-text { font-size: 0.8em; color: #17a2b8; font-weight: bold; margin-top: 5px; display: block; }
+        .conflict-text { font-size: 0.8em; color: #dc3545; font-weight: bold; margin-top: 5px; display: block; }
     </style>
 </head>
 <body>
@@ -43,7 +50,7 @@
             </div>
         </div>
         
-        <div id="actionButtons" style="display:flex; gap: 10px;">
+        <div id="actionButtons" style="display:flex; gap: 10px; flex-wrap: wrap;">
             <button onclick="openAddModal()" class="btn btn-primary">
                 <i class="fa-solid fa-plane-departure"></i> تقديم طلب إجازة
             </button>
@@ -52,6 +59,9 @@
             </button>
             <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333;">
                 <i class="fa-solid fa-print"></i> طباعة
+            </button>
+            <button id="btnAddCoverEmp" onclick="openAddCoverEmpModal()" class="btn btn-warning" style="display: none; color: white;">
+                <i class="fa-solid fa-user-plus"></i> إضافة موظف بديل
             </button>
         </div>
     </div>
@@ -105,8 +115,24 @@
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
             <div class="input-box"><label>اسم الموظف *</label><input type="text" id="empName"></div>
             <div class="input-box"><label>الرقم الوظيفي *</label><input type="number" id="empId"></div>
-            <div class="input-box"><label>المسمى الوظيفي</label><input type="text" id="jobTitle"></div>
-            <div class="input-box"><label>المنطقة / الموقع *</label><input type="text" id="siteName"></div>
+            
+            <div class="input-box">
+                <label>المسمى الوظيفي *</label>
+                <select id="jobTitle" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
+                    <option value="مدير الموقع">مدير الموقع</option>
+                    <option value="مهندس (س)">مهندس (س)</option>
+                    <option value="مهندس (ج)">مهندس (ج)</option>
+                    <option value="فني (س)">فني (س)</option>
+                    <option value="فني (ج)">فني (ج)</option>
+                </select>
+            </div>
+            
+            <div class="input-box">
+                <label>المنطقة / الموقع *</label>
+                <select id="siteIdSelect" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
+                    </select>
+            </div>
+            
             <div class="input-box"><label>تاريخ آخر إجازة</label><input type="date" id="lastVacation"></div>
             <div class="input-box"><label>رصيد الإجازات المتاح (أيام)</label><input type="number" id="balance"></div>
         </div>
@@ -119,7 +145,10 @@
                 <div class="input-box"><label>عدد الأيام</label><input type="number" id="reqDays" readonly style="background:#eee;"></div>
             </div>
             <div class="input-box" style="margin-top: 10px;">
-                <label>الموظف البديل (التغطية) *</label><input type="text" id="coverEmp">
+                <label>الموظف البديل (التغطية) *</label>
+                <select id="coverEmp" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
+                    <option value="">-- اختر الموظف البديل --</option>
+                    </select>
             </div>
         </div>
         
@@ -137,15 +166,15 @@
         
         <div class="input-box">
             <label>حالة الطلب</label>
-            <select id="reviewStatus" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
+            <select id="reviewStatus" onchange="toggleRejectionNote()" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
                 <option value="pending">قيد المراجعة</option>
                 <option value="approved">معتمد</option>
                 <option value="rejected">مرفوض</option>
             </select>
         </div>
         <div class="input-box" style="margin-top:15px;">
-            <label>ملاحظات (اختياري)</label>
-            <textarea id="reviewNotes" rows="3" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;"></textarea>
+            <label id="lblReviewNotes">ملاحظات (إجباري في حالة الرفض)</label>
+            <textarea id="reviewNotes" rows="3" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc; transition: 0.3s;"></textarea>
         </div>
         
         <div style="text-align: left; margin-top: 15px;">
@@ -154,47 +183,88 @@
     </div>
 </div>
 
+<div id="addCoverEmpModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 400px;">
+        <span class="close-modal" onclick="document.getElementById('addCoverEmpModal').style.display='none'">&times;</span>
+        <h3 style="color:var(--primary); margin-top:0;">إضافة موظف بديل جديد للقائمة</h3>
+        <div class="input-box">
+            <label>اسم الموظف البديل *</label>
+            <input type="text" id="newCoverEmpName">
+        </div>
+        <button onclick="saveCoverEmp()" class="btn btn-warning" style="width: 100%; margin-top: 15px; color:white;">حفظ الموظف</button>
+    </div>
+</div>
+
 <script>
-    // إعدادات Firebase
     const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
 
     let currentUserRole = 'user'; 
-    let sitesMap = {}; // قاموس لحفظ أسماء المواقع وربطها بالـ ID
+    let sitesMap = {}; 
 
     document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
 
-    // 1. التشغيل الأولي: جلب المواقع ثم التحقق من المستخدم
     async function initSystem() {
         try {
-            // جلب أسماء المواقع من مجموعة budgets (التي تحتوي على المشاريع/المواقع)
+            // جلب المواقع
             const budgetsSnap = await db.collection('budgets').get();
+            const siteSelect = document.getElementById('siteIdSelect');
+            siteSelect.innerHTML = '<option value="">-- اختر الموقع --</option>';
+            
             budgetsSnap.forEach(doc => {
-                // حفظ الـ ID كـ Key، والاسم كـ Value
                 sitesMap[doc.id] = doc.data().itemName || "موقع بدون اسم"; 
+                siteSelect.innerHTML += `<option value="${doc.id}">${sitesMap[doc.id]}</option>`;
             });
-        } catch (e) {
-            console.error("لم نتمكن من جلب أسماء المواقع:", e);
-        }
 
-        // التحقق من الصلاحيات بعد جلب القاموس
+            // جلب قائمة الموظفين البدلاء
+            loadCoverEmps();
+
+        } catch (e) { console.error("Error loading init data:", e); }
+
         auth.onAuthStateChanged(async user => {
             if(user) {
                 const u = await db.collection('users').doc(user.uid).get();
-                if(u.exists) currentUserRole = u.data().role;
-                loadVacations(); // تحميل الإجازات الآن
+                if(u.exists && u.data().role === 'admin') {
+                    currentUserRole = 'admin';
+                    document.getElementById('btnAddCoverEmp').style.display = 'block';
+                }
+                loadVacations(); 
             } else {
                 window.location.href = "index.html";
             }
         });
     }
 
-    // بدء تشغيل النظام
     initSystem();
 
-    // حساب عدد الأيام تلقائياً
+    // جلب قائمة الموظفين البدلاء
+    function loadCoverEmps() {
+        db.collection("alternative_employees").onSnapshot(snap => {
+            const coverSelect = document.getElementById('coverEmp');
+            coverSelect.innerHTML = '<option value="">-- اختر الموظف البديل --</option>';
+            snap.forEach(doc => {
+                coverSelect.innerHTML += `<option value="${doc.data().name}">${doc.data().name}</option>`;
+            });
+        });
+    }
+
+    function openAddCoverEmpModal() {
+        document.getElementById('newCoverEmpName').value = '';
+        document.getElementById('addCoverEmpModal').style.display = 'flex';
+    }
+
+    async function saveCoverEmp() {
+        const name = document.getElementById('newCoverEmpName').value;
+        if(!name) return alert("يرجى إدخال الاسم");
+        try {
+            await db.collection("alternative_employees").add({ name: name, createdAt: new Date() });
+            document.getElementById('addCoverEmpModal').style.display = 'none';
+            alert("تم الإضافة بنجاح");
+        } catch(e) { alert(e.message); }
+    }
+
     function calcDays() {
         const start = document.getElementById('startDate').value;
         const end = document.getElementById('endDate').value;
@@ -209,64 +279,118 @@
 
     function openAddModal() {
         document.querySelectorAll('#addVacationModal input').forEach(i => i.value = '');
+        document.getElementById('jobTitle').selectedIndex = 0;
+        document.getElementById('siteIdSelect').selectedIndex = 0;
+        document.getElementById('coverEmp').selectedIndex = 0;
         document.getElementById('addVacationModal').style.display = 'flex';
     }
 
-    // حفظ طلب جديد (تم تنظيف الدالة من كل الأخطاء البرمجية)
     async function saveVacation() {
+        const cEmp = document.getElementById('coverEmp').value;
+        const sDate = document.getElementById('startDate').value;
+        const eDate = document.getElementById('endDate').value;
+
+        // التحقق من تداخل الموظف البديل
+        if(cEmp && sDate && eDate) {
+            const coverCheck = await db.collection("vacations")
+                .where("coverEmp", "==", cEmp)
+                .where("status", "in", ["pending", "approved"])
+                .get();
+            
+            let hasOverlap = false;
+            coverCheck.forEach(doc => {
+                const v = doc.data();
+                if (sDate <= v.endDate && eDate >= v.startDate) { hasOverlap = true; }
+            });
+
+            if(hasOverlap) {
+                return alert(`عذراً، الموظف البديل (${cEmp}) يغطي بالفعل إجازة أخرى في هذه الفترة الزمنية! يرجى اختيار بديل آخر أو تغيير التواريخ.`);
+            }
+        }
+
         const data = {
             empName: document.getElementById('empName').value,
             empId: document.getElementById('empId').value,
             jobTitle: document.getElementById('jobTitle').value,
-            siteName: document.getElementById('siteName').value,
+            siteId: document.getElementById('siteIdSelect').value, // حفظ الـ ID
             lastVacation: document.getElementById('lastVacation').value,
             balance: Number(document.getElementById('balance').value) || 0,
-            startDate: document.getElementById('startDate').value,
-            endDate: document.getElementById('endDate').value,
+            startDate: sDate,
+            endDate: eDate,
             reqDays: Number(document.getElementById('reqDays').value) || 0,
-            coverEmp: document.getElementById('coverEmp').value,
+            coverEmp: cEmp,
             status: 'pending',
             notes: '',
             createdAt: new Date().toISOString()
         };
 
-        if(!data.empName || !data.empId || !data.siteName || !data.startDate || !data.endDate) {
-            return alert("يرجى تعبئة الحقول الأساسية (الاسم، الرقم الوظيفي، الموقع، والتواريخ)!");
+        if(!data.empName || !data.empId || !data.siteId || !data.startDate || !data.endDate || !data.coverEmp) {
+            return alert("يرجى تعبئة الحقول الأساسية (بما فيها الموظف البديل)!");
         }
 
         const btn = event.target; 
-        btn.disabled = true; 
-        btn.innerText = "جاري الحفظ...";
+        btn.disabled = true; btn.innerText = "جاري الحفظ...";
 
         try {
             await db.collection("vacations").add(data);
             alert("تم تقديم الطلب بنجاح!");
             document.getElementById('addVacationModal').style.display = 'none';
-        } catch(e) { 
-            alert("خطأ أثناء الحفظ: " + e.message); 
-        } finally { 
-            btn.disabled = false; 
-            btn.innerText = "حفظ الطلب"; 
-        }
+        } catch(e) { alert("خطأ أثناء الحفظ: " + e.message); } 
+        finally { btn.disabled = false; btn.innerText = "حفظ الطلب"; }
     }
 
-    // جلب ورسم البيانات مع ترجمة الـ ID للاسم الحقيقي
-    // جلب ورسم البيانات مع ترجمة الـ ID للاسم الحقيقي
     function loadVacations() {
         db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = "";
             
-            snap.forEach(doc => {
-                const val = doc.data();
+            let allVacations = [];
+            snap.forEach(doc => allVacations.push({id: doc.id, ...doc.data()}));
+
+            // 1. حساب التعارضات والتوصيات
+            let siteGroups = {};
+            allVacations.forEach(v => {
+                if(v.status !== 'rejected') { 
+                   const sId = v.siteId || v.siteName;
+                   if(!siteGroups[sId]) siteGroups[sId] = [];
+                   siteGroups[sId].push(v);
+                }
+            });
+
+            let conflicts = {}; 
+            Object.keys(siteGroups).forEach(site => {
+                let siteVacs = siteGroups[site];
+                let siteConflictGroup = new Set();
+                for(let i=0; i<siteVacs.length; i++) {
+                    for(let j=i+1; j<siteVacs.length; j++) {
+                        if(siteVacs[i].startDate <= siteVacs[j].endDate && siteVacs[i].endDate >= siteVacs[j].startDate) {
+                            siteConflictGroup.add(siteVacs[i]);
+                            siteConflictGroup.add(siteVacs[j]);
+                        }
+                    }
+                }
                 
-                // --- السحر هنا (تم التعديل بناءً على صور الداتا بيز) ---
-                // 1. نقرأ الـ siteId من الداتا بيز (ولو مش موجود نشوف siteName كبديل للطلبات القديمة)
+                if(siteConflictGroup.size > 0) {
+                    let conflictArr = Array.from(siteConflictGroup);
+                    // الأولوية: تاريخ أقدم، ثم رصيد أعلى
+                    conflictArr.sort((a, b) => {
+                        let dateA = a.lastVacation || '1970-01-01'; // لو مفيش تاريخ، نعتبره قديم جداً أولوية
+                        let dateB = b.lastVacation || '1970-01-01';
+                        if(dateA !== dateB) return dateA.localeCompare(dateB); 
+                        return (b.balance || 0) - (a.balance || 0); 
+                    });
+
+                    let bestId = conflictArr[0].id;
+                    conflictArr.forEach(v => {
+                       conflicts[v.id] = { isConflict: true, isRecommended: (v.id === bestId) };
+                    });
+                }
+            });
+
+            // 2. رسم الجدول
+            allVacations.forEach(val => {
                 const savedSite = val.siteId || val.siteName; 
-                
-                // 2. نسأل القاموس: هل هذا الـ ID يمتلك اسماً في جدول budgets؟
                 const displaySiteName = sitesMap[savedSite] ? sitesMap[savedSite] : (savedSite || 'غير محدد');
-                // ----------------------------------------------------
 
                 let statusBadge = '';
                 let statusRaw = val.status || 'pending';
@@ -276,18 +400,31 @@
 
                 let actions = '';
                 if(currentUserRole === 'admin') {
-                    actions = `<button onclick="openReview('${doc.id}', '${statusRaw}', '${val.notes||''}')" class="btn btn-outline" style="padding:4px 8px; font-size:0.8em; margin-bottom:5px;">مراجعة/اعتماد</button><br>`;
+                    actions = `<button onclick="openReview('${val.id}', '${statusRaw}', '${val.notes||''}')" class="btn btn-outline" style="padding:4px 8px; font-size:0.8em; margin-bottom:5px;">مراجعة/اعتماد</button><br>`;
                 }
                 if(currentUserRole === 'admin' || statusRaw === 'pending') {
-                     actions += `<button onclick="deleteVacation('${doc.id}')" class="btn btn-danger" style="padding:4px 8px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>`;
+                     actions += `<button onclick="deleteVacation('${val.id}')" class="btn btn-danger" style="padding:4px 8px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>`;
+                }
+
+                // علامات التعارض والتوصية للأدمن
+                let conflictMsg = '';
+                let rowClass = 'data-row';
+                if(currentUserRole === 'admin' && conflicts[val.id]) {
+                    rowClass += ' conflict-row';
+                    if(conflicts[val.id].isRecommended) {
+                        conflictMsg = `<span class="badge badge-recommend"><i class="fa-solid fa-star"></i> يوصى بالموافقة (الأولوية)</span>`;
+                    } else {
+                        conflictMsg = `<span class="badge badge-conflict"><i class="fa-solid fa-triangle-exclamation"></i> تعارض تواريخ في نفس الموقع</span>`;
+                    }
                 }
 
                 tbody.innerHTML += `
-                <tr class="data-row" data-status="${statusRaw}">
+                <tr class="${rowClass}" data-status="${statusRaw}">
                     <td class="col-name">${val.empName || ''}</td>
                     <td class="col-id">${val.empId || ''}</td>
                     <td>${val.jobTitle || '-'}</td>
-                    <td class="col-site" style="font-weight:bold; color:var(--primary);">${displaySiteName}</td> <td>${val.lastVacation || '-'}</td>
+                    <td class="col-site">${displaySiteName}</td>
+                    <td>${val.lastVacation || '-'}</td>
                     <td>${val.balance || 0}</td>
                     <td>${val.startDate || ''}</td>
                     <td>${val.endDate || ''}</td>
@@ -295,6 +432,7 @@
                     <td>${val.coverEmp || '-'}</td>
                     <td>
                         ${statusBadge}
+                        ${conflictMsg}
                         ${val.notes ? `<span class="notes-text">${val.notes}</span>` : ''}
                     </td>
                     <td class="col-action">${actions}</td>
@@ -304,10 +442,28 @@
         });
     }
 
+    // إجبار الملاحظات في حالة الرفض
+    function toggleRejectionNote() {
+        const status = document.getElementById('reviewStatus').value;
+        const notesField = document.getElementById('reviewNotes');
+        const lbl = document.getElementById('lblReviewNotes');
+        
+        if(status === 'rejected') {
+            notesField.style.borderColor = 'red';
+            lbl.style.color = 'red';
+            lbl.innerText = "سبب الرفض (إجباري) *";
+        } else {
+            notesField.style.borderColor = '#ccc';
+            lbl.style.color = 'var(--text-dark)';
+            lbl.innerText = "ملاحظات (اختياري)";
+        }
+    }
+
     function openReview(id, currentStatus, currentNotes) {
         document.getElementById('reviewDocId').value = id;
         document.getElementById('reviewStatus').value = currentStatus;
         document.getElementById('reviewNotes').value = currentNotes;
+        toggleRejectionNote();
         document.getElementById('reviewModal').style.display = 'flex';
     }
 
@@ -316,11 +472,12 @@
         const newStatus = document.getElementById('reviewStatus').value;
         const newNotes = document.getElementById('reviewNotes').value;
         
+        if(newStatus === 'rejected' && newNotes.trim() === '') {
+            return alert("يجب كتابة سبب الرفض في خانة الملاحظات للموظف!");
+        }
+
         try {
-            await db.collection("vacations").doc(id).update({
-                status: newStatus,
-                notes: newNotes
-            });
+            await db.collection("vacations").doc(id).update({ status: newStatus, notes: newNotes });
             document.getElementById('reviewModal').style.display = 'none';
         } catch(e) { alert("خطأ: " + e.message); }
     }
@@ -346,11 +503,8 @@
             const siteMatch = site.includes(siteFilter);
             const statusMatch = statusFilter === 'all' || status === statusFilter;
 
-            if(nameMatch && siteMatch && statusMatch) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+            if(nameMatch && siteMatch && statusMatch) row.style.display = '';
+            else row.style.display = 'none';
         });
     }
 
@@ -381,6 +535,5 @@
         downloadLink.click();
     }
 </script>
-
 </body>
 </html>
