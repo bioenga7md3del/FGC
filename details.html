@@ -16,12 +16,13 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
-        /* ستايلات إضافية للإجازات */
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: bold; color: white; display: inline-block;}
         .badge-pending { background-color: #f39c12; }
         .badge-approved { background-color: #27ae60; }
         .badge-rejected { background-color: #c0392b; }
         .notes-text { font-size: 0.8em; color: #555; display: block; margin-top: 5px; font-style: italic; }
+        /* ستايل التعارض الجديد للأدمن */
+        .conflict-row { background-color: #fff3cd !important; border-right: 4px solid #ffc107; }
     </style>
 </head>
 <body>
@@ -220,9 +221,9 @@
             <div class="input-box"><label>تاريخ آخر إجازة</label><input type="date" id="vacLastDate"></div>
             
             <div class="input-box">
-                <label>الموظف البديل (التغطية) *</label>
+                <label>الموظف البديل (اختياري)</label>
                 <select id="vacCoverEmp" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
-                    <option value="">-- اختر الموظف البديل --</option>
+                    <option value="">-- يحدد لاحقاً --</option>
                 </select>
             </div>
         </div>
@@ -317,7 +318,6 @@
         return `${year}-${month}-${day}`;
     }
 
-    // حساب أيام الإجازة تلقائياً
     function calcVacationDays() {
         const start = document.getElementById('vacStartDate').value;
         const end = document.getElementById('vacEndDate').value;
@@ -330,11 +330,10 @@
         }
     }
 
-    // جلب قائمة الموظفين البدلاء من الداتا بيز للكومبو بوكس
     function loadCoverEmps() {
         db.collection("alternative_employees").onSnapshot(snap => {
             const coverSelect = document.getElementById('vacCoverEmp');
-            coverSelect.innerHTML = '<option value="">-- اختر الموظف البديل --</option>';
+            coverSelect.innerHTML = '<option value="">-- يحدد لاحقاً --</option>';
             snap.forEach(doc => {
                 coverSelect.innerHTML += `<option value="${doc.data().name}">${doc.data().name}</option>`;
             });
@@ -365,7 +364,7 @@
             
             document.getElementById('headerVacActions').style.display = canEdit ? 'table-cell' : 'none';
 
-            loadCoverEmps(); // تشغيل دالة جلب البدلاء المعتمدين
+            loadCoverEmps(); 
             loadPageData(canSeeProfit, canEdit);
             initChart();
         } else {
@@ -386,7 +385,6 @@
             applyFilters(); 
         });
 
-        // جلب المعاملات المالية
         db.collection("budgets").doc(siteId).collection("transactions").orderBy("orderNumber", "desc").onSnapshot(snap => {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = "";
@@ -425,14 +423,33 @@
             applyFilters();
         });
 
-        // جلب خطة الإجازات المرتبطة بالموقع الحالي
+        // جلب خطة الإجازات
         db.collection("vacations").where("siteId", "==", siteId).onSnapshot(snap => {
             const vacTbody = document.getElementById('vacationTableBody');
             vacTbody.innerHTML = "";
             
-            snap.forEach(doc => {
-                const val = doc.data();
-                
+            let allVacs = [];
+            snap.forEach(doc => allVacs.push({id: doc.id, ...doc.data()}));
+            
+            // ترتيب الإجازات (الأحدث أولاً)
+            allVacs.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+
+            // اكتشاف تعارض الموظف البديل لتنبيه الأدمن فقط
+            let coverConflicts = new Set();
+            for(let i=0; i<allVacs.length; i++) {
+                for(let j=i+1; j<allVacs.length; j++) {
+                    let v1 = allVacs[i];
+                    let v2 = allVacs[j];
+                    if(v1.status !== 'rejected' && v2.status !== 'rejected' && v1.coverEmp && v1.coverEmp === v2.coverEmp) {
+                        if(v1.startDate <= v2.endDate && v1.endDate >= v2.startDate) {
+                            coverConflicts.add(v1.id);
+                            coverConflicts.add(v2.id);
+                        }
+                    }
+                }
+            }
+
+            allVacs.forEach(val => {
                 let badge = '';
                 if(val.status === 'pending') badge = '<span class="badge badge-pending">قيد المراجعة</span>';
                 if(val.status === 'approved') badge = '<span class="badge badge-approved">معتمد ✅</span>';
@@ -443,16 +460,24 @@
                     if(currentUserRole === 'admin' || val.status === 'pending') {
                         actionCell = `
                         <td>
-                            <button onclick="editVacation('${doc.id}')" class="btn btn-outline" style="padding:4px 6px; font-size:0.8em;"><i class="fa-solid fa-pen"></i></button>
-                            <button onclick="deleteVacation('${doc.id}')" class="btn btn-danger" style="padding:4px 6px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                            <button onclick="editVacation('${val.id}')" class="btn btn-outline" style="padding:4px 6px; font-size:0.8em;"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteVacation('${val.id}')" class="btn btn-danger" style="padding:4px 6px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>
                         </td>`;
                     } else {
                         actionCell = `<td>-</td>`;
                     }
                 }
 
+                // عرض التحذير للأدمن لو فيه تعارض
+                let conflictWarning = '';
+                let rowClass = '';
+                if(currentUserRole === 'admin' && coverConflicts.has(val.id)) {
+                    rowClass = 'conflict-row';
+                    conflictWarning = `<div style="color: #dc3545; font-size: 0.75em; font-weight: bold; margin-top: 5px;"><i class="fa-solid fa-triangle-exclamation"></i> البديل يغطي إجازة أخرى</div>`;
+                }
+
                 vacTbody.innerHTML += `
-                <tr>
+                <tr class="${rowClass}">
                     <td><b>${val.empName}</b></td>
                     <td>${val.empId}</td>
                     <td>${val.jobTitle || '-'}</td>
@@ -461,9 +486,10 @@
                     <td>${val.startDate}</td>
                     <td>${val.endDate}</td>
                     <td>${val.reqDays}</td>
-                    <td>${val.coverEmp || '-'}</td>
+                    <td>${val.coverEmp || '<span style="color:#aaa;">لم يحدد</span>'}</td>
                     <td>
                         ${badge}
+                        ${conflictWarning}
                         ${val.notes ? `<span class="notes-text">${val.notes}</span>` : ''}
                     </td>
                     ${canEdit ? actionCell : ''}
@@ -511,7 +537,7 @@
         updateChart(visibleSpent, currentBalance);
     }
 
-    // --- دالات التحكم بالإجازات ---
+    function Gav(id) { return document.getElementById(id).value; }
     function openVacationModal() {
         document.getElementById('editVacationId').value = "";
         document.getElementById('vacationModalTitle').innerText = "تقديم طلب إجازة جديد";
@@ -529,36 +555,14 @@
         document.getElementById('vacationModal').classList.add('show');
     }
 
-    function closeModal() { document.getElementById('transactionModal').classList.remove('show'); }
-    function Gav(id) { return document.getElementById(id).value; }
-
     function closeVacationModal() { document.getElementById('vacationModal').classList.remove('show'); }
 
-    // الدالة المصححة لحفظ الإجازات مع التحقق من عدم التداخل وبدون أخطاء target
+    // الحفظ يتم فوراً بدون منع (مع إزالة coverEmp من الشروط الإجبارية)
     async function saveVacation() {
         const id = document.getElementById('editVacationId').value;
         const cEmp = Gav('vacCoverEmp');
         const sDate = Gav('vacStartDate');
         const eDate = Gav('vacEndDate');
-
-        // الحماية البرمجية لمنع الموظف البديل من تغطية طلبين في نفس الوقت
-        if(cEmp && sDate && eDate) {
-            const coverCheck = await db.collection("vacations")
-                .where("coverEmp", "==", cEmp)
-                .where("status", "in", ["pending", "approved"])
-                .get();
-            
-            let hasOverlap = false;
-            coverCheck.forEach(doc => {
-                if(id && doc.id === id) return; // تخطي الطلب الحالي لو كنا بنعدله
-                const v = doc.data();
-                if (sDate <= v.endDate && eDate >= v.startDate) { hasOverlap = true; }
-            });
-
-            if(hasOverlap) {
-                return alert(`عذراً، الموظف البديل (${cEmp}) مرتبط بالفعل بتغطية إجازة أخرى في هذه الفترة الزمنية! يرجى اختيار بديل آخر.`);
-            }
-        }
 
         const data = {
             siteId: siteId,
@@ -567,7 +571,7 @@
             jobTitle: Gav('vacJobTitle'),
             balance: Number(Gav('vacBalance')) || 0,
             lastVacation: Gav('vacLastDate'),
-            coverEmp: cEmp,
+            coverEmp: cEmp, // يمكن أن يكون فارغاً
             startDate: sDate,
             endDate: eDate,
             reqDays: Number(Gav('vacReqDays')) || 0,
@@ -575,12 +579,11 @@
             notes: Gav('vacNotes') || ''
         };
 
-        if(!data.empName || !data.empId || !data.startDate || !data.endDate || !data.coverEmp) {
-            return alert("يرجى تعبئة الحقول الأساسية المطلوبة مع اختيار الموظف البديل!");
+        if(!data.empName || !data.empId || !data.startDate || !data.endDate) {
+            return alert("يرجى تعبئة الحقول الأساسية (الاسم، الرقم الوظيفي، وتواريخ الإجازة)!");
         }
 
-        // استخدام الكود المعرف الثابت للزر لتجنب انهيار الـ target
-        const btn = document.getElementById('saveVacBtn'); 
+        const btn = document.getElementById('saveVacBtn');
         btn.disabled = true; btn.innerText = "جاري الحفظ...";
         
         try {
@@ -591,7 +594,6 @@
                 await db.collection("vacations").add(data);
             }
             closeVacationModal();
-            alert("تم حفظ طلب الإجازة بنجاح!");
         } catch(e) { alert("خطأ: " + e.message); }
         finally { btn.disabled = false; btn.innerText = "حفظ الطلب"; }
     }
@@ -632,7 +634,7 @@
         }
     }
 
-    // --- دالات المالية التابعة للنظام الأساسي ---
+    // --- المعاملات المالية ---
     function openModal() { 
         document.getElementById('editTransId').value=""; 
         document.getElementById('modalTitle').innerText="تسجيل معاملة جديدة"; 
@@ -641,6 +643,8 @@
         else { document.getElementById('divRatio').style.display = 'none'; }
         document.getElementById('transactionModal').classList.add('show'); 
     }
+
+    function closeModal() { document.getElementById('transactionModal').classList.remove('show'); }
 
     async function saveTransaction() {
         const id=document.getElementById('editTransId').value;
