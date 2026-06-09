@@ -20,10 +20,8 @@
         .badge-rejected { background-color: #c0392b; }
         .notes-text { font-size: 0.8em; color: #555; display: block; margin-top: 5px; }
         
-        /* ستايل التعارض الجديد للأدمن */
         .conflict-row { background-color: #fff3cd !important; border-right: 4px solid #ffc107; }
         
-        /* ستايلات الإحصائيات التفاعلية */
         .stats-cards-container { display: flex; gap: 15px; margin-bottom: 20px; }
         .stat-card { flex: 1; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; cursor: pointer; transition: 0.3s; border: 1px solid transparent; }
         .stat-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
@@ -32,15 +30,17 @@
         
         .card-pending { border-bottom: 4px solid #f39c12; }
         .card-pending p { color: #f39c12; }
-        
         .card-approved { border-bottom: 4px solid #27ae60; }
         .card-approved p { color: #27ae60; }
-        
         .card-conflict { border-bottom: 4px solid #dc3545; background-color: #fff8f8; }
         .card-conflict p { color: #dc3545; }
         .card-conflict:hover { border-color: #dc3545; }
 
-        .modal-alert { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #f5c6cb; font-size: 0.9em; display: none; }
+        /* ستايلات الرسائل الذكية */
+        .modal-alert { padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 0.9em; display: none; line-height: 1.5; }
+        .modal-alert-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .modal-alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .btn-sm { padding: 5px 10px; font-size: 0.8em; border-radius: 3px; }
     </style>
 </head>
 <body>
@@ -51,52 +51,37 @@
 </div>
 
 <div class="container">
-    
     <div class="header-bar">
         <div class="header-title-box">
             <img src="FGC.jpeg" alt="Logo" class="logo-img" style="max-height: 60px;">
             <div>
                 <h2 style="margin:0; color: var(--primary);">إدارة خطط الإجازات</h2>
                 <div style="margin-top: 5px;">
-                    <a href="dashboard.html" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px;">
-                        <i class="fa-solid fa-house"></i> الرئيسية
-                    </a>
+                    <a href="dashboard.html" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px;"><i class="fa-solid fa-house"></i> الرئيسية</a>
                 </div>
             </div>
         </div>
         
         <div id="actionButtons" style="display:flex; gap: 10px; flex-wrap: wrap;">
-            <button onclick="openAddModal()" class="btn btn-primary">
-                <i class="fa-solid fa-plane-departure"></i> تقديم طلب إجازة
-            </button>
-            <button onclick="exportTableToCSV('خطة_الاجازات.csv')" class="btn btn-success" style="background: #217346;">
-                <i class="fa-solid fa-file-excel"></i> تصدير Excel
-            </button>
-            <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333;">
-                <i class="fa-solid fa-print"></i> طباعة
-            </button>
-            <button id="btnAddCoverEmp" onclick="openAddCoverEmpModal()" class="btn btn-warning" style="display: none; color: white;">
-                <i class="fa-solid fa-user-plus"></i> إضافة موظف بديل للقائمة
-            </button>
+            <button onclick="openAddModal()" class="btn btn-primary"><i class="fa-solid fa-plane-departure"></i> تقديم طلب إجازة</button>
+            <button onclick="exportTableToCSV('خطة_الاجازات.csv')" class="btn btn-success" style="background: #217346;"><i class="fa-solid fa-file-excel"></i> تصدير Excel</button>
+            <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333;"><i class="fa-solid fa-print"></i> طباعة</button>
+            <button id="btnAddCoverEmp" onclick="openAddCoverEmpModal()" class="btn btn-warning" style="display: none; color: white;"><i class="fa-solid fa-user-plus"></i> إضافة موظف بديل للقائمة</button>
         </div>
     </div>
 
     <div class="stats-cards-container" id="adminStatsArea" style="display:none;">
         <div class="stat-card card-pending" onclick="filterByStat('pending')">
-            <h3>قيد المراجعة</h3>
-            <p id="countPending">0</p>
+            <h3>قيد المراجعة</h3><p id="countPending">0</p>
         </div>
         <div class="stat-card card-approved" onclick="filterByStat('approved')">
-            <h3>تم الاعتماد</h3>
-            <p id="countApproved">0</p>
+            <h3>تم الاعتماد</h3><p id="countApproved">0</p>
         </div>
         <div class="stat-card card-conflict" onclick="filterByStat('conflict')" title="اضغط لعرض التعارضات فقط">
-            <h3>تعارضات تحتاج تدخلك ⚠️</h3>
-            <p id="countConflict">0</p>
+            <h3>تعارضات تحتاج تدخلك ⚠️</h3><p id="countConflict">0</p>
         </div>
         <div class="stat-card" style="border-bottom: 4px solid var(--primary);" onclick="filterByStat('all')">
-            <h3>عرض الكل</h3>
-            <p style="color:var(--primary); font-size: 1.2em; margin-top: 15px;"><i class="fa-solid fa-list"></i></p>
+            <h3>عرض الكل</h3><p style="color:var(--primary); font-size: 1.2em; margin-top: 15px;"><i class="fa-solid fa-list"></i></p>
         </div>
     </div>
 
@@ -121,18 +106,9 @@
             <table id="vacationsTable">
                 <thead>
                     <tr>
-                        <th>الموظف</th>
-                        <th>الرقم الوظيفي</th>
-                        <th>الوظيفة</th>
-                        <th>الموقع</th>
-                        <th>آخر إجازة</th>
-                        <th>الرصيد المتاح</th>
-                        <th>البداية المقترحة</th>
-                        <th>النهاية</th>
-                        <th>أيام</th>
-                        <th>الموظف البديل</th>
-                        <th>الحالة والملاحظات</th>
-                        <th class="col-action">تحكم</th>
+                        <th>الموظف</th><th>الرقم الوظيفي</th><th>الوظيفة</th><th>الموقع</th><th>آخر إجازة</th>
+                        <th>الرصيد المتاح</th><th>البداية المقترحة</th><th>النهاية</th><th>أيام</th>
+                        <th>الموظف البديل</th><th>الحالة والملاحظات</th><th class="col-action">تحكم</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody"></tbody>
@@ -149,24 +125,13 @@
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
             <div class="input-box"><label>اسم الموظف *</label><input type="text" id="empName"></div>
             <div class="input-box"><label>الرقم الوظيفي *</label><input type="number" id="empId"></div>
-            
             <div class="input-box">
                 <label>المسمى الوظيفي *</label>
                 <select id="jobTitle" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
-                    <option value="مدير الموقع">مدير الموقع</option>
-                    <option value="مهندس (س)">مهندس (س)</option>
-                    <option value="مهندس (ج)">مهندس (ج)</option>
-                    <option value="فني (س)">فني (س)</option>
-                    <option value="فني (ج)">فني (ج)</option>
+                    <option value="مدير الموقع">مدير الموقع</option><option value="مهندس (س)">مهندس (س)</option><option value="مهندس (ج)">مهندس (ج)</option><option value="فني (س)">فني (س)</option><option value="فني (ج)">فني (ج)</option>
                 </select>
             </div>
-            
-            <div class="input-box">
-                <label>المنطقة / الموقع *</label>
-                <select id="siteIdSelect" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
-                </select>
-            </div>
-            
+            <div class="input-box"><label>المنطقة / الموقع *</label><select id="siteIdSelect" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;"></select></div>
             <div class="input-box"><label>تاريخ آخر إجازة</label><input type="date" id="lastVacation"></div>
             <div class="input-box"><label>رصيد الإجازات المتاح (أيام)</label><input type="number" id="balance"></div>
         </div>
@@ -178,12 +143,7 @@
                 <div class="input-box"><label>نهاية الإجازة *</label><input type="date" id="endDate" onchange="calcDays()"></div>
                 <div class="input-box"><label>عدد الأيام</label><input type="number" id="reqDays" readonly style="background:#eee;"></div>
             </div>
-            <div class="input-box" style="margin-top: 10px;">
-                <label>الموظف البديل (التغطية - اختياري)</label>
-                <select id="coverEmp" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
-                    <option value="">-- يحدد لاحقاً --</option>
-                </select>
-            </div>
+            <div class="input-box" style="margin-top: 10px;"><label>الموظف البديل (اختياري)</label><select id="coverEmp" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;"><option value="">-- يحدد لاحقاً --</option></select></div>
         </div>
         
         <div style="text-align: left; margin-top: 15px;">
@@ -193,19 +153,22 @@
 </div>
 
 <div id="reviewModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 400px;">
+    <div class="modal-content" style="max-width: 450px;">
         <span class="close-modal" onclick="document.getElementById('reviewModal').style.display='none'">&times;</span>
         <h3 style="color:var(--primary); margin-top:0;">مراجعة طلب الإجازة</h3>
         
-        <div id="modalConflictAlert" class="modal-alert"></div>
+        <div id="modalRecommendationAlert" class="modal-alert"></div>
 
         <input type="hidden" id="reviewDocId">
         
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+            <div class="input-box"><label>تعديل بداية الإجازة</label><input type="date" id="reviewStartDate" style="border-color: var(--accent);"></div>
+            <div class="input-box"><label>تعديل نهاية الإجازة</label><input type="date" id="reviewEndDate" style="border-color: var(--accent);"></div>
+        </div>
+
         <div class="input-box" style="margin-bottom:15px;">
-            <label>الموظف البديل (تحديد أو تعديل)</label>
-            <select id="reviewCoverEmp" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
-                <option value="">-- لم يحدد --</option>
-            </select>
+            <label>الموظف البديل</label>
+            <select id="reviewCoverEmp" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;"><option value="">-- لم يحدد --</option></select>
         </div>
 
         <div class="input-box">
@@ -216,13 +179,14 @@
                 <option value="rejected">مرفوض</option>
             </select>
         </div>
+        
         <div class="input-box" style="margin-top:15px;">
             <label id="lblReviewNotes">ملاحظات (إجباري في حالة الرفض)</label>
             <textarea id="reviewNotes" rows="3" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc; transition: 0.3s;"></textarea>
         </div>
         
         <div style="text-align: left; margin-top: 15px;">
-            <button onclick="submitReview()" class="btn btn-primary" style="width: 100%;">تحديث الحالة</button>
+            <button onclick="submitReview()" class="btn btn-primary" style="width: 100%;">تحديث وحفظ التعديلات</button>
         </div>
     </div>
 </div>
@@ -231,10 +195,7 @@
     <div class="modal-content" style="max-width: 400px;">
         <span class="close-modal" onclick="document.getElementById('addCoverEmpModal').style.display='none'">&times;</span>
         <h3 style="color:var(--primary); margin-top:0;">إضافة موظف بديل جديد</h3>
-        <div class="input-box">
-            <label>اسم الموظف البديل *</label>
-            <input type="text" id="newCoverEmpName">
-        </div>
+        <div class="input-box"><label>اسم الموظف البديل *</label><input type="text" id="newCoverEmpName"></div>
         <button onclick="saveCoverEmp()" class="btn btn-warning" style="width: 100%; margin-top: 15px; color:white;">حفظ الموظف</button>
     </div>
 </div>
@@ -247,7 +208,7 @@
 
     let currentUserRole = 'user'; 
     let sitesMap = {}; 
-    let conflictMessagesMap = {}; 
+    let recommendationsMap = {}; // خريطة لتخزين التوصيات الذكية
     let activeStatFilter = 'all'; 
 
     document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
@@ -257,14 +218,11 @@
             const budgetsSnap = await db.collection('budgets').get();
             const siteSelect = document.getElementById('siteIdSelect');
             siteSelect.innerHTML = '<option value="">-- اختر الموقع --</option>';
-            
             budgetsSnap.forEach(doc => {
                 sitesMap[doc.id] = doc.data().itemName || "موقع بدون اسم"; 
                 siteSelect.innerHTML += `<option value="${doc.id}">${sitesMap[doc.id]}</option>`;
             });
-
             loadCoverEmps();
-
         } catch (e) { console.error("Error:", e); }
 
         auth.onAuthStateChanged(async user => {
@@ -287,11 +245,9 @@
     function loadCoverEmps() {
         db.collection("alternative_employees").onSnapshot(snap => {
             const coverSelect = document.getElementById('coverEmp');
-            const reviewCoverSelect = document.getElementById('reviewCoverEmp'); // قائمة المودال للأدمن
-            
+            const reviewCoverSelect = document.getElementById('reviewCoverEmp'); 
             coverSelect.innerHTML = '<option value="">-- يحدد لاحقاً --</option>';
             reviewCoverSelect.innerHTML = '<option value="">-- لم يحدد --</option>';
-            
             snap.forEach(doc => {
                 const name = doc.data().name;
                 coverSelect.innerHTML += `<option value="${name}">${name}</option>`;
@@ -311,7 +267,6 @@
         try {
             await db.collection("alternative_employees").add({ name: name, createdAt: new Date() });
             document.getElementById('addCoverEmpModal').style.display = 'none';
-            alert("تم الإضافة بنجاح");
         } catch(e) { alert(e.message); }
     }
 
@@ -321,9 +276,8 @@
         if(start && end) {
             const d1 = new Date(start);
             const d2 = new Date(end);
-            const timeDiff = d2.getTime() - d1.getTime();
-            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; 
-            document.getElementById('reqDays').value = daysDiff > 0 ? daysDiff : 0;
+            const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24)) + 1; 
+            document.getElementById('reqDays').value = diff > 0 ? diff : 0;
         }
     }
 
@@ -353,23 +307,16 @@
         };
 
         if(!data.empName || !data.empId || !data.siteId || !data.startDate || !data.endDate) {
-            return alert("يرجى تعبئة الحقول الأساسية المطلوبة!");
+            return alert("يرجى تعبئة الحقول الأساسية!");
         }
 
         const btn = document.getElementById('saveVacBtn'); 
-        btn.disabled = true; 
-        btn.innerText = "جاري الحفظ...";
-
+        btn.disabled = true; btn.innerText = "جاري الحفظ...";
         try {
             await db.collection("vacations").add(data);
-            alert("تم تقديم الطلب بنجاح!");
             document.getElementById('addVacationModal').style.display = 'none';
-        } catch(e) { 
-            alert("خطأ أثناء الحفظ: " + e.message); 
-        } finally { 
-            btn.disabled = false; 
-            btn.innerText = "حفظ الطلب"; 
-        }
+        } catch(e) { alert("خطأ: " + e.message); } 
+        finally { btn.disabled = false; btn.innerText = "حفظ الطلب"; }
     }
 
     function filterByStat(statType) {
@@ -377,15 +324,15 @@
         applyFilters();
     }
 
+    // تطبيق خوارزمية الفرز والتوصيات الذكية
     function loadVacations() {
         db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = "";
             
             let allVacs = [];
-            let pCount = 0;
-            let aCount = 0;
-            conflictMessagesMap = {}; 
+            let pCount = 0, aCount = 0;
+            recommendationsMap = {}; 
 
             snap.forEach(doc => {
                 let d = doc.data();
@@ -394,43 +341,97 @@
                 if(d.status === 'approved') aCount++;
             });
 
-            let coverConflicts = new Set();
-            for(let i=0; i<allVacs.length; i++) {
-                for(let j=i+1; j<allVacs.length; j++) {
-                    let v1 = allVacs[i];
-                    let v2 = allVacs[j];
-                    if(v1.status !== 'rejected' && v2.status !== 'rejected' && v1.coverEmp && v1.coverEmp === v2.coverEmp) {
-                        if(v1.startDate <= v2.endDate && v1.endDate >= v2.startDate) {
-                            coverConflicts.add(v1.id);
-                            coverConflicts.add(v2.id);
-                            
-                            conflictMessagesMap[v1.id] = `⚠️ تنبيه: البديل (${v1.coverEmp}) مطلوب أيضاً لتغطية إجازة "${v2.empName}" في نفس الفترة تقريباً.`;
-                            conflictMessagesMap[v2.id] = `⚠️ تنبيه: البديل (${v2.coverEmp}) مطلوب أيضاً لتغطية إجازة "${v1.empName}" في نفس الفترة تقريباً.`;
-                        }
+            // تجميع الإجازات حسب الموظف البديل
+            let coverGroups = {};
+            allVacs.forEach(v => {
+                if (v.status !== 'rejected' && v.coverEmp) {
+                    if (!coverGroups[v.coverEmp]) coverGroups[v.coverEmp] = [];
+                    coverGroups[v.coverEmp].push(v);
+                }
+            });
+
+            let conflictCount = 0;
+
+            Object.keys(coverGroups).forEach(emp => {
+                let reqs = coverGroups[emp];
+                if (reqs.length < 2) return;
+
+                // تجميع المتعارضين في "عناقيد" بناءً على التاريخ
+                reqs.sort((a, b) => a.startDate.localeCompare(b.startDate));
+                let clusters = [];
+                let currentCluster = [reqs[0]];
+                let clusterEnd = reqs[0].endDate;
+
+                for (let i = 1; i < reqs.length; i++) {
+                    if (reqs[i].startDate <= clusterEnd) {
+                        currentCluster.push(reqs[i]);
+                        if (reqs[i].endDate > clusterEnd) clusterEnd = reqs[i].endDate;
+                    } else {
+                        clusters.push(currentCluster);
+                        currentCluster = [reqs[i]];
+                        clusterEnd = reqs[i].endDate;
                     }
                 }
-            }
+                clusters.push(currentCluster);
+
+                // معالجة كل عنقود متعارض لاستخراج التوصية
+                clusters.forEach(cluster => {
+                    if (cluster.length > 1) {
+                        conflictCount += cluster.length;
+                        
+                        // الفرز والمفاضلة: الأقدم في الإجازة ثم الأكبر رصيداً
+                        cluster.sort((a, b) => {
+                            let dateA = a.lastVacation || '1900-01-01'; 
+                            let dateB = b.lastVacation || '1900-01-01';
+                            if (dateA !== dateB) return dateA.localeCompare(dateB);
+                            return (b.balance || 0) - (a.balance || 0);
+                        });
+
+                        let winner = cluster[0];
+                        recommendationsMap[winner.id] = { type: 'winner', count: cluster.length - 1 };
+
+                        for (let i = 1; i < cluster.length; i++) {
+                            let loser = cluster[i];
+                            
+                            // حساب التاريخ البديل المقترح (بعد انتهاء إجازة الفائز بيوم)
+                            let wEnd = new Date(winner.endDate);
+                            wEnd.setDate(wEnd.getDate() + 1);
+                            let suggStartStr = wEnd.toISOString().split('T')[0];
+
+                            let lDays = loser.reqDays || 1;
+                            let sEnd = new Date(wEnd);
+                            sEnd.setDate(sEnd.getDate() + lDays - 1);
+                            let suggEndStr = sEnd.toISOString().split('T')[0];
+
+                            recommendationsMap[loser.id] = {
+                                type: 'loser',
+                                winnerName: winner.empName,
+                                winnerLastVac: winner.lastVacation || 'لم يأخذ من قبل',
+                                suggStart: suggStartStr,
+                                suggEnd: suggEndStr
+                            };
+                        }
+                    }
+                });
+            });
             
             document.getElementById('countPending').innerText = pCount;
             document.getElementById('countApproved').innerText = aCount;
-            document.getElementById('countConflict').innerText = coverConflicts.size;
+            document.getElementById('countConflict').innerText = conflictCount;
             
             allVacs.forEach(val => {
-                const savedSite = val.siteId || val.siteName; 
-                const displaySiteName = sitesMap[savedSite] ? sitesMap[savedSite] : (savedSite || 'غير محدد');
+                const displaySiteName = sitesMap[val.siteId || val.siteName] || (val.siteId || val.siteName || 'غير محدد');
 
                 let statusBadge = '';
-                let statusRaw = val.status || 'pending';
-                if(statusRaw === 'pending') statusBadge = '<span class="badge badge-pending">قيد المراجعة</span>';
-                else if(statusRaw === 'approved') statusBadge = '<span class="badge badge-approved">معتمد</span>';
-                else if(statusRaw === 'rejected') statusBadge = '<span class="badge badge-rejected">مرفوض</span>';
+                if(val.status === 'pending') statusBadge = '<span class="badge badge-pending">قيد المراجعة</span>';
+                else if(val.status === 'approved') statusBadge = '<span class="badge badge-approved">معتمد</span>';
+                else if(val.status === 'rejected') statusBadge = '<span class="badge badge-rejected">مرفوض</span>';
 
                 let actions = '';
                 if(currentUserRole === 'admin') {
-                    // تم تعديل الاستدعاء ليرسل الـ ID فقط لنجلب أحدث البيانات من السيرفر فوراً
                     actions = `<button onclick="openReview('${val.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:0.8em; margin-bottom:5px;">مراجعة/اعتماد</button><br>`;
                 }
-                if(currentUserRole === 'admin' || statusRaw === 'pending') {
+                if(currentUserRole === 'admin' || val.status === 'pending') {
                      actions += `<button onclick="deleteVacation('${val.id}')" class="btn btn-danger" style="padding:4px 8px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>`;
                 }
 
@@ -438,14 +439,19 @@
                 let rowClass = 'data-row';
                 let isConflicted = 'false';
 
-                if(currentUserRole === 'admin' && coverConflicts.has(val.id)) {
-                    rowClass += ' conflict-row';
+                if(currentUserRole === 'admin' && recommendationsMap[val.id]) {
                     isConflicted = 'true';
-                    conflictWarning = `<div style="color: #dc3545; font-size: 0.75em; font-weight: bold; margin-top: 5px;"><i class="fa-solid fa-triangle-exclamation"></i> البديل يغطي إجازة أخرى</div>`;
+                    let rec = recommendationsMap[val.id];
+                    if (rec.type === 'winner') {
+                        conflictWarning = `<div style="color: #28a745; font-size: 0.75em; font-weight: bold; margin-top: 5px;"><i class="fa-solid fa-star"></i> الأولوية له</div>`;
+                    } else {
+                        rowClass += ' conflict-row';
+                        conflictWarning = `<div style="color: #dc3545; font-size: 0.75em; font-weight: bold; margin-top: 5px;"><i class="fa-solid fa-triangle-exclamation"></i> تعارض (يوجد بديل مقترح)</div>`;
+                    }
                 }
 
                 tbody.innerHTML += `
-                <tr class="${rowClass}" data-status="${statusRaw}" data-conflict="${isConflicted}">
+                <tr class="${rowClass}" data-status="${val.status || 'pending'}" data-conflict="${isConflicted}">
                     <td class="col-name">${val.empName || ''}</td>
                     <td class="col-id">${val.empId || ''}</td>
                     <td>${val.jobTitle || '-'}</td>
@@ -456,11 +462,7 @@
                     <td>${val.endDate || ''}</td>
                     <td style="font-weight:bold;">${val.reqDays || 0}</td>
                     <td>${val.coverEmp || '<span style="color:#aaa;">لم يحدد</span>'}</td>
-                    <td>
-                        ${statusBadge}
-                        ${conflictWarning}
-                        ${val.notes ? `<span class="notes-text">${val.notes}</span>` : ''}
-                    </td>
+                    <td>${statusBadge} ${conflictWarning} ${val.notes ? `<span class="notes-text">${val.notes}</span>` : ''}</td>
                     <td class="col-action">${actions}</td>
                 </tr>`;
             });
@@ -472,19 +474,19 @@
         const status = document.getElementById('reviewStatus').value;
         const notesField = document.getElementById('reviewNotes');
         const lbl = document.getElementById('lblReviewNotes');
-        
         if(status === 'rejected') {
-            notesField.style.borderColor = 'red';
-            lbl.style.color = 'red';
-            lbl.innerText = "سبب الرفض (إجباري) *";
+            notesField.style.borderColor = 'red'; lbl.style.color = 'red'; lbl.innerText = "سبب الرفض (إجباري) *";
         } else {
-            notesField.style.borderColor = '#ccc';
-            lbl.style.color = 'var(--text-dark)';
-            lbl.innerText = "ملاحظات (اختياري)";
+            notesField.style.borderColor = '#ccc'; lbl.style.color = 'var(--text-dark)'; lbl.innerText = "ملاحظات (اختياري)";
         }
     }
 
-    // تم تعديل دالة المراجعة لتجلب وتحدث بيانات البديل
+    // تطبيق التواريخ المقترحة آلياً في المودال
+    function applySuggDates(start, end) {
+        document.getElementById('reviewStartDate').value = start;
+        document.getElementById('reviewEndDate').value = end;
+    }
+
     async function openReview(id) {
         const doc = await db.collection("vacations").doc(id).get();
         const d = doc.data();
@@ -492,13 +494,30 @@
         document.getElementById('reviewDocId').value = id;
         document.getElementById('reviewStatus').value = d.status || 'pending';
         document.getElementById('reviewNotes').value = d.notes || '';
-        document.getElementById('reviewCoverEmp').value = d.coverEmp || ''; // تعبئة البديل الحالي إن وجد
+        document.getElementById('reviewCoverEmp').value = d.coverEmp || ''; 
+        document.getElementById('reviewStartDate').value = d.startDate || '';
+        document.getElementById('reviewEndDate').value = d.endDate || '';
+        
         toggleRejectionNote();
         
-        const alertBox = document.getElementById('modalConflictAlert');
-        if(conflictMessagesMap[id]) {
-            alertBox.innerText = conflictMessagesMap[id];
-            alertBox.style.display = 'block';
+        // إظهار الرسالة الذكية والتوصية إذا كان هناك تعارض
+        const alertBox = document.getElementById('modalRecommendationAlert');
+        if(recommendationsMap[id]) {
+            let rec = recommendationsMap[id];
+            if (rec.type === 'loser') {
+                alertBox.className = 'modal-alert modal-alert-warning';
+                alertBox.innerHTML = `
+                    <i class="fa-solid fa-lightbulb"></i> <b>توصية النظام:</b>
+                    الموظف <b>${rec.winnerName}</b> أولى بهذه الفترة الزمنية لأن آخر إجازة له أقدم (${rec.winnerLastVac}).<br>
+                    📅 <b>التاريخ البديل المقترح لهذا الطلب:</b> من ${rec.suggStart} إلى ${rec.suggEnd}.
+                    <button type="button" class="btn btn-primary btn-sm" style="margin-top:8px; display:block;" onclick="applySuggDates('${rec.suggStart}', '${rec.suggEnd}')">تطبيق التاريخ المقترح</button>
+                `;
+                alertBox.style.display = 'block';
+            } else if (rec.type === 'winner') {
+                alertBox.className = 'modal-alert modal-alert-success';
+                alertBox.innerHTML = `<i class="fa-solid fa-star"></i> <b>توصية النظام:</b> هذا الموظف له <b>الأولوية</b> في هذه الفترة الزمنية مقارنة بـ ${rec.count} طلبات متعارضة أخرى.`;
+                alertBox.style.display = 'block';
+            }
         } else {
             alertBox.style.display = 'none';
         }
@@ -510,17 +529,30 @@
         const id = document.getElementById('reviewDocId').value;
         const newStatus = document.getElementById('reviewStatus').value;
         const newNotes = document.getElementById('reviewNotes').value;
-        const newCover = document.getElementById('reviewCoverEmp').value; // حفظ التعديل الذي قام به الأدمن
+        const newCover = document.getElementById('reviewCoverEmp').value;
+        const newStart = document.getElementById('reviewStartDate').value;
+        const newEnd = document.getElementById('reviewEndDate').value;
         
         if(newStatus === 'rejected' && newNotes.trim() === '') {
-            return alert("يجب كتابة سبب الرفض في خانة الملاحظات للموظف!");
+            return alert("يجب كتابة سبب الرفض!");
+        }
+
+        // إعادة حساب عدد الأيام في حال قام الأدمن بتعديل أو تطبيق التواريخ المقترحة
+        let updatedReqDays = 0;
+        if(newStart && newEnd) {
+            const d1 = new Date(newStart);
+            const d2 = new Date(newEnd);
+            updatedReqDays = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24)) + 1;
         }
 
         try {
             await db.collection("vacations").doc(id).update({
                 status: newStatus,
                 notes: newNotes,
-                coverEmp: newCover
+                coverEmp: newCover,
+                startDate: newStart,
+                endDate: newEnd,
+                reqDays: updatedReqDays > 0 ? updatedReqDays : 0
             });
             document.getElementById('reviewModal').style.display = 'none';
         } catch(e) { alert("خطأ: " + e.message); }
@@ -553,11 +585,8 @@
 
             const normalStatusMatch = statusFilter === 'all' || status === statusFilter;
 
-            if(nameMatch && siteMatch && statMatch && normalStatusMatch) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+            if(nameMatch && siteMatch && statMatch && normalStatusMatch) row.style.display = '';
+            else row.style.display = 'none';
         });
     }
 
@@ -578,7 +607,6 @@
             }
             csv.push(row.join(","));
         }
-        
         let csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
         let downloadLink = document.createElement("a");
         downloadLink.download = filename;
