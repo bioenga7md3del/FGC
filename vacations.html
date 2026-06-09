@@ -251,6 +251,7 @@
     }
 
     // جلب ورسم البيانات مع ترجمة الـ ID للاسم الحقيقي
+    // جلب ورسم البيانات مع ترجمة الـ ID للاسم الحقيقي
     function loadVacations() {
         db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
             const tbody = document.getElementById('tableBody');
@@ -259,12 +260,13 @@
             snap.forEach(doc => {
                 const val = doc.data();
                 
-                // --- نظام ترجمة الموقع (السحر هنا) ---
-                // لو القيمة المحفوظة موجودة في القاموس (يعني ID)، هات الاسم. 
-                // لو مش موجودة في القاموس، اعرض القيمة زي ما هي (لو كان اسم عادي).
-                const rawSite = val.siteName || 'غير محدد';
-                const displaySiteName = sitesMap[rawSite] ? sitesMap[rawSite] : rawSite;
-                // ------------------------------------
+                // --- السحر هنا (تم التعديل بناءً على صور الداتا بيز) ---
+                // 1. نقرأ الـ siteId من الداتا بيز (ولو مش موجود نشوف siteName كبديل للطلبات القديمة)
+                const savedSite = val.siteId || val.siteName; 
+                
+                // 2. نسأل القاموس: هل هذا الـ ID يمتلك اسماً في جدول budgets؟
+                const displaySiteName = sitesMap[savedSite] ? sitesMap[savedSite] : (savedSite || 'غير محدد');
+                // ----------------------------------------------------
 
                 let statusBadge = '';
                 let statusRaw = val.status || 'pending';
@@ -285,7 +287,7 @@
                     <td class="col-name">${val.empName || ''}</td>
                     <td class="col-id">${val.empId || ''}</td>
                     <td>${val.jobTitle || '-'}</td>
-                    <td class="col-site">${displaySiteName}</td> <td>${val.lastVacation || '-'}</td>
+                    <td class="col-site" style="font-weight:bold; color:var(--primary);">${displaySiteName}</td> <td>${val.lastVacation || '-'}</td>
                     <td>${val.balance || 0}</td>
                     <td>${val.startDate || ''}</td>
                     <td>${val.endDate || ''}</td>
