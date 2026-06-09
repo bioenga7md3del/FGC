@@ -207,7 +207,7 @@
             
             <div class="input-box">
                 <label>المسمى الوظيفي *</label>
-                <select id="vacJobTitle" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
+                <select id="vacJobTitle" style="width:100%; padding:12px; border-radius:5px; border:1px solid #ccc;">
                     <option value="مدير الموقع">مدير الموقع</option>
                     <option value="مهندس (س)">مهندس (س)</option>
                     <option value="مهندس (ج)">مهندس (ج)</option>
@@ -253,7 +253,7 @@
         
         <div style="margin-top: 20px; text-align: left; display: flex; justify-content: flex-end; gap: 10px;">
             <button onclick="closeVacationModal()" class="btn btn-outline">إلغاء</button>
-            <button onclick="saveVacation()" class="btn btn-success" style="width: 150px;">حفظ الطلب</button>
+            <button id="saveVacBtn" onclick="saveVacation()" class="btn btn-success" style="width: 150px;">حفظ الطلب</button>
         </div>
     </div>
 </div>
@@ -330,7 +330,7 @@
         }
     }
 
-    // جلب قائمة الموظفين البدلاء من الداتا بيز
+    // جلب قائمة الموظفين البدلاء من الداتا بيز للكومبو بوكس
     function loadCoverEmps() {
         db.collection("alternative_employees").onSnapshot(snap => {
             const coverSelect = document.getElementById('vacCoverEmp');
@@ -363,10 +363,9 @@
             document.getElementById('headerRatio').style.display = canSeeProfit ? 'table-cell' : 'none';
             document.getElementById('headerActions').style.display = canEdit ? 'table-cell' : 'none';
             
-            // إظهار عمود التحكم بالإجازات للأدمن واليوزر
             document.getElementById('headerVacActions').style.display = canEdit ? 'table-cell' : 'none';
 
-            loadCoverEmps(); // تحميل الموظفين البدلاء
+            loadCoverEmps(); // تشغيل دالة جلب البدلاء المعتمدين
             loadPageData(canSeeProfit, canEdit);
             initChart();
         } else {
@@ -426,7 +425,7 @@
             applyFilters();
         });
 
-        // جلب خطة الإجازات (المرتبطة بهذا الموقع فقط)
+        // جلب خطة الإجازات المرتبطة بالموقع الحالي
         db.collection("vacations").where("siteId", "==", siteId).onSnapshot(snap => {
             const vacTbody = document.getElementById('vacationTableBody');
             vacTbody.innerHTML = "";
@@ -441,7 +440,6 @@
 
                 let actionCell = '';
                 if(canEdit) {
-                    // يسمح بالتعديل للأدمن دائماً، ولليوزر فقط إذا كانت المعاملة قيد الانتظار
                     if(currentUserRole === 'admin' || val.status === 'pending') {
                         actionCell = `
                         <td>
@@ -536,13 +534,14 @@
 
     function closeVacationModal() { document.getElementById('vacationModal').classList.remove('show'); }
 
+    // الدالة المصححة لحفظ الإجازات مع التحقق من عدم التداخل وبدون أخطاء target
     async function saveVacation() {
         const id = document.getElementById('editVacationId').value;
         const cEmp = Gav('vacCoverEmp');
         const sDate = Gav('vacStartDate');
         const eDate = Gav('vacEndDate');
 
-        // التحقق من تداخل الموظف البديل (عدم السماح بتغطية إجازتين متعارضتين)
+        // الحماية البرمجية لمنع الموظف البديل من تغطية طلبين في نفس الوقت
         if(cEmp && sDate && eDate) {
             const coverCheck = await db.collection("vacations")
                 .where("coverEmp", "==", cEmp)
@@ -551,13 +550,13 @@
             
             let hasOverlap = false;
             coverCheck.forEach(doc => {
-                if(id && doc.id === id) return; // استثناء الطلب الحالي لو كنا بنعدله
+                if(id && doc.id === id) return; // تخطي الطلب الحالي لو كنا بنعدله
                 const v = doc.data();
                 if (sDate <= v.endDate && eDate >= v.startDate) { hasOverlap = true; }
             });
 
             if(hasOverlap) {
-                return alert(`عذراً، الموظف البديل (${cEmp}) يغطي بالفعل إجازة أخرى في هذه الفترة الزمنية! يرجى اختيار بديل آخر أو تغيير التواريخ.`);
+                return alert(`عذراً، الموظف البديل (${cEmp}) مرتبط بالفعل بتغطية إجازة أخرى في هذه الفترة الزمنية! يرجى اختيار بديل آخر.`);
             }
         }
 
@@ -577,10 +576,13 @@
         };
 
         if(!data.empName || !data.empId || !data.startDate || !data.endDate || !data.coverEmp) {
-            return alert("يرجى تعبئة الحقول الأساسية (بما فيها الموظف البديل)!");
+            return alert("يرجى تعبئة الحقول الأساسية المطلوبة مع اختيار الموظف البديل!");
         }
 
-        const btn = event.target; btn.disabled = true; btn.innerText = "...";
+        // استخدام الكود المعرف الثابت للزر لتجنب انهيار الـ target
+        const btn = document.getElementById('saveVacBtn'); 
+        btn.disabled = true; btn.innerText = "جاري الحفظ...";
+        
         try {
             if(id) {
                 await db.collection("vacations").doc(id).update(data);
@@ -589,6 +591,7 @@
                 await db.collection("vacations").add(data);
             }
             closeVacationModal();
+            alert("تم حفظ طلب الإجازة بنجاح!");
         } catch(e) { alert("خطأ: " + e.message); }
         finally { btn.disabled = false; btn.innerText = "حفظ الطلب"; }
     }
@@ -605,7 +608,6 @@
         document.getElementById('vacJobTitle').value = d.jobTitle || 'مدير الموقع';
         document.getElementById('vacBalance').value = d.balance || 0;
         
-        // محاولة تحديد الموظف البديل في القائمة المنسدلة
         setTimeout(() => { document.getElementById('vacCoverEmp').value = d.coverEmp || ''; }, 500);
 
         document.getElementById('vacReqDays').value = d.reqDays;
