@@ -36,7 +36,6 @@
         .card-conflict p { color: #dc3545; }
         .card-conflict:hover { border-color: #dc3545; }
 
-        /* ستايلات الرسائل الذكية */
         .modal-alert { padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 0.9em; display: none; line-height: 1.5; }
         .modal-alert-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
         .modal-alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
@@ -67,6 +66,9 @@
             <button onclick="exportTableToCSV('خطة_الاجازات.csv')" class="btn btn-success" style="background: #217346;"><i class="fa-solid fa-file-excel"></i> تصدير Excel</button>
             <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333;"><i class="fa-solid fa-print"></i> طباعة</button>
             <button id="btnAddCoverEmp" onclick="openAddCoverEmpModal()" class="btn btn-warning" style="display: none; color: white;"><i class="fa-solid fa-user-plus"></i> إضافة موظف بديل للقائمة</button>
+            <a href="calendar.html" class="btn btn-outline" style="border-color: #e67e22; color: #e67e22; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+                <i class="fa-solid fa-calendar-days"></i> عرض التقويم الزمني (Calendar)
+            </a>
         </div>
     </div>
 
@@ -86,18 +88,28 @@
     </div>
 
     <div class="action-bar">
-        <div class="filter-container">
+        <div class="filter-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
             <div class="filter-group"><label>بحث بالاسم / الرقم الوظيفي</label><input type="text" id="filterName" onkeyup="applyFilters()" placeholder="بحث..."></div>
-            <div class="filter-group"><label>الموقع</label><input type="text" id="filterSite" onkeyup="applyFilters()" placeholder="اسم الموقع..."></div>
+            
+            <div class="filter-group">
+                <label>الموقع</label>
+                <select id="filterSite" onchange="applyFilters()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; width: 100%;">
+                    <option value="all">الكل</option>
+                </select>
+            </div>
+            
             <div class="filter-group">
                 <label>الحالة</label>
-                <select id="filterStatus" onchange="applyFilters()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                <select id="filterStatus" onchange="applyFilters()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; width: 100%;">
                     <option value="all">الكل</option>
                     <option value="pending">قيد المراجعة</option>
                     <option value="approved">معتمد</option>
                     <option value="rejected">مرفوض</option>
                 </select>
             </div>
+
+            <div class="filter-group"><label>من تاريخ</label><input type="date" id="filterDateFrom" onchange="applyFilters()" style="padding: 6px; border-radius: 5px; border: 1px solid #ccc; width: 100%;"></div>
+            <div class="filter-group"><label>إلى تاريخ</label><input type="date" id="filterDateTo" onchange="applyFilters()" style="padding: 6px; border-radius: 5px; border: 1px solid #ccc; width: 100%;"></div>
         </div>
     </div>
 
@@ -158,7 +170,6 @@
         <h3 style="color:var(--primary); margin-top:0;">مراجعة طلب الإجازة</h3>
         
         <div id="modalRecommendationAlert" class="modal-alert"></div>
-
         <input type="hidden" id="reviewDocId">
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
@@ -208,7 +219,7 @@
 
     let currentUserRole = 'user'; 
     let sitesMap = {}; 
-    let recommendationsMap = {}; // خريطة لتخزين التوصيات الذكية
+    let recommendationsMap = {}; 
     let activeStatFilter = 'all'; 
 
     document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
@@ -217,10 +228,15 @@
         try {
             const budgetsSnap = await db.collection('budgets').get();
             const siteSelect = document.getElementById('siteIdSelect');
+            const filterSiteSelect = document.getElementById('filterSite');
+            
             siteSelect.innerHTML = '<option value="">-- اختر الموقع --</option>';
+            filterSiteSelect.innerHTML = '<option value="all">الكل</option>';
+            
             budgetsSnap.forEach(doc => {
                 sitesMap[doc.id] = doc.data().itemName || "موقع بدون اسم"; 
                 siteSelect.innerHTML += `<option value="${doc.id}">${sitesMap[doc.id]}</option>`;
+                filterSiteSelect.innerHTML += `<option value="${doc.id}">${sitesMap[doc.id]}</option>`;
             });
             loadCoverEmps();
         } catch (e) { console.error("Error:", e); }
@@ -324,7 +340,6 @@
         applyFilters();
     }
 
-    // تطبيق خوارزمية الفرز والتوصيات الذكية
     function loadVacations() {
         db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
             const tbody = document.getElementById('tableBody');
@@ -341,7 +356,6 @@
                 if(d.status === 'approved') aCount++;
             });
 
-            // تجميع الإجازات حسب الموظف البديل
             let coverGroups = {};
             allVacs.forEach(v => {
                 if (v.status !== 'rejected' && v.coverEmp) {
@@ -356,7 +370,6 @@
                 let reqs = coverGroups[emp];
                 if (reqs.length < 2) return;
 
-                // تجميع المتعارضين في "عناقيد" بناءً على التاريخ
                 reqs.sort((a, b) => a.startDate.localeCompare(b.startDate));
                 let clusters = [];
                 let currentCluster = [reqs[0]];
@@ -374,12 +387,10 @@
                 }
                 clusters.push(currentCluster);
 
-                // معالجة كل عنقود متعارض لاستخراج التوصية
                 clusters.forEach(cluster => {
                     if (cluster.length > 1) {
                         conflictCount += cluster.length;
                         
-                        // الفرز والمفاضلة: الأقدم في الإجازة ثم الأكبر رصيداً
                         cluster.sort((a, b) => {
                             let dateA = a.lastVacation || '1900-01-01'; 
                             let dateB = b.lastVacation || '1900-01-01';
@@ -393,7 +404,6 @@
                         for (let i = 1; i < cluster.length; i++) {
                             let loser = cluster[i];
                             
-                            // حساب التاريخ البديل المقترح (بعد انتهاء إجازة الفائز بيوم)
                             let wEnd = new Date(winner.endDate);
                             wEnd.setDate(wEnd.getDate() + 1);
                             let suggStartStr = wEnd.toISOString().split('T')[0];
@@ -420,7 +430,8 @@
             document.getElementById('countConflict').innerText = conflictCount;
             
             allVacs.forEach(val => {
-                const displaySiteName = sitesMap[val.siteId || val.siteName] || (val.siteId || val.siteName || 'غير محدد');
+                const savedSite = val.siteId || val.siteName || '';
+                const displaySiteName = sitesMap[savedSite] || (savedSite || 'غير محدد');
 
                 let statusBadge = '';
                 if(val.status === 'pending') statusBadge = '<span class="badge badge-pending">قيد المراجعة</span>';
@@ -451,7 +462,7 @@
                 }
 
                 tbody.innerHTML += `
-                <tr class="${rowClass}" data-status="${val.status || 'pending'}" data-conflict="${isConflicted}">
+                <tr class="${rowClass}" data-status="${val.status || 'pending'}" data-conflict="${isConflicted}" data-siteid="${savedSite}" data-startdate="${val.startDate || ''}" data-enddate="${val.endDate || ''}">
                     <td class="col-name">${val.empName || ''}</td>
                     <td class="col-id">${val.empId || ''}</td>
                     <td>${val.jobTitle || '-'}</td>
@@ -481,7 +492,6 @@
         }
     }
 
-    // تطبيق التواريخ المقترحة آلياً في المودال
     function applySuggDates(start, end) {
         document.getElementById('reviewStartDate').value = start;
         document.getElementById('reviewEndDate').value = end;
@@ -500,7 +510,6 @@
         
         toggleRejectionNote();
         
-        // إظهار الرسالة الذكية والتوصية إذا كان هناك تعارض
         const alertBox = document.getElementById('modalRecommendationAlert');
         if(recommendationsMap[id]) {
             let rec = recommendationsMap[id];
@@ -537,7 +546,6 @@
             return alert("يجب كتابة سبب الرفض!");
         }
 
-        // إعادة حساب عدد الأيام في حال قام الأدمن بتعديل أو تطبيق التواريخ المقترحة
         let updatedReqDays = 0;
         if(newStart && newEnd) {
             const d1 = new Date(newStart);
@@ -566,18 +574,22 @@
 
     function applyFilters() {
         const nameFilter = document.getElementById('filterName').value.toLowerCase();
-        const siteFilter = document.getElementById('filterSite').value.toLowerCase();
+        const siteFilter = document.getElementById('filterSite').value; 
         const statusFilter = document.getElementById('filterStatus').value;
+        const dateFrom = document.getElementById('filterDateFrom').value;
+        const dateTo = document.getElementById('filterDateTo').value;
 
         document.querySelectorAll('.data-row').forEach(row => {
             const name = row.querySelector('.col-name').innerText.toLowerCase();
             const id = row.querySelector('.col-id').innerText.toLowerCase();
-            const site = row.querySelector('.col-site').innerText.toLowerCase();
+            const siteIdAttr = row.getAttribute('data-siteid');
             const status = row.getAttribute('data-status');
             const hasConflict = row.getAttribute('data-conflict');
+            const startDate = row.getAttribute('data-startdate');
+            const endDate = row.getAttribute('data-enddate');
 
             const nameMatch = name.includes(nameFilter) || id.includes(nameFilter);
-            const siteMatch = site.includes(siteFilter);
+            const siteMatch = siteFilter === 'all' || siteIdAttr === siteFilter;
             
             let statMatch = true;
             if(activeStatFilter === 'conflict') statMatch = (hasConflict === 'true');
@@ -585,7 +597,17 @@
 
             const normalStatusMatch = statusFilter === 'all' || status === statusFilter;
 
-            if(nameMatch && siteMatch && statMatch && normalStatusMatch) row.style.display = '';
+            // خوارزمية التداخل الزمني المقاطع للفترة المحددة
+            let dateMatch = true;
+            if (dateFrom && dateTo) {
+                dateMatch = (startDate <= dateTo && endDate >= dateFrom);
+            } else if (dateFrom) {
+                dateMatch = (endDate >= dateFrom);
+            } else if (dateTo) {
+                dateMatch = (startDate <= dateTo);
+            }
+
+            if(nameMatch && siteMatch && statMatch && normalStatusMatch && dateMatch) row.style.display = '';
             else row.style.display = 'none';
         });
     }
