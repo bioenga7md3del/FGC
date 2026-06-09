@@ -184,7 +184,7 @@
             const d1 = new Date(start);
             const d2 = new Date(end);
             const timeDiff = d2.getTime() - d1.getTime();
-            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 لحساب يوم البداية
+            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; 
             document.getElementById('reqDays').value = daysDiff > 0 ? daysDiff : 0;
         }
     }
@@ -195,54 +195,44 @@
     }
 
     // حفظ طلب جديد
-    
-    
     async function saveVacation() {
-    // 1. التقاط الحقول بدقة
-    const siteInput = document.getElementById('siteName'); // تأكد أن الـ ID في HTML هو siteName
-    const siteValue = siteInput ? siteInput.value : null;
+        const data = {
+            empName: document.getElementById('empName').value,
+            empId: document.getElementById('empId').value,
+            jobTitle: document.getElementById('jobTitle').value,
+            siteName: document.getElementById('siteName').value,
+            lastVacation: document.getElementById('lastVacation').value,
+            balance: Number(document.getElementById('balance').value) || 0,
+            startDate: document.getElementById('startDate').value,
+            endDate: document.getElementById('endDate').value,
+            reqDays: Number(document.getElementById('reqDays').value) || 0,
+            coverEmp: document.getElementById('coverEmp').value,
+            status: 'pending',
+            notes: '',
+            createdAt: new Date().toISOString()
+        };
 
-    // 2. التحقق قبل الحفظ (Diagnostic Log)
-    console.log("قيمة الموقع المستخرجة هي:", siteValue);
-
-    if (!siteValue) {
-        alert("خطأ: قيمة الموقع غير موجودة (null/undefined). تأكد من الـ ID في HTML.");
-        return;
-    }
-
-    const data = {
-        empName: document.getElementById('empName').value,
-        empId: document.getElementById('empId').value,
-        siteName: siteValue, // حفظ القيمة التي التقطناها
-        status: 'pending',
-        createdAt: new Date().toISOString()
-    };
-
-    try {
-        await db.collection("vacations").add(data);
-        alert("تم الحفظ بنجاح");
-    } catch(e) { 
-        console.error("خطأ Firebase:", e);
-        alert("خطأ: " + e.message); 
-    }
-}
-    
-    
-
-        if(!data.empName || !data.empId || !data.startDate || !data.endDate) {
-            return alert("يرجى تعبئة الحقول الأساسية!");
+        if(!data.empName || !data.empId || !data.siteName || !data.startDate || !data.endDate) {
+            return alert("يرجى تعبئة الحقول الأساسية (الاسم، الرقم الوظيفي، الموقع، والتواريخ)!");
         }
 
-        const btn = event.target; btn.disabled = true; btn.innerText = "...";
+        const btn = event.target; 
+        btn.disabled = true; 
+        btn.innerText = "جاري الحفظ...";
+
         try {
             await db.collection("vacations").add(data);
             alert("تم تقديم الطلب بنجاح!");
             document.getElementById('addVacationModal').style.display = 'none';
-        } catch(e) { alert("خطأ: " + e.message); }
-        finally { btn.disabled = false; btn.innerText = "حفظ الطلب"; }
+        } catch(e) { 
+            alert("خطأ أثناء الحفظ: " + e.message); 
+        } finally { 
+            btn.disabled = false; 
+            btn.innerText = "حفظ الطلب"; 
+        }
     }
 
-    // جلب ورسم البيانات
+    // جلب ورسم البيانات 
     function loadVacations() {
         db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
             const tbody = document.getElementById('tableBody');
@@ -251,14 +241,12 @@
             snap.forEach(doc => {
                 const val = doc.data();
                 
-                // تحديد شكل حالة الطلب
                 let statusBadge = '';
                 let statusRaw = val.status || 'pending';
                 if(statusRaw === 'pending') statusBadge = '<span class="badge badge-pending">قيد المراجعة</span>';
-                if(statusRaw === 'approved') statusBadge = '<span class="badge badge-approved">معتمد</span>';
-                if(statusRaw === 'rejected') statusBadge = '<span class="badge badge-rejected">مرفوض</span>';
+                else if(statusRaw === 'approved') statusBadge = '<span class="badge badge-approved">معتمد</span>';
+                else if(statusRaw === 'rejected') statusBadge = '<span class="badge badge-rejected">مرفوض</span>';
 
-                // أزرار التحكم
                 let actions = '';
                 if(currentUserRole === 'admin') {
                     actions = `<button onclick="openReview('${doc.id}', '${statusRaw}', '${val.notes||''}')" class="btn btn-outline" style="padding:4px 8px; font-size:0.8em; margin-bottom:5px;">مراجعة/اعتماد</button><br>`;
@@ -269,15 +257,15 @@
 
                 tbody.innerHTML += `
                 <tr class="data-row" data-status="${statusRaw}">
-                    <td class="col-name">${val.empName}</td>
-                    <td class="col-id">${val.empId}</td>
+                    <td class="col-name">${val.empName || ''}</td>
+                    <td class="col-id">${val.empId || ''}</td>
                     <td>${val.jobTitle || '-'}</td>
-                    <td class="col-site">${val.siteName}</td>
+                    <td class="col-site">${val.siteName || '-'}</td>
                     <td>${val.lastVacation || '-'}</td>
                     <td>${val.balance || 0}</td>
-                    <td>${val.startDate}</td>
-                    <td>${val.endDate}</td>
-                    <td style="font-weight:bold;">${val.reqDays}</td>
+                    <td>${val.startDate || ''}</td>
+                    <td>${val.endDate || ''}</td>
+                    <td style="font-weight:bold;">${val.reqDays || 0}</td>
                     <td>${val.coverEmp || '-'}</td>
                     <td>
                         ${statusBadge}
@@ -290,7 +278,6 @@
         });
     }
 
-    // فتح مودال المراجعة (للأدمن)
     function openReview(id, currentStatus, currentNotes) {
         document.getElementById('reviewDocId').value = id;
         document.getElementById('reviewStatus').value = currentStatus;
@@ -298,7 +285,6 @@
         document.getElementById('reviewModal').style.display = 'flex';
     }
 
-    // حفظ مراجعة الطلب (للأدمن)
     async function submitReview() {
         const id = document.getElementById('reviewDocId').value;
         const newStatus = document.getElementById('reviewStatus').value;
@@ -313,14 +299,12 @@
         } catch(e) { alert("خطأ: " + e.message); }
     }
 
-    // حذف الطلب
     async function deleteVacation(id) {
         if(confirm("هل أنت متأكد من حذف هذا الطلب؟")) {
             await db.collection("vacations").doc(id).delete();
         }
     }
 
-    // الفلاتر
     function applyFilters() {
         const nameFilter = document.getElementById('filterName').value.toLowerCase();
         const siteFilter = document.getElementById('filterSite').value.toLowerCase();
@@ -344,7 +328,6 @@
         });
     }
 
-    // التصدير للإكسل
     function cleanArabicNum(str) {
         if(!str) return "";
         return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.').replace(/٬/g, '');
@@ -356,7 +339,7 @@
             if(rows[i].style.display === 'none') continue; 
             let row = [], cols = rows[i].querySelectorAll("td, th");
             for (let j = 0; j < cols.length; j++) {
-                if (cols[j].classList.contains('col-action')) continue; // استثناء عمود التحكم
+                if (cols[j].classList.contains('col-action')) continue; 
                 let rawData = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, " ").replace(/,/g, "-"); 
                 row.push('"' + cleanArabicNum(rawData) + '"');
             }
