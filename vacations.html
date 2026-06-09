@@ -162,19 +162,37 @@
     const auth = firebase.auth();
 
     let currentUserRole = 'user'; 
+    let sitesMap = {}; // قاموس لحفظ أسماء المواقع وربطها بالـ ID
 
     document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
 
-    // التحقق من الصلاحيات وجلب البيانات
-    auth.onAuthStateChanged(async user => {
-        if(user) {
-            const u = await db.collection('users').doc(user.uid).get();
-            if(u.exists) currentUserRole = u.data().role;
-            loadVacations();
-        } else {
-            window.location.href = "index.html";
+    // 1. التشغيل الأولي: جلب المواقع ثم التحقق من المستخدم
+    async function initSystem() {
+        try {
+            // جلب أسماء المواقع من مجموعة budgets (التي تحتوي على المشاريع/المواقع)
+            const budgetsSnap = await db.collection('budgets').get();
+            budgetsSnap.forEach(doc => {
+                // حفظ الـ ID كـ Key، والاسم كـ Value
+                sitesMap[doc.id] = doc.data().itemName || "موقع بدون اسم"; 
+            });
+        } catch (e) {
+            console.error("لم نتمكن من جلب أسماء المواقع:", e);
         }
-    });
+
+        // التحقق من الصلاحيات بعد جلب القاموس
+        auth.onAuthStateChanged(async user => {
+            if(user) {
+                const u = await db.collection('users').doc(user.uid).get();
+                if(u.exists) currentUserRole = u.data().role;
+                loadVacations(); // تحميل الإجازات الآن
+            } else {
+                window.location.href = "index.html";
+            }
+        });
+    }
+
+    // بدء تشغيل النظام
+    initSystem();
 
     // حساب عدد الأيام تلقائياً
     function calcDays() {
@@ -194,7 +212,7 @@
         document.getElementById('addVacationModal').style.display = 'flex';
     }
 
-    // حفظ طلب جديد
+    // حفظ طلب جديد (تم تنظيف الدالة من كل الأخطاء البرمجية)
     async function saveVacation() {
         const data = {
             empName: document.getElementById('empName').value,
@@ -232,7 +250,7 @@
         }
     }
 
-    // جلب ورسم البيانات 
+    // جلب ورسم البيانات مع ترجمة الـ ID للاسم الحقيقي
     function loadVacations() {
         db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
             const tbody = document.getElementById('tableBody');
@@ -241,6 +259,13 @@
             snap.forEach(doc => {
                 const val = doc.data();
                 
+                // --- نظام ترجمة الموقع (السحر هنا) ---
+                // لو القيمة المحفوظة موجودة في القاموس (يعني ID)، هات الاسم. 
+                // لو مش موجودة في القاموس، اعرض القيمة زي ما هي (لو كان اسم عادي).
+                const rawSite = val.siteName || 'غير محدد';
+                const displaySiteName = sitesMap[rawSite] ? sitesMap[rawSite] : rawSite;
+                // ------------------------------------
+
                 let statusBadge = '';
                 let statusRaw = val.status || 'pending';
                 if(statusRaw === 'pending') statusBadge = '<span class="badge badge-pending">قيد المراجعة</span>';
@@ -260,8 +285,7 @@
                     <td class="col-name">${val.empName || ''}</td>
                     <td class="col-id">${val.empId || ''}</td>
                     <td>${val.jobTitle || '-'}</td>
-                    <td class="col-site">${val.siteName || '-'}</td>
-                    <td>${val.lastVacation || '-'}</td>
+                    <td class="col-site">${displaySiteName}</td> <td>${val.lastVacation || '-'}</td>
                     <td>${val.balance || 0}</td>
                     <td>${val.startDate || ''}</td>
                     <td>${val.endDate || ''}</td>
@@ -355,5 +379,6 @@
         downloadLink.click();
     }
 </script>
+
 </body>
 </html>
