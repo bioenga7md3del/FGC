@@ -21,7 +21,6 @@
         
         .section-header { background: #f8fafc; padding: 15px; border-bottom: 2px solid var(--accent); margin-top: 30px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;}
         
-        /* إخفاء عناصر الأرباح افتراضياً حتى نتأكد من الصلاحية */
         .profit-element { display: none; }
         .profit-text { color: #27ae60; font-weight: bold; }
         .cost-text { color: #c0392b; font-weight: bold; }
@@ -155,16 +154,27 @@
         <span class="close-modal" onclick="closeModals()">&times;</span>
         <h3 style="color:var(--primary); margin-top:0;">إضافة/تعديل بيانات عامل بالمستخلص</h3>
         <input type="hidden" id="editLaborId">
+        
+        <div style="background:#eef2f7; padding:10px; border-radius:5px; margin-bottom:15px; font-size:0.85em; color:var(--primary);">
+            <i class="fa-solid fa-lightbulb"></i> اختر اسم الموظف والشهر، وسيقوم النظام بجلب (الوظيفة، الجنسية، الغياب، والراتب) تلقائياً من الإجازات والسجلات السابقة.
+        </div>
+
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-            <div class="input-box"><label>اسم الموظف/العامل *</label><input type="text" id="labName"></div>
-            <div class="input-box"><label>الجنسية</label><input type="text" id="labNat"></div>
+            <div class="input-box">
+                <label>اسم الموظف/العامل *</label>
+                <input type="text" id="labName" list="empNamesList" onchange="autoFillEmployeeData()" oninput="autoFillEmployeeData()" placeholder="اختر أو اكتب الاسم...">
+                <datalist id="empNamesList"></datalist>
+            </div>
+            
+            <div class="input-box"><label>شهر المستخلص *</label><input type="month" id="labMonth" onchange="autoFillEmployeeData()"></div>
+            
             <div class="input-box"><label>مسمى الوظيفة *</label><input type="text" id="labJob"></div>
-            <div class="input-box"><label>شهر المستخلص *</label><input type="month" id="labMonth"></div>
+            <div class="input-box"><label>الجنسية</label><input type="text" id="labNat"></div>
             
             <div class="input-box profit-element"><label>الراتب الفعلي المدفوع (التكلفة)</label><input type="number" id="labCost" value="0"></div>
             <div class="input-box"><label>القيمة المرفوعة بالمستخلص *</label><input type="number" id="labInvoice" value="0"></div>
             
-            <div class="input-box"><label>عدد أيام الغياب</label><input type="number" id="labAbsence" value="0"></div>
+            <div class="input-box"><label>عدد أيام الغياب (تُحسب آلياً)</label><input type="number" id="labAbsence" value="0" style="background: #fff3cd; border-color: #ffc107;"></div>
             <div class="input-box"><label>قيمة الحسم/الغرامة على العامل</label><input type="number" id="labDeduct" value="0"></div>
         </div>
         <button onclick="saveLabor()" class="btn btn-success" style="width: 100%; margin-top: 20px;">حفظ البيانات</button>
@@ -222,18 +232,18 @@
     const siteId = new URLSearchParams(window.location.search).get('id');
     if(!siteId) window.location.href = "dashboard.html";
 
-    // تفعيل شريط التنقل
     document.getElementById('tabFinance').href = `details_finance.html?id=${siteId}`;
     document.getElementById('tabVacations').href = `details_vacations.html?id=${siteId}`;
     document.getElementById('tabSubcontracts').href = `details_subcontracts.html?id=${siteId}`;
     document.getElementById('tabCalibration').href = `details_calibration.html?id=${siteId}`;
     
-    // تعيين الشهر الحالي في فلتر البحث
     const now = new Date();
     const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     document.getElementById('filterMonth').value = currentMonthStr;
 
     let currentUserRole = 'user'; 
+    let siteVacations = [];
+    let siteLaborRecords = [];
 
     auth.onAuthStateChanged(async user => {
         if(user) {
@@ -267,12 +277,32 @@
             }
         });
 
-        // جلب بيانات العمالة
+        // 1. جلب الإجازات لبناء قائمة الموظفين وحساب الغياب
+        db.collection("vacations").where("siteId", "==", siteId).onSnapshot(snap => {
+            siteVacations = [];
+            let empMap = new Map();
+            snap.forEach(doc => {
+                const v = doc.data();
+                siteVacations.push({id: doc.id, ...v});
+                if(v.empName && !empMap.has(v.empName)) {
+                    empMap.set(v.empName, v.jobTitle || '');
+                }
+            });
+            const datalist = document.getElementById('empNamesList');
+            datalist.innerHTML = '';
+            empMap.forEach((jobTitle, empName) => {
+                datalist.innerHTML += `<option value="${empName}" data-job="${jobTitle}">`;
+            });
+        });
+
+        // 2. جلب العمالة
         db.collection("labor_records").where("siteId", "==", siteId).onSnapshot(snap => {
+            siteLaborRecords = [];
             const tbody = document.getElementById('laborTableBody');
             tbody.innerHTML = "";
             snap.forEach(doc => {
                 const val = doc.data();
+                siteLaborRecords.push({id: doc.id, ...val});
                 const profit = (val.invoice || 0) - (val.cost || 0);
                 
                 let profitCell = canSeeProfit ? `<td class="profit-element">${fmt(val.cost)}</td>` : '';
@@ -292,7 +322,7 @@
             applyFilters();
         });
 
-        // جلب بيانات مقاولي الباطن
+        // 3. جلب مقاولي الباطن
         db.collection("subcontractor_visits").where("siteId", "==", siteId).onSnapshot(snap => {
             const tbody = document.getElementById('subTableBody');
             tbody.innerHTML = "";
@@ -317,7 +347,7 @@
             applyFilters();
         });
 
-        // جلب الغرامات
+        // 4. جلب الغرامات
         db.collection("general_deductions").where("siteId", "==", siteId).onSnapshot(snap => {
             const tbody = document.getElementById('deductionTableBody');
             tbody.innerHTML = "";
@@ -336,6 +366,59 @@
         });
     }
 
+    // --- الوظيفة الذكية للتعبئة التلقائية (Auto-Fill & Calc) ---
+    function autoFillEmployeeData() {
+        const empName = document.getElementById('labName').value;
+        const monthStr = document.getElementById('labMonth').value; // YYYY-MM
+        
+        if(!empName) return;
+
+        // 1. استرجاع المسمى الوظيفي من قائمة الإجازات
+        const datalist = document.getElementById('empNamesList');
+        let foundJob = '';
+        for(let option of datalist.options) {
+            if(option.value === empName) {
+                foundJob = option.getAttribute('data-job');
+                break;
+            }
+        }
+        if(foundJob && !document.getElementById('labJob').value) {
+            document.getElementById('labJob').value = foundJob;
+        }
+
+        // 2. استرجاع الجنسية والراتب والمطالبة من آخر سجل للعامل
+        let lastRecord = siteLaborRecords.filter(r => r.name === empName).sort((a,b) => b.month.localeCompare(a.month))[0];
+        if(lastRecord) {
+            if(!document.getElementById('labNat').value) document.getElementById('labNat').value = lastRecord.nationality || '';
+            if(Number(document.getElementById('labCost').value) === 0) document.getElementById('labCost').value = lastRecord.cost || 0;
+            if(Number(document.getElementById('labInvoice').value) === 0) document.getElementById('labInvoice').value = lastRecord.invoice || 0;
+        }
+
+        // 3. حساب أيام الغياب آلياً بالتقاطع مع الشهر المحدد
+        if(monthStr) {
+            let [year, month] = monthStr.split('-');
+            let monthStart = new Date(year, month - 1, 1);
+            let monthEnd = new Date(year, month, 0); // آخر يوم في الشهر
+            
+            let absenceDays = 0;
+            siteVacations.forEach(v => {
+                if(v.empName === empName && v.status === 'approved') {
+                    let vStart = new Date(v.startDate);
+                    let vEnd = new Date(v.endDate);
+                    
+                    let overlapStart = vStart > monthStart ? vStart : monthStart;
+                    let overlapEnd = vEnd < monthEnd ? vEnd : monthEnd;
+                    
+                    if(overlapStart <= overlapEnd) {
+                        let days = Math.ceil((overlapEnd - overlapStart) / (1000 * 3600 * 24)) + 1;
+                        absenceDays += days;
+                    }
+                }
+            });
+            document.getElementById('labAbsence').value = absenceDays;
+        }
+    }
+
     function applyFilters() {
         const filterMonth = document.getElementById('filterMonth').value;
         
@@ -343,7 +426,6 @@
         let totalActualCost = 0;
         let totalDeductions = 0;
 
-        // فلترة العمالة
         document.querySelectorAll('.data-row-labor').forEach(row => {
             if(!filterMonth || row.getAttribute('data-month') === filterMonth) {
                 row.style.display = '';
@@ -352,7 +434,6 @@
             } else row.style.display = 'none';
         });
 
-        // فلترة الزيارات
         document.querySelectorAll('.data-row-sub').forEach(row => {
             if(!filterMonth || row.getAttribute('data-month') === filterMonth) {
                 row.style.display = '';
@@ -361,7 +442,6 @@
             } else row.style.display = 'none';
         });
 
-        // فلترة الحسميات
         document.querySelectorAll('.data-row-ded').forEach(row => {
             if(!filterMonth || row.getAttribute('data-month') === filterMonth) {
                 row.style.display = '';
@@ -369,30 +449,30 @@
             } else row.style.display = 'none';
         });
 
-        // حساب الملخص النهائي
         const netInvoice = totalInvoice - totalDeductions;
         const netProfit = netInvoice - totalActualCost;
 
         document.getElementById('sumInvoice').innerText = fmt(totalInvoice);
         document.getElementById('sumDeductions').innerText = fmt(totalDeductions);
         document.getElementById('sumNetInvoice').innerText = fmt(netInvoice);
-        
         document.getElementById('sumActualCost').innerText = fmt(totalActualCost);
         document.getElementById('sumNetProfit').innerText = fmt(netProfit);
     }
 
-    // -- دوال فتح وإغلاق المودال --
     function closeModals() {
         document.getElementById('laborModal').classList.remove('show');
         document.getElementById('subcontractorModal').classList.remove('show');
         document.getElementById('deductionModal').classList.remove('show');
     }
 
-    // 1. عمليات العمالة
     function openLaborModal() {
         document.getElementById('editLaborId').value = "";
         document.querySelectorAll('#laborModal input').forEach(i => i.value = "");
         document.getElementById('labMonth').value = document.getElementById('filterMonth').value;
+        document.getElementById('labCost').value = 0;
+        document.getElementById('labInvoice').value = 0;
+        document.getElementById('labAbsence').value = 0;
+        document.getElementById('labDeduct').value = 0;
         document.getElementById('laborModal').classList.add('show');
     }
 
@@ -434,11 +514,12 @@
         document.getElementById('laborModal').classList.add('show');
     }
 
-    // 2. عمليات مقاولي الباطن
     function openSubcontractorModal() {
         document.getElementById('editSubId').value = "";
         document.querySelectorAll('#subcontractorModal input').forEach(i => i.value = "");
         document.getElementById('subCount').value = 1;
+        document.getElementById('subCost').value = 0;
+        document.getElementById('subInvoice').value = 0;
         document.getElementById('subMonth').value = document.getElementById('filterMonth').value;
         document.getElementById('subcontractorModal').classList.add('show');
     }
@@ -479,11 +560,11 @@
         document.getElementById('subcontractorModal').classList.add('show');
     }
 
-    // 3. عمليات الحسميات
     function openDeductionModal() {
         document.getElementById('editDedId').value = "";
         document.querySelectorAll('#deductionModal input').forEach(i => i.value = "");
         document.getElementById('dedMonth').value = document.getElementById('filterMonth').value;
+        document.getElementById('dedAmount').value = 0;
         document.getElementById('deductionModal').classList.add('show');
     }
 
@@ -517,7 +598,6 @@
         document.getElementById('deductionModal').classList.add('show');
     }
 
-    // حذف عام لأي وثيقة
     async function deleteDoc(collectionName, docId) {
         if(confirm("هل أنت متأكد من الحذف بشكل نهائي؟")) {
             await db.collection(collectionName).doc(docId).delete();
