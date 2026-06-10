@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مقاولي الباطن والعمالة والمستخلصات الذكية - FGC</title>
+    <title>مقاولي الباطن والعمالة (المستخلصات) - FGC</title>
     
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -20,6 +20,7 @@
         
         .section-header { background: #f8fafc; padding: 15px; border-bottom: 2px solid var(--accent); margin-top: 30px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;}
         
+        /* الصلاحيات الذكية */
         .profit-element { display: none; }
         .profit-text { color: #27ae60; font-weight: bold; }
         .cost-text { color: #c0392b; font-weight: bold; }
@@ -32,17 +33,14 @@
         .btn-automation { background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
         .btn-automation:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(39,174,96,0.3); }
         
-        .btn-settings { background: #4a5568; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
+        .btn-settings { background: #4a5568; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; text-decoration: none;}
         .btn-settings:hover { background: #2d3748; }
-
-        .month-checkbox-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #edf2f7; }
-        .month-checkbox-group label { display: flex; align-items: center; gap: 5px; font-size: 0.85em; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="print-header">
-    <h1>متابعة مقاولي الباطن والعمالة وتوليد المستخلصات أوتوماتيكياً</h1>
+    <h1>متابعة مقاولي الباطن والعمالة (المستخلصات)</h1>
     <h2 id="printSiteName"></h2>
 </div>
 
@@ -55,8 +53,8 @@
                 <h2 id="siteTitle" style="margin:0;">جاري التحميل...</h2>
             </div>
         </div>
-        <div id="actionButtons" style="display:flex; gap: 10px;">
-            <button onclick="openSettingsModal()" class="btn-settings" id="btnSettingsArea" style="display:none;"><i class="fa-solid fa-sliders"></i> ⚙️ إعدادات العقد والمستخلص</button>
+        <div id="actionButtons" style="display:flex; gap: 10px; flex-wrap: wrap;">
+            <a href="#" id="btnConfigPage" class="btn-settings"><i class="fa-solid fa-sliders"></i> ⚙️ إعدادات العقد والمستخلص</a>
             <button onclick="window.print()" class="btn btn-outline"><i class="fa-solid fa-print"></i> طباعة المستخلص</button>
             <a href="dashboard.html" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px;"><i class="fa-solid fa-house"></i> الرئيسية</a>
         </div>
@@ -80,30 +78,30 @@
                 </div>
                 
                 <button id="btnGenerateMonth" onclick="generateInvoiceForSelectedMonth()" class="btn-automation" style="display:none;">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> توليد بيانات الشهر تلقائياً
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> توليد مستخلص الشهر
                 </button>
             </div>
         </div>
 
         <div class="summary-dashboard">
             <div class="summary-card" style="border-bottom: 4px solid var(--primary);">
-                <h4>إجمالي قيمة المستخلص (المطالبة)</h4>
+                <h4>إجمالي قيمة المستخلص</h4>
                 <p id="sumInvoice" style="color: var(--primary);">0.00</p>
             </div>
             <div class="summary-card" style="border-bottom: 4px solid var(--danger);">
-                <h4>إجمالي الحسميات والغرامات</h4>
+                <h4>إجمالي الحسميات</h4>
                 <p id="sumDeductions" style="color: var(--danger);">0.00</p>
             </div>
             <div class="summary-card" style="border-bottom: 4px solid var(--accent);">
-                <h4>صافي المطالبة للتجمع (بعد الحسم)</h4>
+                <h4>صافي المطالبة للتجمع</h4>
                 <p id="sumNetInvoice" style="color: var(--accent);">0.00</p>
             </div>
             <div class="summary-card profit-element" style="border-bottom: 4px solid #c0392b; background: #fff5f5;">
-                <h4>التكلفة الفعلية (رواتب + وكلاء)</h4>
+                <h4>التكلفة الفعلية</h4>
                 <p id="sumActualCost" class="cost-text">0.00</p>
             </div>
             <div class="summary-card profit-element" style="border-bottom: 4px solid #27ae60; background: #f0fdf4;">
-                <h4>صافي ربح الشركة (الشهر)</h4>
+                <h4>صافي الربح</h4>
                 <p id="sumNetProfit" class="profit-text">0.00</p>
             </div>
         </div>
@@ -111,7 +109,7 @@
 
     <div class="section-header">
         <span><i class="fa-solid fa-users"></i> كشف تكاليف العاملين بالموقع (نموذج 20)</span>
-        <button onclick="openLaborModal()" class="btn btn-primary btn-action" style="font-size: 0.85em; display: none;"><i class="fa-solid fa-plus"></i> إضافة زيارة طارئة/عامل إضافي</button>
+        <button onclick="openLaborModal()" class="btn btn-primary btn-action" style="font-size: 0.85em; display: none;"><i class="fa-solid fa-plus"></i> إضافة عامل طارئ</button>
     </div>
     <div class="table-container" style="box-shadow: none; border: 1px solid #eee;">
         <table id="laborTable">
@@ -119,8 +117,8 @@
                 <tr>
                     <th>الاسم</th><th>الجنسية</th><th>الوظيفة</th><th>شهر المستخلص</th>
                     <th>أيام الغياب</th><th>الحسم / الغرامة</th>
-                    <th class="profit-element">الراتب الفعلي (التكلفة)</th>
-                    <th>المبلغ بالمستخلص (المطالبة)</th>
+                    <th class="profit-element">الراتب الفعلي</th>
+                    <th>المبلغ بالمستخلص</th>
                     <th class="profit-element">الربح</th>
                     <th class="col-action" style="display:none;">تحكم</th>
                 </tr>
@@ -131,14 +129,14 @@
 
     <div class="section-header">
         <span><i class="fa-solid fa-microscope"></i> زيارات الأجهزة ومقاولي الباطن (نموذج 5)</span>
-        <button onclick="openSubcontractorModal()" class="btn btn-primary btn-action" style="font-size: 0.85em; display: none;"><i class="fa-solid fa-plus"></i> إضافة زيارة طارئة غير مجدولة</button>
+        <button onclick="openSubcontractorModal()" class="btn btn-primary btn-action" style="font-size: 0.85em; display: none;"><i class="fa-solid fa-plus"></i> إضافة زيارة طارئة</button>
     </div>
     <div class="table-container" style="box-shadow: none; border: 1px solid #eee;">
         <table id="subTable">
             <thead>
                 <tr>
-                    <th>اسم الوكيل/المقاول</th><th>الجهاز والشركة</th><th>عدد الأجهزة</th><th>تاريخ/شهر الزيارة</th>
-                    <th class="profit-element">التكلفة المدفوعة للوكيل</th>
+                    <th>اسم الوكيل/المقاول</th><th>الجهاز والشركة</th><th>العدد</th><th>شهر الزيارة</th>
+                    <th class="profit-element">التكلفة المدفوعة</th>
                     <th>قيمة الزيارة بالمستخلص</th>
                     <th class="profit-element">الربح</th>
                     <th class="col-action" style="display:none;">تحكم</th>
@@ -156,7 +154,7 @@
         <table id="deductionTable">
             <thead>
                 <tr>
-                    <th>نوع الحسم / الغرامة</th><th>تاريخ/شهر الخصم</th><th>مبلغ الحسم (ريال)</th><th>ملاحظات</th><th class="col-action" style="display:none;">تحكم</th>
+                    <th>نوع الحسم / الغرامة</th><th>شهر الخصم</th><th>مبلغ الحسم (ريال)</th><th>ملاحظات</th><th class="col-action" style="display:none;">تحكم</th>
                 </tr>
             </thead>
             <tbody id="deductionTableBody"></tbody>
@@ -165,68 +163,9 @@
 
 </div>
 
-<div id="settingsModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 900px; width:95%; max-height:85vh; overflow-y:auto;">
-        <span class="close-modal" onclick="closeModals()">&times;</span>
-        <h2 style="color:var(--primary); margin-top:0; border-bottom:2px solid #eee; padding-bottom:10px;"><i class="fa-solid fa-sliders"></i> لوحة التحكم في إعدادات العقد والمستخلص الثابتة</h2>
-        
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:25px; margin-top:15px;">
-            
-            <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
-                <h4 style="margin:0 0 15px 0; color:var(--primary);"><i class="fa-solid fa-user-plus"></i> تسجيل عامل في القائمة الأساسية الثابتة</h4>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div class="input-box"><label>اسم العامل كامل</label><input type="text" id="mLabName"></div>
-                    <div class="input-box"><label>مسمى الوظيفة</label><input type="text" id="mLabJob"></div>
-                    <div class="input-box"><label>الجنسية</label><input type="text" id="mLabNat"></div>
-                    <div class="input-box"><label>الرواتب الفعلي (التكلفة)</label><input type="number" id="mLabCost"></div>
-                    <div class="input-box" style="grid-column: span 2;"><label>المبلغ المرفوع بالتجمع في المستخلص</label><input type="number" id="mLabInvoice"></div>
-                </div>
-                <button onclick="saveMasterLabor()" class="btn btn-success" style="width:100%; margin-top:15px;"><i class="fa-solid fa-check"></i> حفظ بقائمة العمالة الثابتة</button>
-                
-                <h5 style="margin:20px 0 10px 0; color:#555;">العمال الحاليين بالقائمة:</h5>
-                <div style="max-height:200px; overflow-y:auto; background:white; border:1px solid #ddd; border-radius:4px; padding:5px;" id="masterLaborList"></div>
-            </div>
-
-            <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
-                <h4 style="margin:0 0 15px 0; color:var(--primary);"><i class="fa-solid fa-laptop-medical"></i> جدولة الصيانة الوقائية السنوية لجهاز (PPM)</h4>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div class="input-box"><label>اسم الوكيل/مقاول الباطن</label><input type="text" id="mSubContractor"></div>
-                    <div class="input-box"><label>اسم ونوع الجهاز</label><input type="text" id="mSubDevice"></div>
-                    <div class="input-box"><label>الشركة الصانعة</label><input type="text" id="mSubBrand"></div>
-                    <div class="input-box"><label>عدد الأجهزة بالموقع</label><input type="number" id="mSubCount" value="1"></div>
-                    <div class="input-box"><label>التكلفة الفعلية للوكيل</label><input type="number" id="mSubCost"></div>
-                    <div class="input-box"><label>قيمة الزيارة بالمستخلص</label><input type="number" id="mSubInvoice"></div>
-                </div>
-                
-                <label style="display:block; font-size:0.85em; font-weight:bold; margin-top:10px; margin-bottom:5px; color:var(--primary);">حدد شهور الزيارة الدورية المعتمدة خلال السنة:</label>
-                <div class="month-checkbox-group">
-                    <label><input type="checkbox" class="ppm-month" value="01">01 - يناير</label>
-                    <label><input type="checkbox" class="ppm-month" value="02">02 - فبراير</label>
-                    <label><input type="checkbox" class="ppm-month" value="03">03 - مارس</label>
-                    <label><input type="checkbox" class="ppm-month" value="04">04 - أبريل</label>
-                    <label><input type="checkbox" class="ppm-month" value="05">05 - مايو</label>
-                    <label><input type="checkbox" class="ppm-month" value="06">06 - يونيو</label>
-                    <label><input type="checkbox" class="ppm-month" value="07">07 - يوليو</label>
-                    <label><input type="checkbox" class="ppm-month" value="08">08 - أغسطس</label>
-                    <label><input type="checkbox" class="ppm-month" value="09">09 - سبتمبر</label>
-                    <label><input type="checkbox" class="ppm-month" value="10">10 - أكتوبر</label>
-                    <label><input type="checkbox" class="ppm-month" value="11">11 - نوفمبر</label>
-                    <label><input type="checkbox" class="ppm-month" value="12">12 - ديسمبر</label>
-                </div>
-
-                <button onclick="saveMasterDeviceSchedule()" class="btn btn-success" style="width:100%; margin-top:15px;"><i class="fa-solid fa-calendar-check"></i> حفظ وجدولة الجهاز</button>
-                
-                <h5 style="margin:20px 0 10px 0; color:#555;">الأجهزة المجدولة الحالية:</h5>
-                <div style="max-height:200px; overflow-y:auto; background:white; border:1px solid #ddd; border-radius:4px; padding:5px;" id="masterDevicesList"></div>
-            </div>
-
-        </div>
-    </div>
-</div>
-
-<div id="laborModal" class="modal-overlay"><div class="modal-content" style="max-width: 500px;"><span class="close-modal" onclick="closeModals()">&times;</span><h3>تعديل بيانات عامل بالمستخلص</h3><input type="hidden" id="editLaborId"><div style="display:grid; gap:10px;"><div class="input-box"><label>الاسم</label><input type="text" id="labName"></div><div class="input-box"><label>شهر المستخلص</label><input type="month" id="labMonth"></div><div class="input-box"><label>الوظيفة</label><input type="text" id="labJob"></div><div class="input-box"><label>الجنسية</label><input type="text" id="labNat"></div><div class="input-box profit-element"><label>التكلفة الفعلية</label><input type="number" id="labCost"></div><div class="input-box"><label>المبلغ بالمستخلص</label><input type="number" id="labInvoice"></div><div class="input-box"><label>أيام الغياب</label><input type="number" id="labAbsence"></div><div class="input-box"><label>الحسم/الغرامة</label><input type="number" id="labDeduct"></div></div><button onclick="submitLaborEdit()" class="btn btn-success" style="width:100%; margin-top:15px;">حفظ التغييرات</button></div></div>
-<div id="subcontractorModal" class="modal-overlay"><div class="modal-content" style="max-width: 500px;"><span class="close-modal" onclick="closeModals()">&times;</span><h3>تعديل زيارة مقاول باطن</h3><input type="hidden" id="editSubId"><div style="display:grid; gap:10px;"><div class="input-box"><label>اسم المقاول</label><input type="text" id="subName"></div><div class="input-box"><label>الشهر/التاريخ</label><input type="month" id="subMonth"></div><div class="input-box"><label>الجهاز</label><input type="text" id="subDevice"></div><div class="input-box"><label>الشركة الصانعة</label><input type="text" id="subBrand"></div><div class="input-box"><label>عدد الأجهزة</label><input type="number" id="subCount"></div><div class="input-box profit-element"><label>تكلفة الوكيل</label><input type="number" id="subCost"></div><div class="input-box"><label>قيمة المستخلص</label><input type="number" id="subInvoice"></div></div><button onclick="submitSubEdit()" class="btn btn-success" style="width:100%; margin-top:15px;">حفظ التغييرات</button></div></div>
-<div id="deductionModal" class="modal-overlay"><div class="modal-content" style="max-width: 400px;"><span class="close-modal" onclick="closeModals()">&times;</span><h3>تسجيل حسم/غرامة (نموذج 2)</h3><input type="hidden" id="editDedId"><div style="display:grid; gap:10px;"><div class="input-box"><label>النوع</label><select id="dedType" style="padding:10px;"><option value="التأخير في إصلاح الأجهزة">التأخير في إصلاح الأجهزة</option><option value="التقصير في الصيانة الوقائية">التقصير في الصيانة الوقائية</option><option value="غرامة عدم الالتزام بتعيين السعوديين">غرامة عدم الالتزام بتعيين السعوديين</option><option value="إستهلاك الماء والكهرباء">إستهلاك الماء والكهرباء</option><option value="حسم إيجار الورشة">حسم إيجار الورشة</option></select></div><div class="input-box"><label>الشهر</label><input type="month" id="dedMonth"></div><div class="input-box"><label>المبلغ</label><input type="number" id="dedAmount"></div><div class="input-box"><label>ملاحظات</label><input type="text" id="dedNotes"></div></div><button onclick="submitDedEdit()" class="btn btn-danger" style="width:100%; margin-top:15px;">حفظ الحسم</button></div></div>
+<div id="laborModal" class="modal-overlay"><div class="modal-content" style="max-width: 500px;"><span class="close-modal" onclick="closeModals()">&times;</span><h3>تعديل/إضافة بيانات عامل</h3><input type="hidden" id="editLaborId"><div style="display:grid; gap:10px;"><div class="input-box"><label>الاسم</label><input type="text" id="labName"></div><div class="input-box"><label>شهر المستخلص</label><input type="month" id="labMonth"></div><div class="input-box"><label>الوظيفة</label><input type="text" id="labJob"></div><div class="input-box"><label>الجنسية</label><input type="text" id="labNat"></div><div class="input-box profit-element"><label>التكلفة الفعلية</label><input type="number" id="labCost"></div><div class="input-box"><label>المبلغ بالمستخلص</label><input type="number" id="labInvoice"></div><div class="input-box"><label>أيام الغياب</label><input type="number" id="labAbsence"></div><div class="input-box"><label>الحسم/الغرامة</label><input type="number" id="labDeduct"></div></div><button onclick="submitLaborEdit()" class="btn btn-success" style="width:100%; margin-top:15px;">حفظ البيانات</button></div></div>
+<div id="subcontractorModal" class="modal-overlay"><div class="modal-content" style="max-width: 500px;"><span class="close-modal" onclick="closeModals()">&times;</span><h3>تعديل/إضافة زيارة طارئة</h3><input type="hidden" id="editSubId"><div style="display:grid; gap:10px;"><div class="input-box"><label>اسم المقاول</label><input type="text" id="subName"></div><div class="input-box"><label>الشهر</label><input type="month" id="subMonth"></div><div class="input-box"><label>الجهاز</label><input type="text" id="subDevice"></div><div class="input-box"><label>الشركة الصانعة</label><input type="text" id="subBrand"></div><div class="input-box"><label>عدد الأجهزة</label><input type="number" id="subCount"></div><div class="input-box profit-element"><label>تكلفة الوكيل</label><input type="number" id="subCost"></div><div class="input-box"><label>قيمة المستخلص</label><input type="number" id="subInvoice"></div></div><button onclick="submitSubEdit()" class="btn btn-success" style="width:100%; margin-top:15px;">حفظ البيانات</button></div></div>
+<div id="deductionModal" class="modal-overlay"><div class="modal-content" style="max-width: 400px;"><span class="close-modal" onclick="closeModals()">&times;</span><h3>تسجيل حسم/غرامة</h3><input type="hidden" id="editDedId"><div style="display:grid; gap:10px;"><div class="input-box"><label>النوع</label><select id="dedType" style="padding:10px;"><option value="التأخير في إصلاح الأجهزة">التأخير في إصلاح الأجهزة</option><option value="التقصير في الصيانة الوقائية">التقصير في الصيانة الوقائية</option><option value="غرامة عدم الالتزام بتعيين السعوديين">غرامة عدم الالتزام بتعيين السعوديين</option><option value="إستهلاك الماء والكهرباء">إستهلاك الماء والكهرباء</option><option value="حسم إيجار الورشة">حسم إيجار الورشة</option><option value="أخرى">أخرى (سجل بالملاحظات)</option></select></div><div class="input-box"><label>الشهر</label><input type="month" id="dedMonth"></div><div class="input-box"><label>المبلغ</label><input type="number" id="dedAmount"></div><div class="input-box"><label>ملاحظات</label><input type="text" id="dedNotes"></div></div><button onclick="submitDedEdit()" class="btn btn-danger" style="width:100%; margin-top:15px;">حفظ الحسم</button></div></div>
 
 <script>
     const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
@@ -237,19 +176,18 @@
     const siteId = new URLSearchParams(window.location.search).get('id');
     if(!siteId) window.location.href = "dashboard.html";
 
+    // تفعيل التبويبات وربط صفحة الإعدادات
     document.getElementById('tabFinance').href = `details_finance.html?id=${siteId}`;
     document.getElementById('tabVacations').href = `details_vacations.html?id=${siteId}`;
     document.getElementById('tabSubcontracts').href = `details_subcontracts.html?id=${siteId}`;
     document.getElementById('tabCalibration').href = `details_calibration.html?id=${siteId}`;
+    document.getElementById('btnConfigPage').href = `subcontracts_config.html?id=${siteId}`;
     
-    // تعيين الشهر الحالي لعام 2026 تلقائياً في الفلتر
+    // تعيين الشهر الحالي افتراضياً
     const todayInit = new Date();
     document.getElementById('filterMonth').value = `${todayInit.getFullYear()}-${String(todayInit.getMonth() + 1).padStart(2, '0')}`;
 
     let currentUserRole = 'user'; 
-    let masterLaborCached = [];
-    let masterDevicesCached = [];
-    let currentMonthHasData = false;
 
     auth.onAuthStateChanged(async user => {
         if(user) {
@@ -259,7 +197,6 @@
             const canSeeProfit = (currentUserRole === 'admin' || currentUserRole === 'viewer_pro');
             const canEdit = (currentUserRole === 'admin' || currentUserRole === 'user');
 
-            if(currentUserRole === 'admin') document.getElementById('btnSettingsArea').style.display = 'inline-flex';
             if(canEdit) {
                 document.querySelectorAll('.btn-action').forEach(btn => btn.style.display = 'inline-block');
                 document.querySelectorAll('.col-action').forEach(col => col.style.display = 'table-cell');
@@ -270,79 +207,28 @@
                 document.querySelectorAll('td.profit-element').forEach(el => el.style.display = 'table-cell');
             }
 
-            loadMasterConfig();
-            loadMonthlyRecords(canSeeProfit, canEdit);
+            loadPageData(canSeeProfit, canEdit);
         } else { window.location.href = "index.html"; }
     });
 
-    // تحميل القوائم الأساسية الثابتة من قاعدة البيانات
-    function loadMasterConfig() {
-        db.collection("contracts_master_labor").where("siteId", "==", siteId).onSnapshot(snap => {
-            masterLaborCached = [];
-            const container = document.getElementById('masterLaborList');
-            container.innerHTML = "";
-            snap.forEach(doc => {
-                const d = doc.data(); masterLaborCached.push({id: doc.id, ...d});
-                container.innerHTML += `<div style="display:flex; justify-content:space-between; font-size:0.8em; margin-bottom:5px; padding:3px; background:#f1f5f9;"><span>👤 ${d.name} (${d.jobTitle})</span><button onclick="deleteMasterItem('contracts_master_labor','${doc.id}')" style="color:red; background:none; border:none; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button></div>`;
-            });
+    function loadPageData(canSeeProfit, canEdit) {
+        db.collection("budgets").doc(siteId).onSnapshot(doc => {
+            if(doc.exists) {
+                document.getElementById('siteTitle').innerText = doc.data().itemName;
+                document.getElementById('printSiteName').innerText = doc.data().itemName;
+            }
         });
 
-        db.collection("contracts_master_devices").where("siteId", "==", siteId).onSnapshot(snap => {
-            masterDevicesCached = [];
-            const container = document.getElementById('masterDevicesList');
-            container.innerHTML = "";
-            snap.forEach(doc => {
-                const d = doc.data(); masterDevicesCached.push({id: doc.id, ...d});
-                container.innerHTML += `<div style="display:flex; justify-content:space-between; font-size:0.8em; margin-bottom:5px; padding:3px; background:#f1f5f9;"><span>🔬 ${d.deviceName} - ${d.contractorName}</span><button onclick="deleteMasterItem('contracts_master_devices','${doc.id}')" style="color:red; background:none; border:none; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button></div>`;
-            });
-        });
-    }
-
-    // حفظ عامل بالقائمة الثابتة
-    async function saveMasterLabor() {
-        const name = document.getElementById('mLabName').value;
-        const job = document.getElementById('mLabJob').value;
-        const nat = document.getElementById('mLabNat').value;
-        const cost = Number(document.getElementById('mLabCost').value)||0;
-        const inv = Number(document.getElementById('mLabInvoice').value)||0;
-        if(!name || !job) return alert("الاسم والوظيفة حقول إجبارية!");
-        await db.collection("contracts_master_labor").add({ siteId, name, jobTitle: job, nationality: nat, cost, invoice: inv });
-        document.getElementById('mLabName').value=""; document.getElementById('mLabJob').value="";
-    }
-
-    // حفظ وجدولة جهاز بالقائمة الثابتة
-    async function saveMasterDeviceSchedule() {
-        const contractorName = document.getElementById('mSubContractor').value;
-        const deviceName = document.getElementById('mSubDevice').value;
-        const brand = document.getElementById('mSubBrand').value;
-        const devicesCount = Number(document.getElementById('mSubCount').value)||1;
-        const cost = Number(document.getElementById('mSubCost').value)||0;
-        const invoice = Number(document.getElementById('mSubInvoice').value)||0;
-        
-        let scheduledMonths = [];
-        document.querySelectorAll('.ppm-month:checked').forEach(cb => scheduledMonths.push(cb.value));
-
-        if(!contractorName || !deviceName || scheduledMonths.length === 0) return alert("يرجى ملء اسم المقاول والجهاز واختيار شهر واحد على الأقل للزيارة!");
-
-        await db.collection("contracts_master_devices").add({ siteId, contractorName, deviceName, brand, devicesCount, cost, invoice, scheduledMonths });
-        document.getElementById('mSubContractor').value=""; document.getElementById('mSubDevice').value="";
-        document.querySelectorAll('.ppm-month').forEach(cb => cb.checked = false);
-    }
-
-    async function deleteMasterItem(col, id) { if(confirm("حذف من القائمة الأساسية؟")) await db.collection(col).doc(id).delete(); }
-
-    function loadMonthlyRecords(canSeeProfit, canEdit) {
-        // العمال الحية للشهر
+        // مراقبة جداول المستخلص الحية
         db.collection("labor_records").where("siteId", "==", siteId).onSnapshot(snap => {
             const tbody = document.getElementById('laborTableBody'); tbody.innerHTML = "";
             snap.forEach(doc => {
                 const val = doc.data(); const profit = (val.invoice || 0) - (val.cost || 0);
-                tbody.innerHTML += `<tr class="data-row-labor" data-month="${val.month}" data-invoice="${val.invoice}" data-cost="${canSeeProfit ? val.cost : 0}"><td><b>${val.name}</b></td><td>${val.nationality || '-'}</td><td>${val.jobTitle}</td><td>${val.month}</td><td>${val.absenceDays || 0}</td><td style="color:var(--danger);">${fmt(val.deductions)}</td>${canSeeProfit ? `<td>${fmt(val.cost)}</td>` : ''}<td style="font-weight:bold;">${fmt(val.invoice)}</td>${canSeeProfit ? `<td style="color:var(--success); font-weight:bold;">${fmt(profit)}</td>` : ''}${canEdit ? `<td><button onclick="openLaborEdit('${doc.id}')" class="btn btn-outline" style="padding:4px 6px; font-size:0.8em;"><i class="fa-solid fa-pen"></i></button> <button onclick=\"deleteDoc('labor_records', '${doc.id}')\" class="btn btn-danger" style=\"padding:4px 6px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);\"><i class="fa-solid fa-trash"></i></button></td>` : ''}</tr>`;
+                tbody.innerHTML += `<tr class="data-row-labor" data-month="${val.month}" data-invoice="${val.invoice}" data-cost="${canSeeProfit ? val.cost : 0}"><td><b>${val.name}</b></td><td>${val.nationality || '-'}</td><td>${val.jobTitle}</td><td>${val.month}</td><td style="font-weight:bold;">${val.absenceDays || 0}</td><td style="color:var(--danger);">${fmt(val.deductions)}</td>${canSeeProfit ? `<td>${fmt(val.cost)}</td>` : ''}<td style="font-weight:bold;">${fmt(val.invoice)}</td>${canSeeProfit ? `<td style="color:var(--success); font-weight:bold;">${fmt(profit)}</td>` : ''}${canEdit ? `<td><button onclick="openLaborEdit('${doc.id}')" class="btn btn-outline" style="padding:4px 6px; font-size:0.8em;"><i class="fa-solid fa-pen"></i></button> <button onclick=\"deleteDoc('labor_records', '${doc.id}')\" class="btn btn-danger" style=\"padding:4px 6px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);\"><i class="fa-solid fa-trash"></i></button></td>` : ''}</tr>`;
             });
             checkMonthStatusAndFilter();
         });
 
-        // الزيارات الحية للشهر
         db.collection("subcontractor_visits").where("siteId", "==", siteId).onSnapshot(snap => {
             const tbody = document.getElementById('subTableBody'); tbody.innerHTML = "";
             snap.forEach(doc => {
@@ -352,7 +238,6 @@
             checkMonthStatusAndFilter();
         });
 
-        // الغرامات الحية للشهر
         db.collection("general_deductions").where("siteId", "==", siteId).onSnapshot(snap => {
             const tbody = document.getElementById('deductionTableBody'); tbody.innerHTML = "";
             snap.forEach(doc => {
@@ -363,7 +248,7 @@
         });
     }
 
-    // فحص هل الشهر المختار يحتوي على بيانات تم توليدها مسبقاً؟
+    // فحص الشهر وتحديث لوحة التحكم
     function checkMonthStatusAndFilter() {
         const filterMonth = document.getElementById('filterMonth').value;
         let foundRecords = false;
@@ -376,53 +261,62 @@
         if(currentUserRole === 'admin' || currentUserRole === 'user') {
             generateBtn.style.display = foundRecords ? 'none' : 'inline-flex';
         }
-
         applyFilters();
     }
 
-    // التوليد التلقائي والذكي للمستخلص بناءً على الـ Master Data
+    // --- التوليد الذكي من القوائم الثابتة (Master Data) ---
     async function generateInvoiceForSelectedMonth() {
-        const targetMonth = document.getElementById('filterMonth').value; // الصيغة YYYY-MM
+        const targetMonth = document.getElementById('filterMonth').value; 
         if(!targetMonth) return alert("يرجى تحديد الشهر أولاً!");
         
-        let [year, monthNum] = targetMonth.split('-'); // استخراج رقم الشهر (مثال: 05)
-
-        if(masterLaborCached.length === 0 && masterDevicesCached.length === 0) {
-            return alert("تنبيه: القوائم الأساسية الثابتة فارغة! يرجى الضغط على زر الإعدادات أولاً لإدخال بيانات العقد المعتمدة.");
-        }
-
-        const batch = db.batch();
-
-        // 1. توليد العمالة الثابتة بالكامل
-        masterLaborCached.forEach(worker => {
-            const ref = db.collection("labor_records").doc();
-            batch.set(ref, {
-                siteId, name: worker.name, nationality: worker.nationality||'', jobTitle: worker.jobTitle,
-                month: targetMonth, cost: worker.cost||0, invoice: worker.invoice||0, absenceDays: 0, deductions: 0,
-                generatedAt: new Date().toISOString()
-            });
-        });
-
-        // 2. فلترة وتوليد أجهزة الصيانة الوقائية (PPM) المستحقة في هذا الشهر حصراً
-        let scheduledDevicesCount = 0;
-        masterDevicesCached.forEach(device => {
-            if(device.scheduledMonths && device.scheduledMonths.includes(monthNum)) {
-                scheduledDevicesCount++;
-                const ref = db.collection("subcontractor_visits").doc();
-                batch.set(ref, {
-                    siteId, contractorName: device.contractorName, deviceName: device.deviceName, brand: device.brand||'',
-                    devicesCount: device.devicesCount||1, month: targetMonth, cost: device.cost||0, invoice: device.invoice||0,
-                    generatedAt: new Date().toISOString()
-                });
-            }
-        });
+        let monthNum = targetMonth.split('-')[1]; // استخراج رقم الشهر
 
         try {
+            // سحب القوائم الثابتة من قاعدة البيانات
+            const laborSnap = await db.collection("contracts_master_labor").where("siteId", "==", siteId).get();
+            const deviceSnap = await db.collection("contracts_master_devices").where("siteId", "==", siteId).get();
+
+            if(laborSnap.empty && deviceSnap.empty) {
+                return alert("تنبيه: القوائم الأساسية فارغة! يرجى الدخول إلى (إعدادات العقد والمستخلص) لتهيئة العمالة وجدولة الأجهزة أولاً.");
+            }
+
+            const batch = db.batch();
+            let workersCount = 0;
+            let devicesCount = 0;
+
+            // 1. توليد العمالة
+            laborSnap.forEach(doc => {
+                const data = doc.data();
+                const newRef = db.collection("labor_records").doc();
+                batch.set(newRef, {
+                    siteId, name: data.name, nationality: data.nationality || '', jobTitle: data.jobTitle,
+                    month: targetMonth, cost: data.cost || 0, invoice: data.invoice || 0, absenceDays: 0, deductions: 0,
+                    generatedAt: new Date().toISOString()
+                });
+                workersCount++;
+            });
+
+            // 2. فلترة وتوليد أجهزة الصيانة المجدولة في هذا الشهر
+            deviceSnap.forEach(doc => {
+                const data = doc.data();
+                if(data.scheduledMonths && data.scheduledMonths.includes(monthNum)) {
+                    const newRef = db.collection("subcontractor_visits").doc();
+                    batch.set(newRef, {
+                        siteId, contractorName: data.contractorName, deviceName: data.deviceName, brand: data.brand || '',
+                        devicesCount: data.devicesCount || 1, month: targetMonth, cost: data.cost || 0, invoice: data.invoice || 0,
+                        generatedAt: new Date().toISOString()
+                    });
+                    devicesCount++;
+                }
+            });
+
             await batch.commit();
-            alert(`🎉 تم توليد مستخلص شهر ${targetMonth} بنجاح!\n- تم تنزيل عدد ${masterLaborCached.length} من القوى العاملة.\n- تم إدراج عدد ${scheduledDevicesCount} زيارة صيانة وقائية مجدولة لهذا الشهر.`);
+            alert(`🎉 تم توليد مستخلص شهر ${targetMonth} بنجاح!\n- تم تنزيل ${workersCount} موظف من القوى العاملة.\n- تم إدراج ${devicesCount} زيارة صيانة وقائية مجدولة لهذا الشهر.`);
+            
         } catch(e) { alert("خطأ أثناء التوليد: " + e.message); }
     }
 
+    // فلترة وحساب الجداول
     function applyFilters() {
         const filterMonth = document.getElementById('filterMonth').value;
         let totalInvoice = 0, totalActualCost = 0, totalDeductions = 0;
@@ -450,74 +344,24 @@
         document.getElementById('sumNetProfit').innerText = fmt(netInvoice - totalActualCost);
     }
 
-    // دوال المودالات العادية والتعديل
-    function openSettingsModal() { document.getElementById('settingsModal').classList.add('show'); }
     function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show')); }
     
-    // دوال تعديل العمالة الحية لشهر
-    async function openLaborEdit(id) {
-        const d = (await db.collection("labor_records").doc(id).get()).data();
-        document.getElementById('editLaborId').value = id; document.getElementById('labName').value = d.name;
-        document.getElementById('labMonth').value = d.month; document.getElementById('labJob').value = d.jobTitle;
-        document.getElementById('labNat').value = d.nationality||''; document.getElementById('labCost').value = d.cost;
-        document.getElementById('labInvoice').value = d.invoice; document.getElementById('labAbsence').value = d.absenceDays;
-        document.getElementById('labDeduct').value = d.deductions;
-        document.getElementById('laborModal').classList.add('show');
-    }
-    async function submitLaborEdit() {
-        const id = document.getElementById('editLaborId').value;
-        await db.collection("labor_records").doc(id).update({
-            name: document.getElementById('labName').value, month: document.getElementById('labMonth').value,
-            jobTitle: document.getElementById('labJob').value, nationality: document.getElementById('labNat').value,
-            cost: Number(document.getElementById('labCost').value), invoice: Number(document.getElementById('labInvoice').value),
-            absenceDays: Number(document.getElementById('labAbsence').value), deductions: Number(document.getElementById('labDeduct').value)
-        }); closeModals();
-    }
+    // تعديل وإدخال العمالة (الطارئ / التحديث)
+    function openLaborModal() { document.getElementById('editLaborId').value = ""; document.querySelectorAll('#laborModal input').forEach(i=>i.value=""); document.getElementById('labMonth').value = document.getElementById('filterMonth').value; document.getElementById('laborModal').classList.add('show'); }
+    async function openLaborEdit(id) { const d = (await db.collection("labor_records").doc(id).get()).data(); document.getElementById('editLaborId').value = id; document.getElementById('labName').value = d.name; document.getElementById('labMonth').value = d.month; document.getElementById('labJob').value = d.jobTitle; document.getElementById('labNat').value = d.nationality||''; document.getElementById('labCost').value = d.cost; document.getElementById('labInvoice').value = d.invoice; document.getElementById('labAbsence').value = d.absenceDays; document.getElementById('labDeduct').value = d.deductions; document.getElementById('laborModal').classList.add('show'); }
+    async function submitLaborEdit() { const id = document.getElementById('editLaborId').value; const data = { siteId, name: document.getElementById('labName').value, month: document.getElementById('labMonth').value, jobTitle: document.getElementById('labJob').value, nationality: document.getElementById('labNat').value, cost: Number(document.getElementById('labCost').value), invoice: Number(document.getElementById('labInvoice').value), absenceDays: Number(document.getElementById('labAbsence').value), deductions: Number(document.getElementById('labDeduct').value) }; if(id) await db.collection("labor_records").doc(id).update(data); else await db.collection("labor_records").add(data); closeModals(); }
 
-    // إدخال يدوي طارئ للعمالة
-    function openLaborModal() {
-        document.getElementById('editLaborId').value = ""; document.querySelectorAll('#laborModal input').forEach(i=>i.value="");
-        document.getElementById('labMonth').value = document.getElementById('filterMonth').value;
-        document.getElementById('laborModal').classList.add('show');
-    }
+    // تعديل وإدخال الزيارات (الطارئ / التحديث)
+    function openSubcontractorModal() { document.getElementById('editSubId').value = ""; document.querySelectorAll('#subcontractorModal input').forEach(i=>i.value=""); document.getElementById('subCount').value = 1; document.getElementById('subMonth').value = document.getElementById('filterMonth').value; document.getElementById('subcontractorModal').classList.add('show'); }
+    async function openSubEditModal(id) { const d = (await db.collection("subcontractor_visits").doc(id).get()).data(); document.getElementById('editSubId').value = id; document.getElementById('subName').value = d.contractorName; document.getElementById('subMonth').value = d.month; document.getElementById('subDevice').value = d.deviceName; document.getElementById('subBrand').value = d.brand||''; document.getElementById('subCount').value = d.devicesCount; document.getElementById('subCost').value = d.cost; document.getElementById('subInvoice').value = d.invoice; document.getElementById('subcontractorModal').classList.add('show'); }
+    async function submitSubEdit() { const id = document.getElementById('editSubId').value; const data = { siteId, contractorName: document.getElementById('subName').value, month: document.getElementById('subMonth').value, deviceName: document.getElementById('subDevice').value, brand: document.getElementById('subBrand').value, devicesCount: Number(document.getElementById('subCount').value), cost: Number(document.getElementById('subCost').value), invoice: Number(document.getElementById('subInvoice').value) }; if(id) await db.collection("subcontractor_visits").doc(id).update(data); else await db.collection("subcontractor_visits").add(data); closeModals(); }
 
-    // إدخال يدوي طارئ للزيارات
-    function openSubcontractorModal() {
-        document.getElementById('editSubId').value = ""; document.querySelectorAll('#subcontractorModal input').forEach(i=>i.value="");
-        document.getElementById('subCount').value = 1; document.getElementById('subMonth').value = document.getElementById('filterMonth').value;
-        document.getElementById('subcontractorModal').classList.add('show');
-    }
-
-    // دوال تعديل الزيارات الحية لشهر
-    async function openSubEditModal(id) {
-        const d = (await db.collection("subcontractor_visits").doc(id).get()).data();
-        document.getElementById('editSubId').value = id; document.getElementById('subName').value = d.contractorName;
-        document.getElementById('subMonth').value = d.month; document.getElementById('subDevice').value = d.deviceName;
-        document.getElementById('subBrand').value = d.brand||''; document.getElementById('subCount').value = d.devicesCount;
-        document.getElementById('subCost').value = d.cost; document.getElementById('subInvoice').value = d.invoice;
-        document.getElementById('subcontractorModal').classList.add('show');
-    }
-    async function submitSubEdit() {
-        const id = document.getElementById('editSubId').value;
-        await db.collection("subcontractor_visits").doc(id).update({
-            contractorName: document.getElementById('subName').value, month: document.getElementById('subMonth').value,
-            deviceName: document.getElementById('subDevice').value, brand: document.getElementById('subBrand').value,
-            devicesCount: Number(document.getElementById('subCount').value), cost: Number(document.getElementById('subCost').value),
-            invoice: Number(document.getElementById('subInvoice').value)
-        }); closeModals();
-    }
-
-    // حفظ طارئ (يشتغل في حالة الإدخال الجديد بدلاً من التحديث)
-    async function saveLabor() { if(!document.getElementById('editLaborId').value) { const ref=db.collection("labor_records").doc(); await db.collection("labor_records").add({ siteId, name: document.getElementById('labName').value, month: document.getElementById('labMonth').value, jobTitle: document.getElementById('labJob').value, nationality: document.getElementById('labNat').value, cost: Number(document.getElementById('labCost').value)||0, invoice: Number(document.getElementById('labInvoice').value)||0, absenceDays: Number(document.getElementById('labAbsence').value)||0, deductions: Number(document.getElementById('labDeduct').value)||0 }); closeModals(); } }
-    async function saveSubcontractor() { if(!document.getElementById('editSubId').value) { await db.collection("subcontractor_visits").add({ siteId, contractorName: document.getElementById('subName').value, month: document.getElementById('subMonth').value, deviceName: document.getElementById('subDevice').value, brand: document.getElementById('subBrand').value, devicesCount: Number(document.getElementById('subCount').value)||1, cost: Number(document.getElementById('subCost').value)||0, invoice: Number(document.getElementById('subInvoice').value)||0 }); closeModals(); } }
-
-    // دوال الحسميات (نموذج 2)
-    function openDeductionModal() { document.getElementById('editDedId').value = ""; document.querySelectorAll('#deductionModal input').forEach(i=>i.value=""); document.getElementById('dedMonth').value = document.getElementById('filterMonth').value; document.getElementById('deductionModal').classList.add('show'); }
+    // تعديل وإدخال الغرامات
+    function openDeductionModal() { document.getElementById('editDedId').value = ""; document.querySelectorAll('#deductionModal input').forEach(i=>i.value=""); document.getElementById('dedMonth').value = document.getElementById('filterMonth').value; document.getElementById('dedAmount').value = 0; document.getElementById('deductionModal').classList.add('show'); }
     async function openDedEditModal(id) { const d=(await db.collection("general_deductions").doc(id).get()).data(); document.getElementById('editDedId').value=id; document.getElementById('dedType').value=d.type; document.getElementById('dedMonth').value=d.month; document.getElementById('dedAmount').value=d.amount; document.getElementById('dedNotes').value=d.notes||''; document.getElementById('deductionModal').classList.add('show'); }
     async function submitDedEdit() { const id=document.getElementById('editDedId').value; const data={ siteId, type:document.getElementById('dedType').value, month:document.getElementById('dedMonth').value, amount:Number(document.getElementById('dedAmount').value), notes:document.getElementById('dedNotes').value||'' }; if(id) await db.collection("general_deductions").doc(id).update(data); else await db.collection("general_deductions").add(data); closeModals(); }
-    async function saveDeduction() { await submitDedEdit(); }
 
-    async function deleteDoc(col, id) { if(confirm("هل أنت متأكد من حذف هذا السجل نهائياً؟")) await db.collection(col).doc(id).delete(); }
+    async function deleteDoc(col, id) { if(confirm("هل أنت متأكد من حذف هذا السجل؟")) await db.collection(col).doc(id).delete(); }
     function fmt(n) { return Number(n||0).toLocaleString('ar-EG',{minimumFractionDigits:2}); }
 </script>
 </body>
