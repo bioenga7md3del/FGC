@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أجهزة القياس والمعايرة - FGC</title>
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        .tabs-nav { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap; }
+        .tab-link { padding: 10px 20px; text-decoration: none; color: #64748b; border-radius: 5px; font-weight: bold; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; }
+        .tab-link:hover { background: #f1f5f9; color: var(--primary); }
+        .tab-link.active { background: var(--primary); color: white !important; }
+        
+        /* ستايلات لوحة المعايرة الذكية */
+        .summary-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .summary-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; text-align: center; cursor: pointer; transition: 0.3s;}
+        .summary-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .summary-card h4 { margin: 0 0 10px 0; color: #555; font-size: 0.9em; }
+        .summary-card p { margin: 0; font-size: 1.8em; font-weight: bold; }
+        
+        .badge { padding: 5px 10px; border-radius: 5px; font-size: 0.85em; font-weight: bold; color: white; display: inline-block;}
+        .status-safe { background-color: #27ae60; }
+        .status-warning { background-color: #f39c12; }
+        .status-danger { background-color: #c0392b; animation: pulse 1.5s infinite; }
+        .row-danger { background-color: #fff5f5; border-right: 4px solid #c0392b; }
+        .row-warning { background-color: #fffce8; border-right: 4px solid #f39c12; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="print-header">
+    <h1>متابعة أجهزة القياس والمعايرة (Calibration)</h1>
+    <h2 id="printSiteName"></h2>
+    <p>تاريخ التقرير: <span id="printDate"></span></p>
+</div>
+
+<div class="container">
+    
+    <div class="header-bar">
+        <div class="header-title-box">
+            <img src="FGC.jpeg" alt="Logo" class="logo-img" style="max-height: 60px;">
+            <div>
+                <h2 id="siteTitle" style="margin:0;">جاري التحميل...</h2>
+                <div style="margin-top: 5px;">
+                    <a href="dashboard.html" id="homeBtn" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px;">
+                        <i class="fa-solid fa-house"></i> الرئيسية
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div id="actionButtons" style="display:flex; gap: 10px;">
+            <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333;">
+                <i class="fa-solid fa-print"></i> طباعة
+            </button>
+            <button onclick="exportTableToCSV('calibration_report.csv')" class="btn btn-success" style="background: #217346;">
+                <i class="fa-solid fa-file-excel"></i> تصدير Excel
+            </button>
+            <button onclick="openCalibrationModal()" class="btn btn-primary" id="btnAddDevice" style="display:none;">
+                <i class="fa-solid fa-plus"></i> إضافة جهاز جديد
+            </button>
+        </div>
+    </div>
+
+    <div class="tabs-nav">
+        <a href="#" id="tabFinance" class="tab-link"><i class="fa-solid fa-money-bill-wave"></i> المالية وقطع الغيار</a>
+        <a href="#" id="tabVacations" class="tab-link"><i class="fa-solid fa-umbrella-beach"></i> إجازات الموظفين</a>
+        <a href="#" id="tabSubcontracts" class="tab-link"><i class="fa-solid fa-handshake"></i> مقاولي الباطن والعمالة</a>
+        <a href="#" id="tabCalibration" class="tab-link active"><i class="fa-solid fa-compass-drafting"></i> أجهزة القياس والمعايرة</a>
+    </div>
+
+    <div class="summary-dashboard">
+        <div class="summary-card" style="border-bottom: 4px solid var(--primary);" onclick="filterTable('all')">
+            <h4>إجمالي الأجهزة</h4>
+            <p id="statTotal" style="color: var(--primary);">0</p>
+        </div>
+        <div class="summary-card" style="border-bottom: 4px solid #27ae60;" onclick="filterTable('safe')">
+            <h4>معايرة سارية 🟢</h4>
+            <p id="statSafe" style="color: #27ae60;">0</p>
+        </div>
+        <div class="summary-card" style="border-bottom: 4px solid #f39c12;" onclick="filterTable('warning')">
+            <h4>تحتاج معايرة قريباً 🟡</h4>
+            <p id="statWarning" style="color: #f39c12;">0</p>
+        </div>
+        <div class="summary-card" style="border-bottom: 4px solid #c0392b; background: #fff5f5;" onclick="filterTable('danger')">
+            <h4>معايرة منتهية 🔴</h4>
+            <p id="statDanger" style="color: #c0392b;">0</p>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <div class="filter-container">
+            <div class="filter-group" style="flex: 1;">
+                <label>بحث بالاسم / الرقم التسلسلي (S/N) / الشركة</label>
+                <input type="text" id="filterSearch" onkeyup="applyFilters()" placeholder="اكتب للبحث...">
+            </div>
+            <div class="filter-group">
+                <label>حالة الجهاز</label>
+                <select id="filterStatus" onchange="applyFilters()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                    <option value="all">الكل</option>
+                    <option value="active">في الخدمة (مستعمل)</option>
+                    <option value="inactive">خارج الخدمة / تكهين</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <div class="table-container" style="box-shadow: none; border-radius: 0;">
+            <table id="calTable">
+                <thead>
+                    <tr>
+                        <th>اسم الجهاز (النوع)</th>
+                        <th>الشركة المصنعة</th>
+                        <th>الرقم التسلسلي (S/N)</th>
+                        <th>الموقع / القسم</th>
+                        <th>تاريخ المعايرة السابقة</th>
+                        <th>تاريخ انتهاء المعايرة</th>
+                        <th>الأيام المتبقية</th>
+                        <th>حالة المعايرة</th>
+                        <th>ملاحظات</th>
+                        <th id="headerAction" style="display:none;">تحكم</th>
+                    </tr>
+                </thead>
+                <tbody id="calTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="calibrationModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 650px;">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <h3 id="modalTitle" style="color:var(--primary); margin-top:0;">إضافة جهاز قياس جديد</h3>
+        <input type="hidden" id="editDeviceId">
+        
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+            <div class="input-box"><label>اسم الجهاز / نوعه *</label><input type="text" id="devName"></div>
+            <div class="input-box"><label>الشركة المصنعة *</label><input type="text" id="devBrand"></div>
+            <div class="input-box"><label>الرقم التسلسلي (S/N) *</label><input type="text" id="devSN" style="font-family: monospace;"></div>
+            <div class="input-box"><label>الموقع / القسم داخل المستشفى</label><input type="text" id="devLocation"></div>
+            
+            <div class="input-box">
+                <label>تاريخ المعايرة السابقة *</label>
+                <input type="date" id="devCalDate" onchange="autoCalcExpiry()">
+            </div>
+            <div class="input-box">
+                <label>تاريخ انتهاء المعايرة *</label>
+                <input type="date" id="devExpDate">
+            </div>
+            
+            <div class="input-box">
+                <label>حالة الجهاز</label>
+                <select id="devStatus" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
+                    <option value="active">في الخدمة (مستعمل)</option>
+                    <option value="inactive">خارج الخدمة / تكهين</option>
+                </select>
+            </div>
+            <div class="input-box"><label>ملاحظات إضافية</label><input type="text" id="devNotes"></div>
+        </div>
+        
+        <div style="text-align: left; margin-top: 20px;">
+            <button id="saveBtn" onclick="saveDevice()" class="btn btn-success" style="width: 100%;">حفظ بيانات الجهاز</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    const siteId = new URLSearchParams(window.location.search).get('id');
+    if(!siteId) window.location.href = "dashboard.html";
+
+    // تفعيل شريط التنقل
+    document.getElementById('tabFinance').href = `details_finance.html?id=${siteId}`;
+    document.getElementById('tabVacations').href = `details_vacations.html?id=${siteId}`;
+    document.getElementById('tabSubcontracts').href = `details_subcontracts.html?id=${siteId}`;
+    document.getElementById('tabCalibration').href = `details_calibration.html?id=${siteId}`;
+    document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
+
+    let currentUserRole = 'user'; 
+    let currentFilterType = 'all';
+
+    auth.onAuthStateChanged(async user => {
+        if(user) {
+            const u = await db.collection('users').doc(user.uid).get();
+            if(u.exists) currentUserRole = u.data().role;
+
+            const canEdit = (currentUserRole === 'admin' || currentUserRole === 'user');
+            if(canEdit) {
+                document.getElementById('btnAddDevice').style.display = 'inline-flex';
+                document.getElementById('headerAction').style.display = 'table-cell';
+            }
+            loadPageData(canEdit);
+        } else { window.location.href = "index.html"; }
+    });
+
+    function loadPageData(canEdit) {
+        // جلب اسم المشروع للترويسة
+        db.collection("budgets").doc(siteId).onSnapshot(doc => {
+            if(doc.exists) {
+                document.getElementById('siteTitle').innerText = doc.data().itemName + " - أجهزة القياس والمعايرة";
+                document.getElementById('printSiteName').innerText = doc.data().itemName;
+            }
+        });
+
+        // جلب الأجهزة حياً
+        db.collection("calibrations").where("siteId", "==", siteId).onSnapshot(snap => {
+            const tbody = document.getElementById('calTableBody');
+            tbody.innerHTML = "";
+            
+            let total = 0, safe = 0, warning = 0, danger = 0;
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            let allDevices = [];
+            snap.forEach(doc => allDevices.push({id: doc.id, ...doc.data()}));
+            
+            // ترتيب تصاعدي حسب تاريخ الانتهاء (الأخطر أولاً)
+            allDevices.sort((a,b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+
+            allDevices.forEach(val => {
+                total++;
+                let expDate = new Date(val.expiryDate);
+                let timeDiff = expDate.getTime() - today.getTime();
+                let daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+                let badge = '';
+                let rowClass = 'data-row';
+                let alertType = 'safe';
+
+                if (val.status === 'inactive') {
+                    badge = '<span class="badge" style="background:#7f8c8d;">خارج الخدمة</span>';
+                    daysDiff = '-';
+                    alertType = 'inactive';
+                } else if (daysDiff <= 0) {
+                    badge = '<span class="badge status-danger">منتهية 🔴</span>';
+                    rowClass += ' row-danger';
+                    danger++;
+                    alertType = 'danger';
+                } else if (daysDiff <= 30) {
+                    badge = `<span class="badge status-warning">تنتهي قريباً 🟡</span>`;
+                    rowClass += ' row-warning';
+                    warning++;
+                    alertType = 'warning';
+                } else {
+                    badge = '<span class="badge status-safe">سارية 🟢</span>';
+                    safe++;
+                    alertType = 'safe';
+                }
+
+                let actions = '';
+                if(canEdit) {
+                    actions = `
+                    <td class="col-action">
+                        <button onclick="editDevice('${val.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:0.8em; margin-bottom:5px;"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteDevice('${val.id}')" class="btn btn-danger" style="padding:4px 8px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                    </td>`;
+                }
+
+                tbody.innerHTML += `
+                <tr class="${rowClass}" data-alert="${alertType}" data-status="${val.status}">
+                    <td class="search-target"><b>${val.deviceName}</b></td>
+                    <td class="search-target">${val.brand || '-'}</td>
+                    <td class="search-target" style="font-family:monospace; color:var(--primary); font-weight:bold;">${val.serialNumber}</td>
+                    <td>${val.location || '-'}</td>
+                    <td>${val.calibrationDate}</td>
+                    <td style="font-weight:bold;">${val.expiryDate}</td>
+                    <td style="font-weight:bold; font-size:1.1em;">${daysDiff}</td>
+                    <td>${badge}</td>
+                    <td>${val.notes || '-'}</td>
+                    ${actions}
+                </tr>`;
+            });
+
+            // تحديث الإحصائيات
+            document.getElementById('statTotal').innerText = total;
+            document.getElementById('statSafe').innerText = safe;
+            document.getElementById('statWarning').innerText = warning;
+            document.getElementById('statDanger').innerText = danger;
+            
+            applyFilters();
+        });
+    }
+
+    // حساب تلقائي لتاريخ الانتهاء (افتراضياً بعد سنة من المعايرة)
+    function autoCalcExpiry() {
+        const calDateVal = document.getElementById('devCalDate').value;
+        if(calDateVal) {
+            const calDate = new Date(calDateVal);
+            calDate.setFullYear(calDate.getFullYear() + 1); // إضافة سنة كاملة
+            calDate.setDate(calDate.getDate() - 1); // نطرح يوم
+            document.getElementById('devExpDate').value = calDate.toISOString().split('T')[0];
+        }
+    }
+
+    function openCalibrationModal() {
+        document.getElementById('editDeviceId').value = "";
+        document.getElementById('modalTitle').innerText = "إضافة جهاز قياس جديد";
+        document.querySelectorAll('#calibrationModal input').forEach(i => i.value = "");
+        document.getElementById('devStatus').value = "active";
+        document.getElementById('calibrationModal').classList.add('show');
+    }
+
+    function closeModal() { document.getElementById('calibrationModal').classList.remove('show'); }
+
+    async function saveDevice() {
+        const id = document.getElementById('editDeviceId').value;
+        const data = {
+            siteId: siteId,
+            deviceName: document.getElementById('devName').value,
+            brand: document.getElementById('devBrand').value,
+            serialNumber: document.getElementById('devSN').value,
+            location: document.getElementById('devLocation').value,
+            calibrationDate: document.getElementById('devCalDate').value,
+            expiryDate: document.getElementById('devExpDate').value,
+            status: document.getElementById('devStatus').value,
+            notes: document.getElementById('devNotes').value,
+        };
+
+        if(!data.deviceName || !data.brand || !data.serialNumber || !data.calibrationDate || !data.expiryDate) {
+            return alert("يرجى تعبئة جميع الحقول المطلوبة (*)");
+        }
+
+        const btn = document.getElementById('saveBtn'); 
+        btn.disabled = true; btn.innerText = "جاري الحفظ...";
+        try {
+            if(id) {
+                await db.collection("calibrations").doc(id).update(data);
+            } else {
+                data.createdAt = new Date().toISOString();
+                await db.collection("calibrations").add(data);
+            }
+            closeModal();
+        } catch(e) { alert("خطأ: " + e.message); }
+        finally { btn.disabled = false; btn.innerText = "حفظ بيانات الجهاز"; }
+    }
+
+    async function editDevice(id) {
+        const doc = await db.collection("calibrations").doc(id).get();
+        const d = doc.data();
+        document.getElementById('editDeviceId').value = id;
+        document.getElementById('modalTitle').innerText = "تعديل بيانات الجهاز";
+        
+        document.getElementById('devName').value = d.deviceName;
+        document.getElementById('devBrand').value = d.brand;
+        document.getElementById('devSN').value = d.serialNumber;
+        document.getElementById('devLocation').value = d.location || '';
+        document.getElementById('devCalDate').value = d.calibrationDate;
+        document.getElementById('devExpDate').value = d.expiryDate;
+        document.getElementById('devStatus').value = d.status || 'active';
+        document.getElementById('devNotes').value = d.notes || '';
+        
+        document.getElementById('calibrationModal').classList.add('show');
+    }
+
+    async function deleteDevice(id) {
+        if(confirm("هل أنت متأكد من حذف هذا الجهاز بشكل نهائي؟")) {
+            await db.collection("calibrations").doc(id).delete();
+        }
+    }
+
+    function filterTable(type) {
+        currentFilterType = type;
+        applyFilters();
+    }
+
+    function applyFilters() {
+        const search = document.getElementById('filterSearch').value.toLowerCase();
+        const devStatus = document.getElementById('filterStatus').value;
+
+        document.querySelectorAll('.data-row').forEach(row => {
+            // البحث النصي في الحقول المحددة (اسم الجهاز، الماركة، السيريال)
+            let textMatch = false;
+            row.querySelectorAll('.search-target').forEach(td => {
+                if(td.innerText.toLowerCase().includes(search)) textMatch = true;
+            });
+
+            // فلتر حالة الجهاز (في الخدمة / خارج الخدمة)
+            const rowStatus = row.getAttribute('data-status');
+            const statusMatch = (devStatus === 'all' || rowStatus === devStatus);
+
+            // فلتر الإحصائيات (الكروت العلوية)
+            const rowAlert = row.getAttribute('data-alert');
+            const alertMatch = (currentFilterType === 'all' || rowAlert === currentFilterType);
+
+            if(textMatch && statusMatch && alertMatch) row.style.display = '';
+            else row.style.display = 'none';
+        });
+    }
+
+    function cleanArabicNum(str) {
+        if(!str) return "";
+        return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.').replace(/٬/g, '');
+    }
+
+    function exportTableToCSV(filename) {
+        let csv = []; csv.push('\uFEFF'); let rows = document.querySelectorAll("#calTable tr");
+        for (let i = 0; i < rows.length; i++) {
+            if(rows[i].style.display === 'none') continue; 
+            let row = [], cols = rows[i].querySelectorAll("td, th");
+            for (let j = 0; j < cols.length; j++) {
+                if (cols[j].innerText === 'تحكم' || cols[j].classList.contains('col-action')) continue; 
+                let rawData = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, " ").replace(/,/g, "-"); 
+                row.push('"' + cleanArabicNum(rawData) + '"');
+            }
+            csv.push(row.join(","));
+        }
+        let csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
+        let downloadLink = document.createElement("a");
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+    }
+</script>
+</body>
+</html>
