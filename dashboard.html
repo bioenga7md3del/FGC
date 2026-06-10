@@ -546,7 +546,7 @@
                 document.getElementById('adminPanel').style.display = 'block';
                 loadData(); 
             } else {
-                if(userData.assignedSiteId) window.location.href = "details.html?id=" + userData.assignedSiteId;
+                if(userData.assignedSiteId) window.location.href = "details_finance.html?id=" + userData.assignedSiteId;
                 else document.getElementById('contractsGrid').innerHTML = `<p style='text-align:center'>${t('no_contracts')}</p>`;
             }
         }
@@ -645,7 +645,7 @@
                         <div style="text-align:left">
                             <div class="site-balance" style="color:${balanceColor}">${fmt(site.currentBalance)}</div>
                             <div style="margin-top:5px; display:flex; gap:5px; justify-content:flex-end;">
-                                <a href="details.html?id=${site.id}" class="btn btn-outline" style="font-size:0.8em; padding:5px 10px; display:inline-block;">${t('details')}</a>
+                                <a href="details_finance.html?id=${site.id}" class="btn btn-outline" style="font-size:0.8em; padding:5px 10px; display:inline-block;">${t('details')}</a>
                                 <button onclick="openEditSiteModal('${site.id}')" class="btn-edit-sm" title="${t('modal_edit_site')}"><i class="fa-solid fa-pen-to-square"></i></button>
                             </div>
                         </div>
@@ -915,7 +915,6 @@
        } catch(e) { alert(e.message); } finally { document.getElementById('loader').style.display = 'none'; }
     }
 
-    // --- دالة أخذ النسخة الاحتياطية (Backup) ---
     async function startBackup() {
         const btn = document.getElementById('backupBtn');
         const originalText = btn.innerHTML;
@@ -931,15 +930,12 @@
         };
 
         try {
-            // سحب المستخدمين
             const usersSnap = await db.collection('users').get();
             usersSnap.forEach(doc => backupData.users.push({ id: doc.id, ...doc.data() }));
 
-            // سحب العقود
             const contractsSnap = await db.collection('contracts').get();
             contractsSnap.forEach(doc => backupData.contracts.push({ id: doc.id, ...doc.data() }));
 
-            // سحب المواقع والحركات المالية
             const budgetsSnap = await db.collection('budgets').get();
             for (let doc of budgetsSnap.docs) {
                 backupData.budgets.push({ id: doc.id, ...doc.data() });
@@ -949,11 +945,9 @@
                 });
             }
 
-            // سحب الإجازات
             const vacSnap = await db.collection('vacations').get();
             vacSnap.forEach(doc => backupData.vacations.push({ id: doc.id, ...doc.data() }));
 
-            // تجهيز وتنزيل الملف
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
             const downloadAnchorNode = document.createElement('a');
             downloadAnchorNode.setAttribute("href", dataStr);
@@ -974,13 +968,12 @@
         }
     }
 
-    // --- دالة استعادة البيانات (Restore) ---
     async function processRestore(event) {
         const file = event.target.files[0];
         if (!file) return;
 
         if (!confirm('⚠️ تحذير هام جداً: استعادة البيانات ستقوم بتحديث أو إضافة البيانات من الملف إلى قاعدة البيانات الحالية. هل أنت متأكد أنك تريد المتابعة؟')) {
-            event.target.value = ''; // تفريغ الملف
+            event.target.value = ''; 
             return;
         }
 
@@ -992,7 +985,6 @@
             try {
                 const data = JSON.parse(e.target.result);
                 
-                // استعادة المستخدمين
                 if (data.users) {
                     for (let u of data.users) {
                         const { id, ...userData } = u;
@@ -1000,7 +992,6 @@
                     }
                 }
                 
-                // استعادة العقود
                 if (data.contracts) {
                     for (let c of data.contracts) {
                         const { id, ...contractData } = c;
@@ -1008,7 +999,6 @@
                     }
                 }
                 
-                // استعادة المواقع
                 if (data.budgets) {
                     for (let b of data.budgets) {
                         const { id, ...budgetData } = b;
@@ -1016,7 +1006,6 @@
                     }
                 }
                 
-                // استعادة الحركات المالية
                 if (data.transactions) {
                     for (let t of data.transactions) {
                         const { budgetId, transactionId, ...transData } = t;
@@ -1026,7 +1015,6 @@
                     }
                 }
                 
-                // استعادة الإجازات
                 if (data.vacations) {
                     for (let v of data.vacations) {
                         const { id, ...vacData } = v;
@@ -1035,7 +1023,7 @@
                 }
 
                 alert('✅ تمت استعادة البيانات بنجاح!');
-                location.reload(); // إعادة تحميل الصفحة لتحديث البيانات
+                location.reload(); 
             } catch (err) {
                 alert('❌ حدث خطأ أثناء الاستعادة: تأكد من أن الملف هو ملف النسخة الاحتياطية الصحيح. التفاصيل: ' + err.message);
             } finally {
