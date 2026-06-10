@@ -115,7 +115,7 @@
     let isLoginMode = true;
     let isSigningUp = false;
 
-    // التحقق من حالة الدخول
+    // التحقق من حالة الدخول والتوجيه للمسار الجديد
     auth.onAuthStateChanged(async user => {
         if(user && !isSigningUp) {
             const btn = document.getElementById('actionBtn');
@@ -128,7 +128,8 @@
                     if (userData.role === 'admin') {
                         window.location.href = "dashboard.html";
                     } else if (userData.role === 'user' && userData.assignedSiteId) {
-                        window.location.href = "details.html?id=" + userData.assignedSiteId;
+                        // تم التعديل هنا ليوجه المستخدم العادي للصفحة الجديدة
+                        window.location.href = "details_finance.html?id=" + userData.assignedSiteId;
                     } else {
                         window.location.href = "dashboard.html";
                     }
@@ -170,7 +171,7 @@
         const btn = document.getElementById('actionBtn');
         const toggleText = document.getElementById('toggleText');
         const toggleLink = document.querySelector('.switch-mode a');
-        const loginOptions = document.getElementById('loginOptions'); // الصف الجديد
+        const loginOptions = document.getElementById('loginOptions'); 
         
         document.getElementById('errorMsg').innerText = "";
 
@@ -180,14 +181,14 @@
             btn.innerHTML = 'دخول للنظام <i class="fa-solid fa-arrow-left" style="margin-right: 10px;"></i>';
             toggleText.innerText = "ليس لديك حساب موظف؟ ";
             toggleLink.innerText = "إنشاء حساب جديد";
-            loginOptions.style.display = "flex"; // إظهار الخيارات في تسجيل الدخول
+            loginOptions.style.display = "flex"; 
         } else {
             title.innerText = "إنشاء حساب جديد 🚀";
             sub.innerText = "سجل بياناتك للانضمام لفريق العمل";
             btn.innerHTML = 'تسجيل حساب <i class="fa-solid fa-user-plus" style="margin-right: 10px;"></i>';
             toggleText.innerText = "لديك حساب بالفعل؟ ";
             toggleLink.innerText = "تسجيل الدخول";
-            loginOptions.style.display = "none"; // إخفاء الخيارات عند إنشاء حساب
+            loginOptions.style.display = "none"; 
         }
     }
 
@@ -205,7 +206,6 @@
         errorMsg.innerText = "";
 
         if (isLoginMode) {
-            // منطق "البقاء متصلاً"
             const rememberMe = document.getElementById('rememberMe').checked;
             const persistence = rememberMe ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
 
