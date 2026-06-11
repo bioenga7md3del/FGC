@@ -149,7 +149,19 @@
         <input type="hidden" id="editDeviceId">
         
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-            <div class="input-box"><label>اسم الجهاز / نوعه *</label><input type="text" id="devName"></div>
+            
+            <div class="input-box">
+                <label>اسم الجهاز / نوعه *</label>
+                <div style="display: flex; gap: 5px;">
+                    <select id="devName" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
+                        <option value="">-- اختر الجهاز --</option>
+                    </select>
+                    <button id="btnAddDeviceType" onclick="addNewDeviceType()" class="btn btn-warning" style="display:none; padding: 0 15px; color:white;" title="إضافة نوع جهاز جديد للقائمة">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            
             <div class="input-box"><label>الشركة المصنعة *</label><input type="text" id="devBrand"></div>
             <div class="input-box"><label>الرقم التسلسلي (S/N) *</label><input type="text" id="devSN" style="font-family: monospace;"></div>
             <div class="input-box"><label>الموقع / القسم داخل المستشفى</label><input type="text" id="devLocation"></div>
@@ -198,6 +210,25 @@
     let currentUserRole = 'user'; 
     let currentFilterType = 'all';
 
+    // القائمة الافتراضية لأكثر الأجهزة المعايرة
+    const standardDevices = [
+        "جهاز صدمات القلب (Defibrillator)",
+        "مراقبة المريض (Patient Monitor)",
+        "تخطيط القلب (ECG Machine)",
+        "مضخة محاليل (Infusion Pump)",
+        "مضخة حقن (Syringe Pump)",
+        "جهاز تنفس صناعي (Ventilator)",
+        "جهاز تخدير (Anesthesia Machine)",
+        "حضانة أطفال (Incubator)",
+        "كي جراحي (Electrosurgical Unit)",
+        "جهاز شفط سوائل (Suction Pump)",
+        "جهاز طرد مركزي (Centrifuge)",
+        "جهاز ضغط الدم (BP Monitor)",
+        "مقياس نسبة الأكسجين (Pulse Oximeter)",
+        "ميزان طبي (Weighing Scale)",
+        "جهاز تعقيم / أوتوكلاف (Autoclave)"
+    ];
+
     auth.onAuthStateChanged(async user => {
         if(user) {
             const u = await db.collection('users').doc(user.uid).get();
@@ -208,12 +239,55 @@
                 document.getElementById('btnAddDevice').style.display = 'inline-flex';
                 document.getElementById('headerAction').style.display = 'table-cell';
             }
+            if(currentUserRole === 'admin') {
+                document.getElementById('btnAddDeviceType').style.display = 'block';
+            }
+            
+            loadDeviceDropdown();
             loadPageData(canEdit);
         } else { window.location.href = "index.html"; }
     });
 
+    // تحميل قائمة الأجهزة في الـ Select
+    function loadDeviceDropdown() {
+        db.collection("calibration_device_names").onSnapshot(snap => {
+            const select = document.getElementById('devName');
+            const currentVal = select.value; 
+            
+            select.innerHTML = '<option value="">-- اختر الجهاز --</option>';
+            
+            // 1. إضافة الأجهزة القياسية
+            standardDevices.forEach(name => {
+                select.innerHTML += `<option value="${name}">${name}</option>`;
+            });
+            
+            // 2. إضافة الأجهزة المخصصة اللي الإدارة ضافتها
+            snap.forEach(doc => {
+                const customName = doc.data().name;
+                if(!standardDevices.includes(customName)) {
+                    select.innerHTML += `<option value="${customName}" style="color:var(--primary); font-weight:bold;">${customName}</option>`;
+                }
+            });
+
+            if(currentVal) select.value = currentVal;
+        });
+    }
+
+    // دالة للأدمن لإضافة جهاز جديد للقائمة
+    async function addNewDeviceType() {
+        const newDevice = prompt("أدخل اسم الجهاز الجديد الذي تريد إضافته للقائمة (مثال: جهاز أشعة مقطعية):");
+        if(newDevice && newDevice.trim() !== "") {
+            try {
+                await db.collection("calibration_device_names").add({
+                    name: newDevice.trim(),
+                    createdAt: new Date().toISOString()
+                });
+                alert("تم إضافة الجهاز للقائمة بنجاح!");
+            } catch(e) { alert("حدث خطأ أثناء الإضافة: " + e.message); }
+        }
+    }
+
     function loadPageData(canEdit) {
-        // جلب اسم المشروع للترويسة
         db.collection("budgets").doc(siteId).onSnapshot(doc => {
             if(doc.exists) {
                 document.getElementById('siteTitle').innerText = doc.data().itemName + " - أجهزة القياس والمعايرة";
@@ -221,7 +295,6 @@
             }
         });
 
-        // جلب الأجهزة حياً
         db.collection("calibrations").where("siteId", "==", siteId).onSnapshot(snap => {
             const tbody = document.getElementById('calTableBody');
             tbody.innerHTML = "";
@@ -233,7 +306,6 @@
             let allDevices = [];
             snap.forEach(doc => allDevices.push({id: doc.id, ...doc.data()}));
             
-            // ترتيب تصاعدي حسب تاريخ الانتهاء (الأخطر أولاً)
             allDevices.sort((a,b) => new Date(a.expiryDate) - new Date(b.expiryDate));
 
             allDevices.forEach(val => {
@@ -290,7 +362,6 @@
                 </tr>`;
             });
 
-            // تحديث الإحصائيات
             document.getElementById('statTotal').innerText = total;
             document.getElementById('statSafe').innerText = safe;
             document.getElementById('statWarning').innerText = warning;
@@ -300,13 +371,12 @@
         });
     }
 
-    // حساب تلقائي لتاريخ الانتهاء (افتراضياً بعد سنة من المعايرة)
     function autoCalcExpiry() {
         const calDateVal = document.getElementById('devCalDate').value;
         if(calDateVal) {
             const calDate = new Date(calDateVal);
-            calDate.setFullYear(calDate.getFullYear() + 1); // إضافة سنة كاملة
-            calDate.setDate(calDate.getDate() - 1); // نطرح يوم
+            calDate.setFullYear(calDate.getFullYear() + 1); 
+            calDate.setDate(calDate.getDate() - 1); 
             document.getElementById('devExpDate').value = calDate.toISOString().split('T')[0];
         }
     }
@@ -315,6 +385,7 @@
         document.getElementById('editDeviceId').value = "";
         document.getElementById('modalTitle').innerText = "إضافة جهاز قياس جديد";
         document.querySelectorAll('#calibrationModal input').forEach(i => i.value = "");
+        document.getElementById('devName').value = ""; 
         document.getElementById('devStatus').value = "active";
         document.getElementById('calibrationModal').classList.add('show');
     }
@@ -359,7 +430,14 @@
         document.getElementById('editDeviceId').value = id;
         document.getElementById('modalTitle').innerText = "تعديل بيانات الجهاز";
         
-        document.getElementById('devName').value = d.deviceName;
+        // التحقق مما إذا كان اسم الجهاز موجوداً في القائمة أم لا (للبيانات القديمة)
+        const select = document.getElementById('devName');
+        let optionExists = Array.from(select.options).some(opt => opt.value === d.deviceName);
+        if(!optionExists && d.deviceName) {
+            select.innerHTML += `<option value="${d.deviceName}">${d.deviceName}</option>`;
+        }
+        select.value = d.deviceName;
+        
         document.getElementById('devBrand').value = d.brand;
         document.getElementById('devSN').value = d.serialNumber;
         document.getElementById('devLocation').value = d.location || '';
@@ -387,17 +465,14 @@
         const devStatus = document.getElementById('filterStatus').value;
 
         document.querySelectorAll('.data-row').forEach(row => {
-            // البحث النصي في الحقول المحددة (اسم الجهاز، الماركة، السيريال)
             let textMatch = false;
             row.querySelectorAll('.search-target').forEach(td => {
                 if(td.innerText.toLowerCase().includes(search)) textMatch = true;
             });
 
-            // فلتر حالة الجهاز (في الخدمة / خارج الخدمة)
             const rowStatus = row.getAttribute('data-status');
             const statusMatch = (devStatus === 'all' || rowStatus === devStatus);
 
-            // فلتر الإحصائيات (الكروت العلوية)
             const rowAlert = row.getAttribute('data-alert');
             const alertMatch = (currentFilterType === 'all' || rowAlert === currentFilterType);
 
