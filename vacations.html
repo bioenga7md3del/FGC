@@ -31,11 +31,29 @@
         .btn-detail-conflict { background: #fff5f5; color: #c0392b; border: 1px solid #f5c6cb; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; cursor: pointer; font-weight: bold; margin-top: 4px; display: inline-block; transition: 0.2s; }
         .btn-detail-conflict:hover { background: #c0392b; color: white; }
 
-        /* ستايل لوحة تحليل التعارضات المجمعة */
         .conflict-group-card { background: #fff; border: 1px solid #f5c6cb; border-radius: 8px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 8px rgba(192,57,43,0.05); }
         .conflict-group-header { background: #fff5f5; color: #c0392b; padding: 12px 15px; font-weight: bold; font-size: 0.95rem; border-bottom: 1px solid #f5c6cb; display: flex; justify-content: space-between; align-items: center; }
         .conflict-item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f1f5f9; font-size: 0.9em; }
         .conflict-item-row:last-child { border-bottom: none; }
+
+        /* --- حل مشكلة الجدول العريض (التمرير الأفقي) --- */
+        .table-container {
+            width: 100%;
+            overflow-x: auto; /* تفعيل شريط التمرير الأفقي */
+            -webkit-overflow-scrolling: touch;
+            border-radius: 0 0 8px 8px;
+        }
+        #masterVacTable {
+            width: 100%;
+            min-width: 1300px; /* إجبار الجدول على أخذ مساحة كافية للأعمدة */
+        }
+        #masterVacTable th, #masterVacTable td {
+            white-space: nowrap; /* منع تكدس النصوص فوق بعضها */
+        }
+        #masterVacTable td.notes-cell {
+            white-space: normal; /* السماح للملاحظات الطويلة بالنزول لسطر جديد */
+            min-width: 250px;
+        }
     </style>
 </head>
 <body>
@@ -102,7 +120,7 @@
     </div>
 
     <div class="card" style="padding: 0; overflow: hidden;">
-        <div class="table-container" style="box-shadow: none; border-radius: 0;">
+        <div class="table-container">
             <table id="masterVacTable">
                 <thead>
                     <tr>
@@ -117,7 +135,7 @@
                         <th>الأيام</th>
                         <th>الموظف البديل</th>
                         <th>الحالة والملاحظات</th>
-                        <th class="col-action">تحكم الإدارة</th>
+                        <th class="col-action" style="position: sticky; left: 0; background: #f8fafc; z-index: 2; box-shadow: inset -2px 0 5px rgba(0,0,0,0.05);">تحكم الإدارة</th>
                     </tr>
                 </thead>
                 <tbody id="masterVacTableBody"></tbody>
@@ -187,14 +205,13 @@
     let sitesMap = new Map();
     let currentCardFilter = 'all';
     let conflictIdsGlobal = new Set();
-    let conflictGroupsGlobal = {}; // لتخزين التعارضات مجمعة للنافذة الذكية
+    let conflictGroupsGlobal = {}; 
 
     document.addEventListener("DOMContentLoaded", () => {
         loadSitesList();
         loadMasterVacations();
     });
 
-    // جلب المواقع لتغذية قائمة الفلتر
     function loadSitesList() {
         db.collection("budgets").onSnapshot(snap => {
             const select = document.getElementById('filterSite');
@@ -208,7 +225,6 @@
         });
     }
 
-    // جلب جميع الإجازات مركزياً
     function loadMasterVacations() {
         db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
             allVacations = [];
@@ -220,12 +236,10 @@
         });
     }
 
-    // 🧠 الخوارزمية المطورة لتحليل وتجميع التعارضات بصورة مجمعة ومنظمة
     function analyzeConflicts() {
         conflictIdsGlobal.clear();
         conflictGroupsGlobal = {};
         
-        // 1. تحديد الطلبات المتداخلة زمنياً على نفس البديل ونفس الموقع
         for(let i=0; i<allVacations.length; i++) {
             for(let j=i+1; j<allVacations.length; j++) {
                 let v1 = allVacations[i];
@@ -236,7 +250,6 @@
                         conflictIdsGlobal.add(v1.id);
                         conflictIdsGlobal.add(v2.id);
                         
-                        // تجميع التعارضات برابط مفتاح: اسم البديل + الموقع
                         let groupKey = `${v1.siteId}_${v1.coverEmp}`;
                         if(!conflictGroupsGlobal[groupKey]) {
                             conflictGroupsGlobal[groupKey] = {
@@ -253,7 +266,6 @@
         }
     }
 
-    // تحديث أرقام الكروت العلوية
     function updateDashboardCards() {
         let total = allVacations.length;
         let pending = allVacations.filter(v => v.status === 'pending').length;
@@ -269,14 +281,12 @@
     function setFilterCard(type) {
         currentCardFilter = type;
         if(type === 'conflict') {
-            // فتح شاشة محلل التعارضات الذكية فوراً عند الضغط على الكرت الأحمر
             buildConflictResolverUI();
             document.getElementById('conflictResolverModal').classList.add('show');
         }
         renderTable();
     }
 
-    // بناء وتوليد واجهة محلل التعارضات المجمّعة الذكية داخل المودال
     function buildConflictResolverUI() {
         const container = document.getElementById('conflictResolverContainer');
         container.innerHTML = "";
@@ -295,7 +305,7 @@
             <div class="conflict-group-card">
                 <div class="conflict-group-header">
                     <span><i class="fa-solid fa-hospital-user"></i> الموقع: ${siteName}</span>
-                    <span><i class="fa-solid fa-user-shield"></i> الموظف البديل المشترك: <b style="text-decoration:underline;">${group.coverEmp}</b></span>
+                    <span><i class="fa-solid fa-user-shield"></i> البديل المشترك: <b style="text-decoration:underline;">${group.coverEmp}</b></span>
                 </div>
             `;
             
@@ -318,19 +328,16 @@
         });
     }
 
-    // رندرة وبناء جدول البيانات مع تطبيق الفلاتر والترتيب الذكي
     function renderTable() {
         const tbody = document.getElementById('masterVacTableBody');
         tbody.innerHTML = "";
 
         let filtered = [...allVacations];
 
-        // 1. تطبيق فلترة الكروت العلوية
         if(currentCardFilter === 'pending') filtered = filtered.filter(v => v.status === 'pending');
         if(currentCardFilter === 'approved') filtered = filtered.filter(v => v.status === 'approved');
         if(currentCardFilter === 'conflict') {
             filtered = filtered.filter(v => conflictIdsGlobal.has(v.id));
-            // الترتيب الذكي لجعل الصفوف المتعارضة تظهر تحت بعضها مباشرة
             filtered.sort((a,b) => {
                 let compSite = (a.siteId || "").localeCompare(b.siteId || "");
                 if(compSite !== 0) return compSite;
@@ -338,7 +345,6 @@
             });
         }
 
-        // 2. تطبيق فلاتر البحث المتقدمة
         const search = document.getElementById('filterSearch').value.toLowerCase();
         const site = document.getElementById('filterSite').value;
         const status = document.getElementById('filterStatus').value;
@@ -355,7 +361,7 @@
         });
 
         if(filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; color:#888;">لا توجد طلبات إجازة مطابقة للخيارات المحددة.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; color:#888; padding:20px;">لا توجد طلبات إجازة مطابقة للخيارات المحددة.</td></tr>`;
             return;
         }
 
@@ -387,8 +393,8 @@
                 <td><b>${v.endDate}</b></td>
                 <td>${v.reqDays}</td>
                 <td style="color:#8e44ad; font-weight:bold;">${v.coverEmp || '<span style="color:#aaa;">لم يحدد</span>'}</td>
-                <td>${badge} ${conflictDetailsBtn} ${v.notes ? `<div style="font-size:0.8em; color:#666; margin-top:4px;">${v.notes}</div>` : ''}</td>
-                <td class="col-action">
+                <td class="notes-cell">${badge} ${conflictDetailsBtn} ${v.notes ? `<div style="font-size:0.8em; color:#666; margin-top:4px;">${v.notes}</div>` : ''}</td>
+                <td class="col-action" style="position: sticky; left: 0; background: inherit; z-index: 1; box-shadow: inset -2px 0 5px rgba(0,0,0,0.05);">
                     <button onclick="openActionModal('${v.id}')" class="btn btn-primary" style="padding:4px 8px; font-size:0.8em;"><i class="fa-solid fa-gavel"></i> معالجة</button>
                     <button onclick="deleteVacationRecord('${v.id}')" class="btn btn-danger" style="padding:4px 8px; font-size:0.8em; background:none; color:var(--danger); border:1px solid var(--danger); margin-top:3px;"><i class="fa-solid fa-trash"></i></button>
                 </td>
@@ -396,10 +402,8 @@
         });
     }
 
-    // إطلاق الفلاتر عند الكتابة أو الاختيار
     function applyFilters() { renderTable(); }
 
-    // أيقونة كشف تفاصيل التعارض المباشرة للسطر المحدد
     function showQuickConflictAlert(vacId) {
         let currentVac = allVacations.find(v => v.id === vacId);
         if(!currentVac) return;
@@ -434,7 +438,6 @@
         try {
             await db.collection("vacations").doc(id).update({ status: status, notes: notes });
             closeModals();
-            // تحديث شاشة معالجة التعارضات في حال كانت مفتوحة
             if(document.getElementById('conflictResolverModal').classList.contains('show')) {
                 analyzeConflicts();
                 buildConflictResolverUI();
@@ -473,7 +476,7 @@
             if(rows[i].style.display === 'none') continue; 
             let row = [], cols = rows[i].querySelectorAll("td, th");
             for (let j = 0; j < cols.length; j++) {
-                if (cols[j].classList.contains('col-action') || cols[j].id === 'headerVacActions') continue; 
+                if (cols[j].classList.contains('col-action')) continue; 
                 let rawData = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, " ").replace(/,/g, "-"); 
                 row.push('"' + cleanArabicNum(rawData) + '"');
             }
@@ -484,8 +487,6 @@
         downloadLink.href = window.URL.createObjectURL(csvFile); downloadLink.style.display = "none";
         document.body.appendChild(downloadLink); downloadLink.click();
     }
-    
-    function fmt(n) { return Number(n||0).toLocaleString('ar-EG'); }
 </script>
 </body>
 </html>
