@@ -303,11 +303,13 @@
         db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
             allVacations = [];
             uniqueJobsGlobal.clear();
+
             snap.forEach(doc => {
                 let data = doc.data();
                 allVacations.push({id: doc.id, ...data});
                 if(data.jobTitle) uniqueJobsGlobal.add(data.jobTitle);
             });
+            
             populateJobFilter(); 
             analyzeConflicts();
             updateDashboardCards();
@@ -428,7 +430,8 @@
         });
 
         if(filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888; padding:20px;">لا توجد طلبات إجازة مطابقة.</td></tr>`; return;
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888; padding:20px;">لا توجد طلبات إجازة مطابقة للخيارات المحددة.</td></tr>`;
+            return;
         }
 
         filtered.forEach(v => {
@@ -518,6 +521,7 @@
         }
     }
 
+    // 🌟 التعديل الجذري لحل مشكلة التواريخ الإجبارية
     async function submitAdminAction() {
         const id = document.getElementById('actionVacId').value;
         let status = document.getElementById('actStatus').value;
@@ -529,22 +533,41 @@
 
         let updateData = { notes: notes, coverEmp: newCoverEmp };
 
-        if(suggestedStart && suggestedEnd) {
-            if(suggestedStart < todayStr) return alert("🚫 لا يمكن اقتراح إجازة في تاريخ ماضي.");
-            if(suggestedEnd < suggestedStart) return alert("🚫 تاريخ العودة لا يمكن أن يكون قبل البداية.");
-            
-            updateData.suggestedStart = suggestedStart;
-            updateData.suggestedEnd = suggestedEnd;
-            status = "suggested"; // 🌟 إجبار الحالة تصبح "موعد مقترح" طالما كتبنا مواعيد بديلة
-        } else {
+        if (status === 'approved') {
+            // لو الأدمن اختار اعتماد الطلب الحالي، نمسح التواريخ المقترحة تماماً
+            updateData.status = 'approved';
+            updateData.suggestedStart = firebase.firestore.FieldValue.delete();
+            updateData.suggestedEnd = firebase.firestore.FieldValue.delete();
+        } 
+        else if (status === 'rejected') {
+            // لو اختار رفض أو تقديم مقترح، نفحص خانات المواعيد
+            if (suggestedStart && suggestedEnd) {
+                if (suggestedStart < todayStr) return alert("🚫 لا يمكن اقتراح إجازة في تاريخ ماضي.");
+                if (suggestedEnd < suggestedStart) return alert("🚫 تاريخ العودة لا يمكن أن يكون قبل البداية.");
+                
+                updateData.suggestedStart = suggestedStart;
+                updateData.suggestedEnd = suggestedEnd;
+                updateData.status = "suggested"; // 🌟 تحويل الحالة لـ "مقترح"
+            } else {
+                updateData.status = 'rejected';
+                updateData.suggestedStart = firebase.firestore.FieldValue.delete();
+                updateData.suggestedEnd = firebase.firestore.FieldValue.delete();
+            }
+        } 
+        else {
+            // في حالة القيد المراجعة
+            updateData.status = status;
             updateData.suggestedStart = firebase.firestore.FieldValue.delete();
             updateData.suggestedEnd = firebase.firestore.FieldValue.delete();
         }
 
-        updateData.status = status;
-
         try {
-            await db.collection("vacations").doc(id).update(updateData); closeModals();
+            await db.collection("vacations").doc(id).update(updateData); 
+            closeModals();
+            if(document.getElementById('conflictResolverModal').classList.contains('show')) {
+                analyzeConflicts();
+                buildConflictResolverUI();
+            }
         } catch(e) { alert("حدث خطأ: " + e.message); }
     }
 
