@@ -49,6 +49,14 @@
         .detail-item { font-size: 0.9em; padding: 5px; border-right: 2px solid var(--primary); padding-right: 10px; text-align: right; }
         .detail-item span { display: block; color: #64748b; font-size: 0.85em; margin-bottom: 5px; }
         .detail-item strong { color: #334155; font-size: 1.1em; }
+
+        /* --- تصميم الفلتر المتعدد للوظائف (Custom Multi-Select) --- */
+        .multiselect-wrapper { position: relative; width: 100%; }
+        .multiselect-btn { background: white; border: 1px solid #ccc; padding: 8px 10px; border-radius: 5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; color: #333; min-height: 38px;}
+        .multiselect-content { display: none; position: absolute; background: white; width: 100%; border: 1px solid #ccc; max-height: 200px; overflow-y: auto; z-index: 100; border-radius: 5px; margin-top: 2px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .multiselect-content label { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.85em; margin: 0; transition: 0.2s;}
+        .multiselect-content label:hover { background: #f8fafc; color: var(--primary); }
+        .multiselect-content input { margin: 0; cursor: pointer; accent-color: var(--primary); }
     </style>
 </head>
 <body>
@@ -91,15 +99,25 @@
     </div>
 
     <div class="action-bar" style="margin-bottom: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #eee;">
-        <div class="filter-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+        <div class="filter-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px;">
             <div class="filter-group">
-                <label>بحث بالاسم / الرقم الوظيفي</label>
+                <label>بحث بالاسم / الرقم</label>
                 <input type="text" id="filterSearch" onkeyup="applyFilters()" placeholder="اكتب للبحث...">
             </div>
             <div class="filter-group">
-                <label>تصفية بالموقع / المستشفى</label>
+                <label>تصفية بالموقع</label>
                 <select id="filterSite" onchange="applyFilters()"><option value="all">الكل</option></select>
             </div>
+            
+            <div class="filter-group">
+                <label>تصفية بالوظيفة (متعدد)</label>
+                <div class="multiselect-wrapper">
+                    <div class="multiselect-btn" onclick="toggleJobFilter()">اختر الوظائف <i class="fa-solid fa-chevron-down"></i></div>
+                    <div class="multiselect-content" id="jobFilterContent">
+                        </div>
+                </div>
+            </div>
+
             <div class="filter-group">
                 <label>الحالة</label>
                 <select id="filterStatus" onchange="applyFilters()">
@@ -216,19 +234,16 @@
 
     let allVacations = [];
     let sitesMap = new Map();
+    let uniqueJobsGlobal = new Set(); // لحفظ جميع المسميات الوظيفية الفريدة
     let currentCardFilter = 'all';
     let conflictIdsGlobal = new Set();
     let conflictGroupsGlobal = {}; 
-    let altEmployeesList = []; // قائمة البدلاء العامة المعتمدة
+    let altEmployeesList = []; 
 
-    // مساعدة للحصول على تاريخ اليوم بصيغة YYYY-MM-DD
     function getTodayString() {
         const d = new Date();
-        let month = '' + (d.getMonth() + 1);
-        let day = '' + d.getDate();
-        let year = d.getFullYear();
-        if (month.length < 2) month = '0' + month;
-        if (day.length < 2) day = '0' + day;
+        let month = '' + (d.getMonth() + 1); let day = '' + d.getDate(); let year = d.getFullYear();
+        if (month.length < 2) month = '0' + month; if (day.length < 2) day = '0' + day;
         return [year, month, day].join('-');
     }
 
@@ -236,6 +251,14 @@
         loadSitesList();
         loadAltEmployeesList();
         loadMasterVacations();
+    });
+
+    // إغلاق قائمة فلتر الوظائف عند النقر خارجها
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.multiselect-wrapper')) {
+            const content = document.getElementById('jobFilterContent');
+            if(content) content.style.display = 'none';
+        }
     });
 
     window.toggleRow = function(id) {
@@ -267,7 +290,6 @@
         });
     }
 
-    // تحميل أسماء الموظفين البدلاء المعتمدين في النظام
     function loadAltEmployeesList() {
         db.collection("alternative_employees").onSnapshot(snap => {
             altEmployeesList = [];
@@ -278,12 +300,38 @@
     function loadMasterVacations() {
         db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
             allVacations = [];
-            snap.forEach(doc => allVacations.push({id: doc.id, ...doc.data()}));
+            uniqueJobsGlobal.clear();
+
+            snap.forEach(doc => {
+                let data = doc.data();
+                allVacations.push({id: doc.id, ...data});
+                if(data.jobTitle) uniqueJobsGlobal.add(data.jobTitle);
+            });
             
+            populateJobFilter(); // تحديث الفلتر بالوظائف الجديدة
             analyzeConflicts();
             updateDashboardCards();
             renderTable();
         });
+    }
+
+    // 🌟 بناء فلتر الوظائف الذكي (Multi-Select)
+    function populateJobFilter() {
+        const container = document.getElementById('jobFilterContent');
+        
+        // حفظ الاختيارات الحالية حتى لا تضيع عند التحديث الحي
+        const currentSelections = Array.from(document.querySelectorAll('.job-filter-cb:checked')).map(cb => cb.value);
+        
+        container.innerHTML = '';
+        uniqueJobsGlobal.forEach(job => {
+            const isChecked = currentSelections.includes(job) ? 'checked' : '';
+            container.innerHTML += `<label><input type="checkbox" class="job-filter-cb" value="${job}" onchange="applyFilters()" ${isChecked}> ${job}</label>`;
+        });
+    }
+
+    function toggleJobFilter() {
+        const content = document.getElementById('jobFilterContent');
+        content.style.display = content.style.display === 'block' ? 'none' : 'block';
     }
 
     function analyzeConflicts() {
@@ -340,17 +388,14 @@
     function buildConflictResolverUI() {
         const container = document.getElementById('conflictResolverContainer');
         container.innerHTML = "";
-        
         let keys = Object.keys(conflictGroupsGlobal);
         if(keys.length === 0) {
             container.innerHTML = `<p style="text-align:center; color:#888; font-style:italic;">🎉 رائِع! لا توجد أي تعارضات معلقة حالياً في أي موقع.</p>`;
             return;
         }
-
         keys.forEach(key => {
             const group = conflictGroupsGlobal[key];
             const siteName = sitesMap.get(group.siteId) || "موقع مجهول";
-            
             let cardHTML = `
             <div class="conflict-group-card">
                 <div class="conflict-group-header">
@@ -358,7 +403,6 @@
                     <span><i class="fa-solid fa-user-shield"></i> البديل المشترك: <b style="text-decoration:underline;">${group.coverEmp}</b></span>
                 </div>
             `;
-            
             group.items.forEach(v => {
                 cardHTML += `
                 <div class="conflict-item-row">
@@ -372,7 +416,6 @@
                 </div>
                 `;
             });
-            
             cardHTML += `</div>`;
             container.innerHTML += cardHTML;
         });
@@ -400,6 +443,9 @@
         const status = document.getElementById('filterStatus').value;
         const start = document.getElementById('filterStart').value;
         const end = document.getElementById('filterEnd').value;
+        
+        // جلب قائمة الوظائف المحددة في الفلتر المتعدد
+        const selectedJobs = Array.from(document.querySelectorAll('.job-filter-cb:checked')).map(cb => cb.value);
 
         filtered = filtered.filter(v => {
             let matchSearch = !search || (v.empName && v.empName.toLowerCase().includes(search)) || (v.empId && v.empId.toString().includes(search));
@@ -407,7 +453,11 @@
             let matchStatus = status === 'all' || v.status === status;
             let matchStart = !start || v.startDate >= start;
             let matchEnd = !end || v.endDate <= end;
-            return matchSearch && matchSite && matchStatus && matchStart && matchEnd;
+            
+            // 🌟 الفلتر الذكي للوظائف (لو مفيش حاجة مختارة يعتبر الكل متاح)
+            let matchJob = selectedJobs.length === 0 || selectedJobs.includes(v.jobTitle);
+
+            return matchSearch && matchSite && matchStatus && matchStart && matchEnd && matchJob;
         });
 
         if(filtered.length === 0) {
@@ -473,7 +523,6 @@
         }
     }
 
-    // --- 🌟 دالة فتح المودال مع تهيئة قائمة البدلاء ---
     function openActionModal(id) {
         let v = allVacations.find(item => item.id === id);
         if(!v) return;
@@ -490,25 +539,21 @@
         document.getElementById('actSuggestStart').setAttribute('min', todayStr);
         document.getElementById('actSuggestEnd').setAttribute('min', todayStr);
 
-        // تجهيز قائمة البدلاء
         let coverSelect = document.getElementById('actCoverEmp');
         coverSelect.innerHTML = '<option value="">-- بدون بديل / لم يحدد --</option>';
         
-        let allOptions = new Set([...altEmployeesList]); // دمج القائمة المعتمدة
-        if(v.coverEmp) allOptions.add(v.coverEmp); // إضافة البديل الحالي حتى لو مش بالقائمة
+        let allOptions = new Set([...altEmployeesList]);
+        if(v.coverEmp) allOptions.add(v.coverEmp);
         
         allOptions.forEach(emp => {
             coverSelect.innerHTML += `<option value="${emp}">${emp}</option>`;
         });
         coverSelect.value = v.coverEmp || '';
 
-        // استدعاء دالة الفحص اللحظي للتعارضات للبديل المحدد حالياً
         recheckConflictsInModal();
-        
         document.getElementById('actionModal').classList.add('show');
     }
 
-    // --- 🌟 الدالة السحرية: فحص التداخلات واقتراح التواريخ بناءً على اختيار القائمة اللحظي ---
     function recheckConflictsInModal() {
         let id = document.getElementById('actionVacId').value;
         let v = allVacations.find(item => item.id === id);
@@ -518,16 +563,13 @@
         let warningDiv = document.getElementById('actConflictWarning');
         let autoSuggestMsg = document.getElementById('autoSuggestMsg');
         
-        // إعادة تعيين الخانات
         warningDiv.style.display = 'none';
         autoSuggestMsg.style.display = 'none';
         
-        // إذا لم يتم اختيار بديل، لا يوجد تعارض على البدلاء
         if(!selectedCover) return;
 
         let todayStr = getTodayString();
         
-        // جلب الإجازات المعتمدة وقيد المراجعة للبديل المُختار "الجديد"
         let overlappingVacs = allVacations.filter(alt => 
             alt.id !== id && 
             alt.status !== 'rejected' && 
@@ -542,7 +584,6 @@
             warningDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <b>تنبيه تعارض:</b> الموظف البديل المختار (${selectedCover}) مشغول بالفعل بتغطية إجازة الأشخاص التاليين في نفس هذه الفترة:<br> - ${names}`;
             warningDiv.style.display = 'block';
 
-            // 🤖 خوارزمية إيجاد الفراغات واقتراح تاريخ (Gap Finder AI)
             let reqDays = Number(v.reqDays) || 1;
             let candidateStartStr = v.startDate < todayStr ? todayStr : v.startDate;
             let candidateStart = new Date(candidateStartStr);
@@ -575,13 +616,11 @@
             document.getElementById('actSuggestEnd').value = finalEnd.toISOString().split('T')[0];
             autoSuggestMsg.style.display = 'block';
         } else {
-            // البديل الجديد متاح ولا يوجد تعارض!
             document.getElementById('actSuggestStart').value = v.suggestedStart || '';
             document.getElementById('actSuggestEnd').value = v.suggestedEnd || '';
         }
     }
 
-    // --- 🌟 دالة الحفظ المحدثة ---
     async function submitAdminAction() {
         const id = document.getElementById('actionVacId').value;
         const status = document.getElementById('actStatus').value;
@@ -612,6 +651,10 @@
         if(suggestedStart && suggestedEnd) {
             updateData.suggestedStart = suggestedStart;
             updateData.suggestedEnd = suggestedEnd;
+        } else {
+            // حذف التواريخ المقترحة لو الأدمن مسحها
+            updateData.suggestedStart = firebase.firestore.FieldValue.delete();
+            updateData.suggestedEnd = firebase.firestore.FieldValue.delete();
         }
 
         try {
