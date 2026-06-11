@@ -31,13 +31,11 @@
         .btn-detail-conflict { background: #fff5f5; color: #c0392b; border: 1px solid #f5c6cb; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; cursor: pointer; font-weight: bold; margin-top: 4px; display: inline-block; transition: 0.2s; }
         .btn-detail-conflict:hover { background: #c0392b; color: white; }
 
-        /* ستايل محلل التعارضات المجمع */
         .conflict-group-card { background: #fff; border: 1px solid #f5c6cb; border-radius: 8px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 8px rgba(192,57,43,0.05); }
         .conflict-group-header { background: #fff5f5; color: #c0392b; padding: 12px 15px; font-weight: bold; font-size: 0.95rem; border-bottom: 1px solid #f5c6cb; display: flex; justify-content: space-between; align-items: center; }
         .conflict-item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f1f5f9; font-size: 0.9em; }
         .conflict-item-row:last-child { border-bottom: none; }
 
-        /* --- تصميم الصفوف المنسدلة (Expandable Rows) للجدول --- */
         table { width: 100%; border-collapse: collapse; }
         .main-row { cursor: pointer; transition: 0.2s; background-color: #fff; border-bottom: 1px solid #edf2f7; }
         .main-row:hover { background-color: #f8fafc; }
@@ -147,31 +145,50 @@
 </div>
 
 <div id="actionModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 450px;">
+    <div class="modal-content" style="max-width: 500px;">
         <span class="close-modal" onclick="closeModals()">&times;</span>
         <h3 style="color:var(--primary); margin-top:0;"><i class="fa-solid fa-gavel"></i> معالجة طلب إجازة موظف</h3>
         <input type="hidden" id="actionVacId">
         
+        <div id="actConflictWarning" style="display:none; background:#f8d7da; color:#721c24; padding:12px; border-radius:6px; margin-bottom:15px; font-size:0.85em; border:1px solid #f5c6cb;">
+            </div>
+
         <div style="background:#f8fafc; padding:12px; border-radius:6px; margin-bottom:15px; font-size:0.9em; border:1px solid #eee;">
             <p style="margin:0 0 5px 0;"><b>الموظف:</b> <span id="actEmpName"></span></p>
             <p style="margin:0 0 5px 0;"><b>الموقع:</b> <span id="actSiteName"></span></p>
-            <p style="margin:0;"><b>الفترة:</b> <span id="actDates"></span></p>
+            <p style="margin:0;"><b>الفترة المطلوبة:</b> <span id="actDates" style="color:var(--danger); font-weight:bold;"></span></p>
         </div>
 
         <div class="input-box">
             <label>اتخاذ إجراء الاعتماد</label>
             <select id="actStatus" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
                 <option value="pending">قيد المراجعة</option>
-                <option value="approved">اعتماد الطلب ✅</option>
+                <option value="approved">اعتماد الطلب الحالي ✅</option>
                 <option value="rejected">رفض الطلب ❌</option>
             </select>
         </div>
+
+        <div style="background:#fffce8; padding:15px; border-radius:8px; border:1px dashed #f1c40f; margin-top:15px;">
+            <label style="color:#b7950b; font-weight:bold; font-size:0.9em; margin-bottom:10px; display:block;"><i class="fa-solid fa-calendar-plus"></i> اقتراح موعد بديل للإجازة (اختياري)</label>
+            <div style="display:flex; gap:10px;">
+                <div class="input-box" style="flex:1; margin:0;">
+                    <label style="font-size:0.8em; color:#666;">البداية المقترحة</label>
+                    <input type="date" id="actSuggestStart" style="padding:8px;">
+                </div>
+                <div class="input-box" style="flex:1; margin:0;">
+                    <label style="font-size:0.8em; color:#666;">النهاية المقترحة</label>
+                    <input type="date" id="actSuggestEnd" style="padding:8px;">
+                </div>
+            </div>
+            <p style="font-size:0.75em; color:#888; margin:8px 0 0 0;">في حال الرفض أو التأجيل، يمكنك اقتراح الموعد المناسب للموقع.</p>
+        </div>
+
         <div class="input-box" style="margin-top:15px;">
             <label>ملاحظات الإدارة أو سبب الرفض</label>
-            <input type="text" id="actNotes" placeholder="اكتب ملاحظة...">
+            <input type="text" id="actNotes" placeholder="اكتب رسالة للموظف هنا...">
         </div>
         
-        <button onclick="submitAdminAction()" class="btn btn-success" style="width:100%; margin-top:20px;">حفظ وإرسال التحديث</button>
+        <button onclick="submitAdminAction()" class="btn btn-success" style="width:100%; margin-top:20px;"><i class="fa-solid fa-paper-plane"></i> حفظ وإرسال التحديث</button>
     </div>
 </div>
 
@@ -200,7 +217,6 @@
         loadMasterVacations();
     });
 
-    // دالة توسيع وإخفاء السطر
     window.toggleRow = function(id) {
         const row = document.getElementById(id);
         const btn = document.getElementById('btn-' + id);
@@ -386,7 +402,9 @@
                 conflictDetailsBtn = `<br><button onclick="event.stopPropagation(); showQuickConflictAlert('${v.id}')" class="btn-detail-conflict"><i class="fa-solid fa-triangle-exclamation"></i> ⚠️ تعارض بالبديل</button>`;
             }
 
-            // السطر الرئيسي + السطر المنسدل (التفاصيل)
+            // ظهور المواعيد المقترحة لو موجودة
+            let suggestedDatesNote = v.suggestedStart ? `<div style="color:#d35400; font-size:0.85em; margin-top:5px; font-weight:bold; background:#fffce8; padding:3px 5px; border-radius:4px;"><i class="fa-solid fa-calendar-plus"></i> موعد مقترح من الإدارة: من ${v.suggestedStart} إلى ${v.suggestedEnd}</div>` : '';
+
             tbody.innerHTML += `
             <tr class="main-row ${rowClass}" data-status="${v.status || 'pending'}" onclick="toggleRow('vac-${v.id}')">
                 <td style="text-align:center;"><button class="toggle-btn" id="btn-vac-${v.id}"><i class="fa-solid fa-chevron-down"></i></button></td>
@@ -402,9 +420,9 @@
                         <div class="detail-item"><span>الرقم الوظيفي</span><strong>${v.empId}</strong></div>
                         <div class="detail-item"><span>الرصيد المتاح</span><strong>${v.balance || 0} يوم</strong></div>
                         <div class="detail-item"><span>آخر إجازة</span><strong>${v.lastVacation || 'لا يوجد'}</strong></div>
-                        <div class="detail-item"><span>مدة الإجازة</span><strong style="color:var(--accent);">${v.reqDays} يوم</strong></div>
+                        <div class="detail-item"><span>مدة الإجازة المطلوبة</span><strong style="color:var(--danger);">${v.reqDays} يوم</strong></div>
                         <div class="detail-item"><span>الموظف البديل</span><strong style="color:#8e44ad;">${v.coverEmp || 'لم يحدد'}</strong></div>
-                        <div class="detail-item" style="grid-column: 1 / -1;"><span>ملاحظات الطلب</span><strong>${v.notes || 'لا توجد ملاحظات'}</strong></div>
+                        <div class="detail-item" style="grid-column: 1 / -1;"><span>ملاحظات الطلب والردود</span><strong>${v.notes || 'لا توجد ملاحظات'} ${suggestedDatesNote}</strong></div>
                         
                         <div class="detail-item" style="grid-column: 1 / -1; display:flex; gap:10px; border-right:none; border-top:1px solid #eee; padding-top:15px; margin-top:5px;">
                             <button onclick="openActionModal('${v.id}')" class="btn btn-primary" style="padding:6px 15px;"><i class="fa-solid fa-gavel"></i> معالجة واعتماد</button>
@@ -421,15 +439,14 @@
     function showQuickConflictAlert(vacId) {
         let currentVac = allVacations.find(v => v.id === vacId);
         if(!currentVac) return;
-
         let overlappingVacs = allVacations.filter(v => v.id !== vacId && v.status !== 'rejected' && v.siteId === currentVac.siteId && v.coverEmp === currentVac.coverEmp && v.startDate <= currentVac.endDate && v.endDate >= currentVac.startDate);
-        
         if(overlappingVacs.length > 0) {
             let names = overlappingVacs.map(v => `[ ${v.empName} للفترة من ${v.startDate} إلى ${v.endDate} ]`).join(' و ');
             alert(`⚠️ تنبيه تعارض البديل:\nالموظف البديل (${currentVac.coverEmp}) تم تعيينه في نفس الوقت لتغطية إجازة كل من: ${names}.\n\nيرجى الضغط على الكرت الأحمر في الأعلى لفتح مركز معالجة التعارضات حلها مجمعة.`);
         }
     }
 
+    // --- 🌟 دالة فتح مودال المعالجة المحدثة (شاملة التحذير والموعد المقترح) ---
     function openActionModal(id) {
         let v = allVacations.find(item => item.id === id);
         if(!v) return;
@@ -440,17 +457,40 @@
         document.getElementById('actDates').innerText = `من ${v.startDate} إلى ${v.endDate}`;
         document.getElementById('actStatus').value = v.status || 'pending';
         document.getElementById('actNotes').value = v.notes || '';
+        document.getElementById('actSuggestStart').value = v.suggestedStart || '';
+        document.getElementById('actSuggestEnd').value = v.suggestedEnd || '';
+
+        // تشغيل كاشف التعارضات داخل المودال نفسه!
+        let overlappingVacs = allVacations.filter(alt => alt.id !== id && alt.status !== 'rejected' && alt.siteId === v.siteId && alt.coverEmp && alt.coverEmp === v.coverEmp && alt.startDate <= v.endDate && alt.endDate >= v.startDate);
+        let warningDiv = document.getElementById('actConflictWarning');
+        
+        if(overlappingVacs.length > 0) {
+            let names = overlappingVacs.map(alt => `<b>${alt.empName}</b> (${alt.startDate} إلى ${alt.endDate})`).join('<br> - ');
+            warningDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <b>تنبيه تعارض خطير:</b> الموظف البديل (${v.coverEmp}) مشغول بالفعل بتغطية إجازة الأشخاص التاليين في نفس هذه الفترة:<br> - ${names}`;
+            warningDiv.style.display = 'block';
+        } else {
+            warningDiv.style.display = 'none';
+        }
         
         document.getElementById('actionModal').classList.add('show');
     }
 
+    // --- 🌟 دالة الحفظ المحدثة (لإرسال التواريخ المقترحة) ---
     async function submitAdminAction() {
         const id = document.getElementById('actionVacId').value;
         const status = document.getElementById('actStatus').value;
         const notes = document.getElementById('actNotes').value;
+        const suggestedStart = document.getElementById('actSuggestStart').value;
+        const suggestedEnd = document.getElementById('actSuggestEnd').value;
+
+        let updateData = { status: status, notes: notes };
+        
+        // إذا قام الأدمن بإدخال تواريخ مقترحة، يتم حفظها
+        if(suggestedStart) updateData.suggestedStart = suggestedStart;
+        if(suggestedEnd) updateData.suggestedEnd = suggestedEnd;
 
         try {
-            await db.collection("vacations").doc(id).update({ status: status, notes: notes });
+            await db.collection("vacations").doc(id).update(updateData);
             closeModals();
             if(document.getElementById('conflictResolverModal').classList.contains('show')) {
                 analyzeConflicts();
@@ -484,11 +524,10 @@
 
     function cleanArabicNum(str) { if(!str) return ""; return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.'); }
 
-    // تعديل دالة التصدير لتصدير البيانات الفعلية كاملة
     function exportTableToCSV(filename) {
         let csv = []; 
         csv.push('\uFEFF'); 
-        csv.push("الموظف,الرقم الوظيفي,الوظيفة,الموقع,آخر إجازة,الرصيد,بداية الإجازة,نهاية الإجازة,مدة الأيام,الموظف البديل,الحالة,الملاحظات");
+        csv.push("الموظف,الرقم الوظيفي,الوظيفة,الموقع,آخر إجازة,الرصيد,بداية الإجازة,نهاية الإجازة,مدة الأيام,الموظف البديل,الموعد المقترح,الحالة,الملاحظات");
         
         let rows = document.querySelectorAll(".main-row");
         rows.forEach(row => {
@@ -498,7 +537,8 @@
                 if(v) {
                     let siteName = sitesMap.get(v.siteId) || "";
                     let statusTxt = v.status === 'approved' ? 'معتمد' : (v.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة');
-                    let line = [v.empName, v.empId, v.jobTitle, siteName, v.lastVacation, v.balance, v.startDate, v.endDate, v.reqDays, v.coverEmp, statusTxt, v.notes];
+                    let suggestTxt = v.suggestedStart ? `من ${v.suggestedStart} إلى ${v.suggestedEnd}` : '-';
+                    let line = [v.empName, v.empId, v.jobTitle, siteName, v.lastVacation, v.balance, v.startDate, v.endDate, v.reqDays, v.coverEmp, suggestTxt, statusTxt, v.notes];
                     csv.push('"' + line.map(l => cleanArabicNum(String(l || '').replace(/"/g, '""'))).join('","') + '"');
                 }
             }
