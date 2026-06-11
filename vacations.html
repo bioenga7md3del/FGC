@@ -3,211 +3,178 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة خطط الإجازات المركزية - FGC</title>
+    <title>إدارة خطط الإجازات المركزية - FGC</title> 
     
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;800&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: bold; color: white; display: inline-block;}
+        .summary-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .summary-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border: 1px solid #eee; text-align: center; cursor: pointer; transition: 0.3s; position: relative;}
+        .summary-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.08); }
+        .summary-card h4 { margin: 0 0 10px 0; color: #64748b; font-size: 0.95rem; }
+        .summary-card p { margin: 0; font-size: 2rem; font-weight: bold; }
+        
+        .badge { padding: 5px 10px; border-radius: 4px; font-size: 0.85em; font-weight: bold; color: white; display: inline-block;}
         .badge-pending { background-color: #f39c12; }
         .badge-approved { background-color: #27ae60; }
         .badge-rejected { background-color: #c0392b; }
-        .notes-text { font-size: 0.8em; color: #555; display: block; margin-top: 5px; }
-        
-        .conflict-row { background-color: #fff3cd !important; border-right: 4px solid #ffc107; }
-        
-        .stats-cards-container { display: flex; gap: 15px; margin-bottom: 20px; }
-        .stat-card { flex: 1; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; cursor: pointer; transition: 0.3s; border: 1px solid transparent; }
-        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .stat-card h3 { margin: 0; font-size: 1em; color: #555; }
-        .stat-card p { margin: 10px 0 0 0; font-size: 1.8em; font-weight: bold; }
-        
-        .card-pending { border-bottom: 4px solid #f39c12; }
-        .card-pending p { color: #f39c12; }
-        .card-approved { border-bottom: 4px solid #27ae60; }
-        .card-approved p { color: #27ae60; }
-        .card-conflict { border-bottom: 4px solid #dc3545; background-color: #fff8f8; }
-        .card-conflict p { color: #dc3545; }
-        .card-conflict:hover { border-color: #dc3545; }
 
-        .modal-alert { padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 0.9em; display: none; line-height: 1.5; }
-        .modal-alert-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-        .modal-alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .btn-sm { padding: 5px 10px; font-size: 0.8em; border-radius: 3px; }
+        .conflict-row { background-color: #fff3cd !important; border-right: 4px solid #ffc107; }
+        .conflict-row:hover { background-color: #ffeeba !important; }
+        
+        .btn-detail-conflict { background: #fff5f5; color: #c0392b; border: 1px solid #f5c6cb; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; cursor: pointer; font-weight: bold; margin-top: 4px; display: inline-block; transition: 0.2s; }
+        .btn-detail-conflict:hover { background: #c0392b; color: white; }
+
+        /* ستايل لوحة تحليل التعارضات المجمعة */
+        .conflict-group-card { background: #fff; border: 1px solid #f5c6cb; border-radius: 8px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 8px rgba(192,57,43,0.05); }
+        .conflict-group-header { background: #fff5f5; color: #c0392b; padding: 12px 15px; font-weight: bold; font-size: 0.95rem; border-bottom: 1px solid #f5c6cb; display: flex; justify-content: space-between; align-items: center; }
+        .conflict-item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f1f5f9; font-size: 0.9em; }
+        .conflict-item-row:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
 
-<div class="print-header">
-    <h1>خطة إجازات الموظفين (المركزية)</h1>
-    <p>تاريخ التقرير: <span id="printDate"></span></p>
-</div>
-
-<div class="container">
+<div class="container" style="margin-top: 25px;">
+    
     <div class="header-bar">
         <div class="header-title-box">
             <img src="FGC.jpeg" alt="Logo" class="logo-img" style="max-height: 60px;">
             <div>
-                <h2 style="margin:0; color: var(--primary);">إدارة خطط الإجازات</h2>
-                <div style="margin-top: 5px;">
-                    <a href="dashboard.html" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px;"><i class="fa-solid fa-house"></i> الرئيسية</a>
-                </div>
+                <h2 style="margin:0; color: var(--primary);">إدارة خطط الإجازات المركزية</h2>
+                <p style="margin:5px 0 0 0; color:#666; font-size:0.9em;">الشركة الخليجية الأولى - لوحة تحكم المسؤول</p>
             </div>
         </div>
-        
         <div id="actionButtons" style="display:flex; gap: 10px; flex-wrap: wrap;">
-            <button onclick="openAddModal()" class="btn btn-primary"><i class="fa-solid fa-plane-departure"></i> تقديم طلب إجازة</button>
-            <button onclick="exportTableToCSV('خطة_الاجازات.csv')" class="btn btn-success" style="background: #217346;"><i class="fa-solid fa-file-excel"></i> تصدير Excel</button>
-            <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333;"><i class="fa-solid fa-print"></i> طباعة</button>
-            <button id="btnAddCoverEmp" onclick="openAddCoverEmpModal()" class="btn btn-warning" style="display: none; color: white;"><i class="fa-solid fa-user-plus"></i> إضافة موظف بديل للقائمة</button>
-            <a href="calendar.html" class="btn btn-outline" style="border-color: #e67e22; color: #e67e22; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
-                <i class="fa-solid fa-calendar-days"></i> عرض التقويم الزمني (Calendar)
-            </a>
+            <button onclick="openAlternativeEmpModal()" class="btn btn-primary" style="background-color: #e67e22;"><i class="fa-solid fa-user-plus"></i> إضافة موظف بديل للقائمة</button>
+            <button onclick="window.print()" class="btn btn-outline"><i class="fa-solid fa-print"></i> طباعة</button>
+            <button onclick="exportTableToCSV('fgc_master_vacations.csv')" class="btn btn-success" style="background: #217346;"><i class="fa-solid fa-file-excel"></i> تصدير Excel</button>
+            <a href="dashboard.html" class="btn btn-outline" style="text-decoration:none; font-size:0.85em; padding:8px 12px;"><i class="fa-solid fa-house"></i> الرئيسية</a>
         </div>
     </div>
 
-    <div class="stats-cards-container" id="adminStatsArea" style="display:none;">
-        <div class="stat-card card-pending" onclick="filterByStat('pending')">
-            <h3>قيد المراجعة</h3><p id="countPending">0</p>
+    <div class="summary-dashboard">
+        <div class="summary-card" style="border-bottom: 4px solid #64748b;" onclick="setFilterCard('all')">
+            <h4>عرض الكل</h4>
+            <p id="statTotal">0</p>
         </div>
-        <div class="stat-card card-approved" onclick="filterByStat('approved')">
-            <h3>تم الاعتماد</h3><p id="countApproved">0</p>
+        <div class="summary-card" style="border-bottom: 4px solid #f39c12;" onclick="setFilterCard('pending')">
+            <h4>قيد المراجعة</h4>
+            <p id="statPending" style="color: #f39c12;">0</p>
         </div>
-        <div class="stat-card card-conflict" onclick="filterByStat('conflict')" title="اضغط لعرض التعارضات فقط">
-            <h3>تعارضات تحتاج تدخلك ⚠️</h3><p id="countConflict">0</p>
+        <div class="summary-card" style="border-bottom: 4px solid #27ae60;" onclick="setFilterCard('approved')">
+            <h4>تم الاعتماد</h4>
+            <p id="statApproved" style="color: #27ae60;">0</p>
         </div>
-        <div class="stat-card" style="border-bottom: 4px solid var(--primary);" onclick="filterByStat('all')">
-            <h3>عرض الكل</h3><p style="color:var(--primary); font-size: 1.2em; margin-top: 15px;"><i class="fa-solid fa-list"></i></p>
+        <div class="summary-card" style="border-bottom: 4px solid #c0392b; background: #fff5f5;" onclick="setFilterCard('conflict')">
+            <h4>تعارضات تحتاج تدخلك ⚠️</h4>
+            <p id="statConflict" style="color: #c0392b;">0</p>
         </div>
     </div>
 
-    <div class="action-bar">
-        <div class="filter-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
-            <div class="filter-group"><label>بحث بالاسم / الرقم الوظيفي</label><input type="text" id="filterName" onkeyup="applyFilters()" placeholder="بحث..."></div>
-            
+    <div class="action-bar" style="margin-bottom: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #eee;">
+        <div class="filter-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
             <div class="filter-group">
-                <label>الموقع</label>
-                <select id="filterSite" onchange="applyFilters()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; width: 100%;">
-                    <option value="all">الكل</option>
-                </select>
+                <label>بحث بالاسم / الرقم الوظيفي</label>
+                <input type="text" id="filterSearch" onkeyup="applyFilters()" placeholder="اكتب للبحث...">
             </div>
-            
+            <div class="filter-group">
+                <label>تصفية بالموقع / المستشفى</label>
+                <select id="filterSite" onchange="applyFilters()"><option value="all">الكل</option></select>
+            </div>
             <div class="filter-group">
                 <label>الحالة</label>
-                <select id="filterStatus" onchange="applyFilters()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; width: 100%;">
+                <select id="filterStatus" onchange="applyFilters()">
                     <option value="all">الكل</option>
                     <option value="pending">قيد المراجعة</option>
                     <option value="approved">معتمد</option>
                     <option value="rejected">مرفوض</option>
                 </select>
             </div>
-
-            <div class="filter-group"><label>من تاريخ</label><input type="date" id="filterDateFrom" onchange="applyFilters()" style="padding: 6px; border-radius: 5px; border: 1px solid #ccc; width: 100%;"></div>
-            <div class="filter-group"><label>إلى تاريخ</label><input type="date" id="filterDateTo" onchange="applyFilters()" style="padding: 6px; border-radius: 5px; border: 1px solid #ccc; width: 100%;"></div>
+            <div class="filter-group"><label>من تاريخ</label><input type="date" id="filterStart" onchange="applyFilters()"></div>
+            <div class="filter-group"><label>إلى تاريخ</label><input type="date" id="filterEnd" onchange="applyFilters()"></div>
         </div>
     </div>
 
     <div class="card" style="padding: 0; overflow: hidden;">
         <div class="table-container" style="box-shadow: none; border-radius: 0;">
-            <table id="vacationsTable">
+            <table id="masterVacTable">
                 <thead>
                     <tr>
-                        <th>الموظف</th><th>الرقم الوظيفي</th><th>الوظيفة</th><th>الموقع</th><th>آخر إجازة</th>
-                        <th>الرصيد المتاح</th><th>البداية المقترحة</th><th>النهاية</th><th>أيام</th>
-                        <th>الموظف البديل</th><th>الحالة والملاحظات</th><th class="col-action">تحكم</th>
+                        <th>الموظف</th>
+                        <th>الرقم الوظيفي</th>
+                        <th>الوظيفة</th>
+                        <th>الموقع التابع له</th>
+                        <th>آخر إجازة</th>
+                        <th>الرصيد المتاح</th>
+                        <th>البداية المقترحة</th>
+                        <th>النهاية</th>
+                        <th>الأيام</th>
+                        <th>الموظف البديل</th>
+                        <th>الحالة والملاحظات</th>
+                        <th class="col-action">تحكم الإدارة</th>
                     </tr>
                 </thead>
-                <tbody id="tableBody"></tbody>
+                <tbody id="masterVacTableBody"></tbody>
             </table>
         </div>
     </div>
 </div>
 
-<div id="addVacationModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 700px;">
-        <span class="close-modal" onclick="document.getElementById('addVacationModal').style.display='none'">&times;</span>
-        <h3 style="color:var(--primary); margin-top:0;">تقديم طلب إجازة جديد</h3>
+<div id="conflictResolverModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 800px; width: 95%; max-height: 85vh; overflow-y: auto;">
+        <span class="close-modal" onclick="closeModals()">&times;</span>
+        <h3 style="color:#c0392b; margin-top:0; border-bottom:2px solid #f5c6cb; padding-bottom:10px;">
+            <i class="fa-solid fa-triangle-exclamation"></i> مركز تحليل وحل تعارضات البدلاء المجمّع
+        </h3>
+        <p style="font-size:0.85em; color:#666; margin-bottom:20px;">
+            الطلبات أدناه تم تجميعها بناءً على **الموظف البديل المشترك** المشغول في نفس الفترة الزمنية داخل الموقع. يرجى مراجعتها واعتماد أحدهما لتفادي فراغ الموقع.
+        </p>
         
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-            <div class="input-box"><label>اسم الموظف *</label><input type="text" id="empName"></div>
-            <div class="input-box"><label>الرقم الوظيفي *</label><input type="number" id="empId"></div>
-            <div class="input-box">
-                <label>المسمى الوظيفي *</label>
-                <select id="jobTitle" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
-                    <option value="مدير الموقع">مدير الموقع</option><option value="مهندس (س)">مهندس (س)</option><option value="مهندس (ج)">مهندس (ج)</option><option value="فني (س)">فني (س)</option><option value="فني (ج)">فني (ج)</option>
-                </select>
-            </div>
-            <div class="input-box"><label>المنطقة / الموقع *</label><select id="siteIdSelect" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;"></select></div>
-            <div class="input-box"><label>تاريخ آخر إجازة</label><input type="date" id="lastVacation"></div>
-            <div class="input-box"><label>رصيد الإجازات المتاح (أيام)</label><input type="number" id="balance"></div>
-        </div>
-        
-        <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin: 15px 0; border: 1px dashed #ddd;">
-            <h4 style="margin:0 0 10px 0; color:var(--primary-light);">تفاصيل الإجازة المطلوبة</h4>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-                <div class="input-box"><label>بداية الإجازة *</label><input type="date" id="startDate" onchange="calcDays()"></div>
-                <div class="input-box"><label>نهاية الإجازة *</label><input type="date" id="endDate" onchange="calcDays()"></div>
-                <div class="input-box"><label>عدد الأيام</label><input type="number" id="reqDays" readonly style="background:#eee;"></div>
-            </div>
-            <div class="input-box" style="margin-top: 10px;"><label>الموظف البديل (اختياري)</label><select id="coverEmp" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;"><option value="">-- يحدد لاحقاً --</option></select></div>
-        </div>
-        
-        <div style="text-align: left; margin-top: 15px;">
-            <button id="saveVacBtn" onclick="saveVacation()" class="btn btn-success" style="width: 150px;">حفظ الطلب</button>
-        </div>
+        <div id="conflictResolverContainer"></div>
     </div>
 </div>
 
-<div id="reviewModal" class="modal-overlay">
+<div id="actionModal" class="modal-overlay">
     <div class="modal-content" style="max-width: 450px;">
-        <span class="close-modal" onclick="document.getElementById('reviewModal').style.display='none'">&times;</span>
-        <h3 style="color:var(--primary); margin-top:0;">مراجعة طلب الإجازة</h3>
+        <span class="close-modal" onclick="closeModals()">&times;</span>
+        <h3 style="color:var(--primary); margin-top:0;"><i class="fa-solid fa-gavel"></i> معالجة طلب إجازة موظف</h3>
+        <input type="hidden" id="actionVacId">
         
-        <div id="modalRecommendationAlert" class="modal-alert"></div>
-        <input type="hidden" id="reviewDocId">
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-            <div class="input-box"><label>تعديل بداية الإجازة</label><input type="date" id="reviewStartDate" style="border-color: var(--accent);"></div>
-            <div class="input-box"><label>تعديل نهاية الإجازة</label><input type="date" id="reviewEndDate" style="border-color: var(--accent);"></div>
-        </div>
-
-        <div class="input-box" style="margin-bottom:15px;">
-            <label>الموظف البديل</label>
-            <select id="reviewCoverEmp" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;"><option value="">-- لم يحدد --</option></select>
+        <div style="background:#f8fafc; padding:12px; border-radius:6px; margin-bottom:15px; font-size:0.9em; border:1px solid #eee;">
+            <p style="margin:0 0 5px 0;"><b>الموظف:</b> <span id="actEmpName"></span></p>
+            <p style="margin:0 0 5px 0;"><b>الموقع:</b> <span id="actSiteName"></span></p>
+            <p style="margin:0;"><b>الفترة:</b> <span id="actDates"></span></p>
         </div>
 
         <div class="input-box">
-            <label>حالة الطلب</label>
-            <select id="reviewStatus" onchange="toggleRejectionNote()" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
+            <label>اتخاذ إجراء الاعتماد</label>
+            <select id="actStatus" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
                 <option value="pending">قيد المراجعة</option>
-                <option value="approved">معتمد</option>
-                <option value="rejected">مرفوض</option>
+                <option value="approved">اعتماد الطلب ✅</option>
+                <option value="rejected">رفض الطلب ❌</option>
             </select>
         </div>
-        
         <div class="input-box" style="margin-top:15px;">
-            <label id="lblReviewNotes">ملاحظات (إجباري في حالة الرفض)</label>
-            <textarea id="reviewNotes" rows="3" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc; transition: 0.3s;"></textarea>
+            <label>ملاحظات الإدارة أو سبب الرفض</label>
+            <input type="text" id="actNotes" placeholder="اكتب ملاحظة...">
         </div>
         
-        <div style="text-align: left; margin-top: 15px;">
-            <button onclick="submitReview()" class="btn btn-primary" style="width: 100%;">تحديث وحفظ التعديلات</button>
-        </div>
+        <button onclick="submitAdminAction()" class="btn btn-success" style="width:100%; margin-top:20px;">حفظ وإرسال التحديث</button>
     </div>
 </div>
 
-<div id="addCoverEmpModal" class="modal-overlay">
+<div id="alternativeEmpModal" class="modal-overlay">
     <div class="modal-content" style="max-width: 400px;">
-        <span class="close-modal" onclick="document.getElementById('addCoverEmpModal').style.display='none'">&times;</span>
-        <h3 style="color:var(--primary); margin-top:0;">إضافة موظف بديل جديد</h3>
-        <div class="input-box"><label>اسم الموظف البديل *</label><input type="text" id="newCoverEmpName"></div>
-        <button onclick="saveCoverEmp()" class="btn btn-warning" style="width: 100%; margin-top: 15px; color:white;">حفظ الموظف</button>
+        <span class="close-modal" onclick="closeModals()">&times;</span>
+        <h3 style="color:var(--primary); margin-top:0;"><i class="fa-solid fa-user-plus"></i> إضافة موظف بديل معتمد</h3>
+        <div class="input-box"><label>اسم الموظف البديل كامل *</label><input type="text" id="newAltName"></div>
+        <button onclick="saveAlternativeEmployee()" class="btn btn-success" style="width:100%; margin-top:20px;">حفظ الموظف بالقائمة</button>
     </div>
 </div>
 
@@ -215,428 +182,310 @@
     const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    const auth = firebase.auth();
 
-    let currentUserRole = 'user'; 
-    let sitesMap = {}; 
-    let recommendationsMap = {}; 
-    let activeStatFilter = 'all'; 
+    let allVacations = [];
+    let sitesMap = new Map();
+    let currentCardFilter = 'all';
+    let conflictIdsGlobal = new Set();
+    let conflictGroupsGlobal = {}; // لتخزين التعارضات مجمعة للنافذة الذكية
 
-    document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
+    document.addEventListener("DOMContentLoaded", () => {
+        loadSitesList();
+        loadMasterVacations();
+    });
 
-    async function initSystem() {
-        try {
-            const budgetsSnap = await db.collection('budgets').get();
-            const siteSelect = document.getElementById('siteIdSelect');
-            const filterSiteSelect = document.getElementById('filterSite');
-            
-            siteSelect.innerHTML = '<option value="">-- اختر الموقع --</option>';
-            filterSiteSelect.innerHTML = '<option value="all">الكل</option>';
-            
-            budgetsSnap.forEach(doc => {
-                sitesMap[doc.id] = doc.data().itemName || "موقع بدون اسم"; 
-                siteSelect.innerHTML += `<option value="${doc.id}">${sitesMap[doc.id]}</option>`;
-                filterSiteSelect.innerHTML += `<option value="${doc.id}">${sitesMap[doc.id]}</option>`;
-            });
-            loadCoverEmps();
-        } catch (e) { console.error("Error:", e); }
-
-        auth.onAuthStateChanged(async user => {
-            if(user) {
-                const u = await db.collection('users').doc(user.uid).get();
-                if(u.exists && u.data().role === 'admin') {
-                    currentUserRole = 'admin';
-                    document.getElementById('btnAddCoverEmp').style.display = 'block';
-                    document.getElementById('adminStatsArea').style.display = 'flex'; 
-                }
-                loadVacations(); 
-            } else {
-                window.location.href = "index.html";
-            }
-        });
-    }
-
-    initSystem();
-
-    function loadCoverEmps() {
-        db.collection("alternative_employees").onSnapshot(snap => {
-            const coverSelect = document.getElementById('coverEmp');
-            const reviewCoverSelect = document.getElementById('reviewCoverEmp'); 
-            coverSelect.innerHTML = '<option value="">-- يحدد لاحقاً --</option>';
-            reviewCoverSelect.innerHTML = '<option value="">-- لم يحدد --</option>';
+    // جلب المواقع لتغذية قائمة الفلتر
+    function loadSitesList() {
+        db.collection("budgets").onSnapshot(snap => {
+            const select = document.getElementById('filterSite');
+            select.innerHTML = '<option value="all">الكل</option>';
+            sitesMap.clear();
             snap.forEach(doc => {
-                const name = doc.data().name;
-                coverSelect.innerHTML += `<option value="${name}">${name}</option>`;
-                reviewCoverSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                sitesMap.set(doc.id, doc.data().itemName);
+                select.innerHTML += `<option value="${doc.id}">${doc.data().itemName}</option>`;
             });
+            renderTable(); 
         });
     }
 
-    function openAddCoverEmpModal() {
-        document.getElementById('newCoverEmpName').value = '';
-        document.getElementById('addCoverEmpModal').style.display = 'flex';
+    // جلب جميع الإجازات مركزياً
+    function loadMasterVacations() {
+        db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
+            allVacations = [];
+            snap.forEach(doc => allVacations.push({id: doc.id, ...doc.data()}));
+            
+            analyzeConflicts();
+            updateDashboardCards();
+            renderTable();
+        });
     }
 
-    async function saveCoverEmp() {
-        const name = document.getElementById('newCoverEmpName').value;
-        if(!name) return alert("يرجى إدخال الاسم");
+    // 🧠 الخوارزمية المطورة لتحليل وتجميع التعارضات بصورة مجمعة ومنظمة
+    function analyzeConflicts() {
+        conflictIdsGlobal.clear();
+        conflictGroupsGlobal = {};
+        
+        // 1. تحديد الطلبات المتداخلة زمنياً على نفس البديل ونفس الموقع
+        for(let i=0; i<allVacations.length; i++) {
+            for(let j=i+1; j<allVacations.length; j++) {
+                let v1 = allVacations[i];
+                let v2 = allVacations[j];
+                
+                if(v1.status !== 'rejected' && v2.status !== 'rejected' && v1.siteId === v2.siteId && v1.coverEmp && v1.coverEmp === v2.coverEmp) {
+                    if(v1.startDate <= v2.endDate && v1.endDate >= v2.startDate) {
+                        conflictIdsGlobal.add(v1.id);
+                        conflictIdsGlobal.add(v2.id);
+                        
+                        // تجميع التعارضات برابط مفتاح: اسم البديل + الموقع
+                        let groupKey = `${v1.siteId}_${v1.coverEmp}`;
+                        if(!conflictGroupsGlobal[groupKey]) {
+                            conflictGroupsGlobal[groupKey] = {
+                                siteId: v1.siteId,
+                                coverEmp: v1.coverEmp,
+                                items: new Set()
+                            };
+                        }
+                        conflictGroupsGlobal[groupKey].items.add(v1);
+                        conflictGroupsGlobal[groupKey].items.add(v2);
+                    }
+                }
+            }
+        }
+    }
+
+    // تحديث أرقام الكروت العلوية
+    function updateDashboardCards() {
+        let total = allVacations.length;
+        let pending = allVacations.filter(v => v.status === 'pending').length;
+        let approved = allVacations.filter(v => v.status === 'approved').length;
+        let conflict = conflictIdsGlobal.size;
+
+        document.getElementById('statTotal').innerText = total;
+        document.getElementById('statPending').innerText = pending;
+        document.getElementById('statApproved').innerText = approved;
+        document.getElementById('statConflict').innerText = conflict;
+    }
+
+    function setFilterCard(type) {
+        currentCardFilter = type;
+        if(type === 'conflict') {
+            // فتح شاشة محلل التعارضات الذكية فوراً عند الضغط على الكرت الأحمر
+            buildConflictResolverUI();
+            document.getElementById('conflictResolverModal').classList.add('show');
+        }
+        renderTable();
+    }
+
+    // بناء وتوليد واجهة محلل التعارضات المجمّعة الذكية داخل المودال
+    function buildConflictResolverUI() {
+        const container = document.getElementById('conflictResolverContainer');
+        container.innerHTML = "";
+        
+        let keys = Object.keys(conflictGroupsGlobal);
+        if(keys.length === 0) {
+            container.innerHTML = `<p style="text-align:center; color:#888; font-style:italic;">🎉 رائِع! لا توجد أي تعارضات معلقة حالياً في أي موقع.</p>`;
+            return;
+        }
+
+        keys.forEach(key => {
+            const group = conflictGroupsGlobal[key];
+            const siteName = sitesMap.get(group.siteId) || "موقع مجهول";
+            
+            let cardHTML = `
+            <div class="conflict-group-card">
+                <div class="conflict-group-header">
+                    <span><i class="fa-solid fa-hospital-user"></i> الموقع: ${siteName}</span>
+                    <span><i class="fa-solid fa-user-shield"></i> الموظف البديل المشترك: <b style="text-decoration:underline;">${group.coverEmp}</b></span>
+                </div>
+            `;
+            
+            group.items.forEach(v => {
+                cardHTML += `
+                <div class="conflict-item-row">
+                    <div>
+                        <b>👤 ${v.empName}</b> (${v.jobTitle || '-'}) <br>
+                        <span style="font-size:0.85em; color:#555;"><i class="fa-regular fa-calendar-days"></i> الفترة: من <b>${v.startDate}</b> إلى <b>${v.endDate}</b> (${v.reqDays} يوم)</span>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button onclick="openActionModal('${v.id}')" class="btn btn-primary" style="padding:4px 10px; font-size:0.8em;"><i class="fa-solid fa-gavel"></i> معالجة</button>
+                    </div>
+                </div>
+                `;
+            });
+            
+            cardHTML += `</div>`;
+            container.innerHTML += cardHTML;
+        });
+    }
+
+    // رندرة وبناء جدول البيانات مع تطبيق الفلاتر والترتيب الذكي
+    function renderTable() {
+        const tbody = document.getElementById('masterVacTableBody');
+        tbody.innerHTML = "";
+
+        let filtered = [...allVacations];
+
+        // 1. تطبيق فلترة الكروت العلوية
+        if(currentCardFilter === 'pending') filtered = filtered.filter(v => v.status === 'pending');
+        if(currentCardFilter === 'approved') filtered = filtered.filter(v => v.status === 'approved');
+        if(currentCardFilter === 'conflict') {
+            filtered = filtered.filter(v => conflictIdsGlobal.has(v.id));
+            // الترتيب الذكي لجعل الصفوف المتعارضة تظهر تحت بعضها مباشرة
+            filtered.sort((a,b) => {
+                let compSite = (a.siteId || "").localeCompare(b.siteId || "");
+                if(compSite !== 0) return compSite;
+                return (a.coverEmp || "").localeCompare(b.coverEmp || "");
+            });
+        }
+
+        // 2. تطبيق فلاتر البحث المتقدمة
+        const search = document.getElementById('filterSearch').value.toLowerCase();
+        const site = document.getElementById('filterSite').value;
+        const status = document.getElementById('filterStatus').value;
+        const start = document.getElementById('filterStart').value;
+        const end = document.getElementById('filterEnd').value;
+
+        filtered = filtered.filter(v => {
+            let matchSearch = !search || (v.empName && v.empName.toLowerCase().includes(search)) || (v.empId && v.empId.toString().includes(search));
+            let matchSite = site === 'all' || v.siteId === site;
+            let matchStatus = status === 'all' || v.status === status;
+            let matchStart = !start || v.startDate >= start;
+            let matchEnd = !end || v.endDate <= end;
+            return matchSearch && matchSite && matchStatus && matchStart && matchEnd;
+        });
+
+        if(filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; color:#888;">لا توجد طلبات إجازة مطابقة للخيارات المحددة.</td></tr>`;
+            return;
+        }
+
+        filtered.forEach(v => {
+            let badge = '';
+            if(v.status === 'pending') badge = '<span class="badge badge-pending">قيد المراجعة</span>';
+            if(v.status === 'approved') badge = '<span class="badge badge-approved">معتمد ✅</span>';
+            if(v.status === 'rejected') badge = '<span class="badge badge-rejected">مرفوض ❌</span>';
+
+            let siteName = sitesMap.get(v.siteId) || "جاري التحميل...";
+            
+            let isConflict = conflictIdsGlobal.has(v.id);
+            let rowClass = isConflict ? "conflict-row" : "";
+            
+            let conflictDetailsBtn = "";
+            if(isConflict) {
+                conflictDetailsBtn = `<br><button onclick="showQuickConflictAlert('${v.id}')" class="btn-detail-conflict"><i class="fa-solid fa-triangle-exclamation"></i> ⚠️ تفاصيل التعارض</button>`;
+            }
+
+            tbody.innerHTML += `
+            <tr class="${rowClass}">
+                <td><b>${v.empName}</b></td>
+                <td>${v.empId}</td>
+                <td>${v.jobTitle || '-'}</td>
+                <td style="color:var(--primary); font-weight:500;">${siteName}</td>
+                <td>${v.lastVacation || '-'}</td>
+                <td>${v.balance || 0}</td>
+                <td><b>${v.startDate}</b></td>
+                <td><b>${v.endDate}</b></td>
+                <td>${v.reqDays}</td>
+                <td style="color:#8e44ad; font-weight:bold;">${v.coverEmp || '<span style="color:#aaa;">لم يحدد</span>'}</td>
+                <td>${badge} ${conflictDetailsBtn} ${v.notes ? `<div style="font-size:0.8em; color:#666; margin-top:4px;">${v.notes}</div>` : ''}</td>
+                <td class="col-action">
+                    <button onclick="openActionModal('${v.id}')" class="btn btn-primary" style="padding:4px 8px; font-size:0.8em;"><i class="fa-solid fa-gavel"></i> معالجة</button>
+                    <button onclick="deleteVacationRecord('${v.id}')" class="btn btn-danger" style="padding:4px 8px; font-size:0.8em; background:none; color:var(--danger); border:1px solid var(--danger); margin-top:3px;"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            </tr>`;
+        });
+    }
+
+    // إطلاق الفلاتر عند الكتابة أو الاختيار
+    function applyFilters() { renderTable(); }
+
+    // أيقونة كشف تفاصيل التعارض المباشرة للسطر المحدد
+    function showQuickConflictAlert(vacId) {
+        let currentVac = allVacations.find(v => v.id === vacId);
+        if(!currentVac) return;
+
+        let overlappingVacs = allVacations.filter(v => v.id !== vacId && v.status !== 'rejected' && v.siteId === currentVac.siteId && v.coverEmp === currentVac.coverEmp && v.startDate <= currentVac.endDate && v.endDate >= currentVac.startDate);
+        
+        if(overlappingVacs.length > 0) {
+            let names = overlappingVacs.map(v => `[ ${v.empName} للفترة من ${v.startDate} إلى ${v.endDate} ]`).join(' و ');
+            alert(`⚠️ تنبيه تعارض البديل:\nالموظف البديل (${currentVac.coverEmp}) تم تعيينه في نفس الوقت لتغطية إجازة كل من: ${names}.\n\nيرجى الضغط على الكرت الأحمر في الأعلى لفتح مركز معالجة التعارضات حلها مجمعة.`);
+        }
+    }
+
+    function openActionModal(id) {
+        let v = allVacations.find(item => item.id === id);
+        if(!v) return;
+
+        document.getElementById('actionVacId').value = id;
+        document.getElementById('actEmpName').innerText = v.empName;
+        document.getElementById('actSiteName').innerText = sitesMap.get(v.siteId) || "موقع مجهول";
+        document.getElementById('actDates').innerText = `من ${v.startDate} إلى ${v.endDate}`;
+        document.getElementById('actStatus').value = v.status || 'pending';
+        document.getElementById('actNotes').value = v.notes || '';
+        
+        document.getElementById('actionModal').classList.add('show');
+    }
+
+    async function submitAdminAction() {
+        const id = document.getElementById('actionVacId').value;
+        const status = document.getElementById('actStatus').value;
+        const notes = document.getElementById('actNotes').value;
+
         try {
-            await db.collection("alternative_employees").add({ name: name, createdAt: new Date() });
-            document.getElementById('addCoverEmpModal').style.display = 'none';
+            await db.collection("vacations").doc(id).update({ status: status, notes: notes });
+            closeModals();
+            // تحديث شاشة معالجة التعارضات في حال كانت مفتوحة
+            if(document.getElementById('conflictResolverModal').classList.contains('show')) {
+                analyzeConflicts();
+                buildConflictResolverUI();
+            }
+        } catch(e) { alert("حدث خطأ: " + e.message); }
+    }
+
+    function openAlternativeEmpModal() {
+        document.getElementById('newAltName').value = "";
+        document.getElementById('alternativeEmpModal').classList.add('show');
+    }
+
+    async function saveAlternativeEmployee() {
+        const name = document.getElementById('newAltName').value;
+        if(!name) return alert("يرجى إدخال اسم الموظف البديل!");
+        try {
+            await db.collection("alternative_employees").add({ name: name.trim(), createdAt: new Date().toISOString() });
+            alert("✅ تم إضافة الموظف بنجاح إلى قائمة البدلاء المعتمدين.");
+            closeModals();
         } catch(e) { alert(e.message); }
     }
 
-    function calcDays() {
-        const start = document.getElementById('startDate').value;
-        const end = document.getElementById('endDate').value;
-        if(start && end) {
-            const d1 = new Date(start);
-            const d2 = new Date(end);
-            const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24)) + 1; 
-            document.getElementById('reqDays').value = diff > 0 ? diff : 0;
-        }
-    }
-
-    function openAddModal() {
-        document.querySelectorAll('#addVacationModal input').forEach(i => i.value = '');
-        document.getElementById('jobTitle').selectedIndex = 0;
-        document.getElementById('siteIdSelect').selectedIndex = 0;
-        document.getElementById('coverEmp').selectedIndex = 0;
-        document.getElementById('addVacationModal').style.display = 'flex';
-    }
-
-    async function saveVacation() {
-        const data = {
-            empName: document.getElementById('empName').value,
-            empId: document.getElementById('empId').value,
-            jobTitle: document.getElementById('jobTitle').value,
-            siteId: document.getElementById('siteIdSelect').value,
-            lastVacation: document.getElementById('lastVacation').value,
-            balance: Number(document.getElementById('balance').value) || 0,
-            startDate: document.getElementById('startDate').value,
-            endDate: document.getElementById('endDate').value,
-            reqDays: Number(document.getElementById('reqDays').value) || 0,
-            coverEmp: document.getElementById('coverEmp').value, 
-            status: 'pending',
-            notes: '',
-            createdAt: new Date().toISOString()
-        };
-
-        if(!data.empName || !data.empId || !data.siteId || !data.startDate || !data.endDate) {
-            return alert("يرجى تعبئة الحقول الأساسية!");
-        }
-
-        const btn = document.getElementById('saveVacBtn'); 
-        btn.disabled = true; btn.innerText = "جاري الحفظ...";
-        try {
-            await db.collection("vacations").add(data);
-            document.getElementById('addVacationModal').style.display = 'none';
-        } catch(e) { alert("خطأ: " + e.message); } 
-        finally { btn.disabled = false; btn.innerText = "حفظ الطلب"; }
-    }
-
-    function filterByStat(statType) {
-        activeStatFilter = statType;
-        applyFilters();
-    }
-
-    function loadVacations() {
-        db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
-            const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = "";
-            
-            let allVacs = [];
-            let pCount = 0, aCount = 0;
-            recommendationsMap = {}; 
-
-            snap.forEach(doc => {
-                let d = doc.data();
-                allVacs.push({id: doc.id, ...d});
-                if(d.status === 'pending') pCount++;
-                if(d.status === 'approved') aCount++;
-            });
-
-            let coverGroups = {};
-            allVacs.forEach(v => {
-                if (v.status !== 'rejected' && v.coverEmp) {
-                    if (!coverGroups[v.coverEmp]) coverGroups[v.coverEmp] = [];
-                    coverGroups[v.coverEmp].push(v);
-                }
-            });
-
-            let conflictCount = 0;
-
-            Object.keys(coverGroups).forEach(emp => {
-                let reqs = coverGroups[emp];
-                if (reqs.length < 2) return;
-
-                reqs.sort((a, b) => a.startDate.localeCompare(b.startDate));
-                let clusters = [];
-                let currentCluster = [reqs[0]];
-                let clusterEnd = reqs[0].endDate;
-
-                for (let i = 1; i < reqs.length; i++) {
-                    if (reqs[i].startDate <= clusterEnd) {
-                        currentCluster.push(reqs[i]);
-                        if (reqs[i].endDate > clusterEnd) clusterEnd = reqs[i].endDate;
-                    } else {
-                        clusters.push(currentCluster);
-                        currentCluster = [reqs[i]];
-                        clusterEnd = reqs[i].endDate;
-                    }
-                }
-                clusters.push(currentCluster);
-
-                clusters.forEach(cluster => {
-                    if (cluster.length > 1) {
-                        conflictCount += cluster.length;
-                        
-                        cluster.sort((a, b) => {
-                            let dateA = a.lastVacation || '1900-01-01'; 
-                            let dateB = b.lastVacation || '1900-01-01';
-                            if (dateA !== dateB) return dateA.localeCompare(dateB);
-                            return (b.balance || 0) - (a.balance || 0);
-                        });
-
-                        let winner = cluster[0];
-                        recommendationsMap[winner.id] = { type: 'winner', count: cluster.length - 1 };
-
-                        for (let i = 1; i < cluster.length; i++) {
-                            let loser = cluster[i];
-                            
-                            let wEnd = new Date(winner.endDate);
-                            wEnd.setDate(wEnd.getDate() + 1);
-                            let suggStartStr = wEnd.toISOString().split('T')[0];
-
-                            let lDays = loser.reqDays || 1;
-                            let sEnd = new Date(wEnd);
-                            sEnd.setDate(sEnd.getDate() + lDays - 1);
-                            let suggEndStr = sEnd.toISOString().split('T')[0];
-
-                            recommendationsMap[loser.id] = {
-                                type: 'loser',
-                                winnerName: winner.empName,
-                                winnerLastVac: winner.lastVacation || 'لم يأخذ من قبل',
-                                suggStart: suggStartStr,
-                                suggEnd: suggEndStr
-                            };
-                        }
-                    }
-                });
-            });
-            
-            document.getElementById('countPending').innerText = pCount;
-            document.getElementById('countApproved').innerText = aCount;
-            document.getElementById('countConflict').innerText = conflictCount;
-            
-            allVacs.forEach(val => {
-                const savedSite = val.siteId || val.siteName || '';
-                const displaySiteName = sitesMap[savedSite] || (savedSite || 'غير محدد');
-
-                let statusBadge = '';
-                if(val.status === 'pending') statusBadge = '<span class="badge badge-pending">قيد المراجعة</span>';
-                else if(val.status === 'approved') statusBadge = '<span class="badge badge-approved">معتمد</span>';
-                else if(val.status === 'rejected') statusBadge = '<span class="badge badge-rejected">مرفوض</span>';
-
-                let actions = '';
-                if(currentUserRole === 'admin') {
-                    actions = `<button onclick="openReview('${val.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:0.8em; margin-bottom:5px;">مراجعة/اعتماد</button><br>`;
-                }
-                if(currentUserRole === 'admin' || val.status === 'pending') {
-                     actions += `<button onclick="deleteVacation('${val.id}')" class="btn btn-danger" style="padding:4px 8px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>`;
-                }
-
-                let conflictWarning = '';
-                let rowClass = 'data-row';
-                let isConflicted = 'false';
-
-                if(currentUserRole === 'admin' && recommendationsMap[val.id]) {
-                    isConflicted = 'true';
-                    let rec = recommendationsMap[val.id];
-                    if (rec.type === 'winner') {
-                        conflictWarning = `<div style="color: #28a745; font-size: 0.75em; font-weight: bold; margin-top: 5px;"><i class="fa-solid fa-star"></i> الأولوية له</div>`;
-                    } else {
-                        rowClass += ' conflict-row';
-                        conflictWarning = `<div style="color: #dc3545; font-size: 0.75em; font-weight: bold; margin-top: 5px;"><i class="fa-solid fa-triangle-exclamation"></i> تعارض (يوجد بديل مقترح)</div>`;
-                    }
-                }
-
-                tbody.innerHTML += `
-                <tr class="${rowClass}" data-status="${val.status || 'pending'}" data-conflict="${isConflicted}" data-siteid="${savedSite}" data-startdate="${val.startDate || ''}" data-enddate="${val.endDate || ''}">
-                    <td class="col-name">${val.empName || ''}</td>
-                    <td class="col-id">${val.empId || ''}</td>
-                    <td>${val.jobTitle || '-'}</td>
-                    <td class="col-site" style="font-weight:bold; color:var(--primary);">${displaySiteName}</td>
-                    <td>${val.lastVacation || '-'}</td>
-                    <td>${val.balance || 0}</td>
-                    <td>${val.startDate || ''}</td>
-                    <td>${val.endDate || ''}</td>
-                    <td style="font-weight:bold;">${val.reqDays || 0}</td>
-                    <td>${val.coverEmp || '<span style="color:#aaa;">لم يحدد</span>'}</td>
-                    <td>${statusBadge} ${conflictWarning} ${val.notes ? `<span class="notes-text">${val.notes}</span>` : ''}</td>
-                    <td class="col-action">${actions}</td>
-                </tr>`;
-            });
-            applyFilters();
-        });
-    }
-
-    function toggleRejectionNote() {
-        const status = document.getElementById('reviewStatus').value;
-        const notesField = document.getElementById('reviewNotes');
-        const lbl = document.getElementById('lblReviewNotes');
-        if(status === 'rejected') {
-            notesField.style.borderColor = 'red'; lbl.style.color = 'red'; lbl.innerText = "سبب الرفض (إجباري) *";
-        } else {
-            notesField.style.borderColor = '#ccc'; lbl.style.color = 'var(--text-dark)'; lbl.innerText = "ملاحظات (اختياري)";
-        }
-    }
-
-    function applySuggDates(start, end) {
-        document.getElementById('reviewStartDate').value = start;
-        document.getElementById('reviewEndDate').value = end;
-    }
-
-    async function openReview(id) {
-        const doc = await db.collection("vacations").doc(id).get();
-        const d = doc.data();
-
-        document.getElementById('reviewDocId').value = id;
-        document.getElementById('reviewStatus').value = d.status || 'pending';
-        document.getElementById('reviewNotes').value = d.notes || '';
-        document.getElementById('reviewCoverEmp').value = d.coverEmp || ''; 
-        document.getElementById('reviewStartDate').value = d.startDate || '';
-        document.getElementById('reviewEndDate').value = d.endDate || '';
-        
-        toggleRejectionNote();
-        
-        const alertBox = document.getElementById('modalRecommendationAlert');
-        if(recommendationsMap[id]) {
-            let rec = recommendationsMap[id];
-            if (rec.type === 'loser') {
-                alertBox.className = 'modal-alert modal-alert-warning';
-                alertBox.innerHTML = `
-                    <i class="fa-solid fa-lightbulb"></i> <b>توصية النظام:</b>
-                    الموظف <b>${rec.winnerName}</b> أولى بهذه الفترة الزمنية لأن آخر إجازة له أقدم (${rec.winnerLastVac}).<br>
-                    📅 <b>التاريخ البديل المقترح لهذا الطلب:</b> من ${rec.suggStart} إلى ${rec.suggEnd}.
-                    <button type="button" class="btn btn-primary btn-sm" style="margin-top:8px; display:block;" onclick="applySuggDates('${rec.suggStart}', '${rec.suggEnd}')">تطبيق التاريخ المقترح</button>
-                `;
-                alertBox.style.display = 'block';
-            } else if (rec.type === 'winner') {
-                alertBox.className = 'modal-alert modal-alert-success';
-                alertBox.innerHTML = `<i class="fa-solid fa-star"></i> <b>توصية النظام:</b> هذا الموظف له <b>الأولوية</b> في هذه الفترة الزمنية مقارنة بـ ${rec.count} طلبات متعارضة أخرى.`;
-                alertBox.style.display = 'block';
-            }
-        } else {
-            alertBox.style.display = 'none';
-        }
-
-        document.getElementById('reviewModal').style.display = 'flex';
-    }
-
-    async function submitReview() {
-        const id = document.getElementById('reviewDocId').value;
-        const newStatus = document.getElementById('reviewStatus').value;
-        const newNotes = document.getElementById('reviewNotes').value;
-        const newCover = document.getElementById('reviewCoverEmp').value;
-        const newStart = document.getElementById('reviewStartDate').value;
-        const newEnd = document.getElementById('reviewEndDate').value;
-        
-        if(newStatus === 'rejected' && newNotes.trim() === '') {
-            return alert("يجب كتابة سبب الرفض!");
-        }
-
-        let updatedReqDays = 0;
-        if(newStart && newEnd) {
-            const d1 = new Date(newStart);
-            const d2 = new Date(newEnd);
-            updatedReqDays = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24)) + 1;
-        }
-
-        try {
-            await db.collection("vacations").doc(id).update({
-                status: newStatus,
-                notes: newNotes,
-                coverEmp: newCover,
-                startDate: newStart,
-                endDate: newEnd,
-                reqDays: updatedReqDays > 0 ? updatedReqDays : 0
-            });
-            document.getElementById('reviewModal').style.display = 'none';
-        } catch(e) { alert("خطأ: " + e.message); }
-    }
-
-    async function deleteVacation(id) {
-        if(confirm("هل أنت متأكد من حذف هذا الطلب؟")) {
+    async function deleteVacationRecord(id) {
+        if(confirm("هل أنت متأكد من حذف هذا السجل بشكل نهائي من النظام؟")) {
             await db.collection("vacations").doc(id).delete();
         }
     }
 
-    function applyFilters() {
-        const nameFilter = document.getElementById('filterName').value.toLowerCase();
-        const siteFilter = document.getElementById('filterSite').value; 
-        const statusFilter = document.getElementById('filterStatus').value;
-        const dateFrom = document.getElementById('filterDateFrom').value;
-        const dateTo = document.getElementById('filterDateTo').value;
+    function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show')); }
 
-        document.querySelectorAll('.data-row').forEach(row => {
-            const name = row.querySelector('.col-name').innerText.toLowerCase();
-            const id = row.querySelector('.col-id').innerText.toLowerCase();
-            const siteIdAttr = row.getAttribute('data-siteid');
-            const status = row.getAttribute('data-status');
-            const hasConflict = row.getAttribute('data-conflict');
-            const startDate = row.getAttribute('data-startdate');
-            const endDate = row.getAttribute('data-enddate');
-
-            const nameMatch = name.includes(nameFilter) || id.includes(nameFilter);
-            const siteMatch = siteFilter === 'all' || siteIdAttr === siteFilter;
-            
-            let statMatch = true;
-            if(activeStatFilter === 'conflict') statMatch = (hasConflict === 'true');
-            else if(activeStatFilter !== 'all') statMatch = (status === activeStatFilter);
-
-            const normalStatusMatch = statusFilter === 'all' || status === statusFilter;
-
-            // خوارزمية التداخل الزمني المقاطع للفترة المحددة
-            let dateMatch = true;
-            if (dateFrom && dateTo) {
-                dateMatch = (startDate <= dateTo && endDate >= dateFrom);
-            } else if (dateFrom) {
-                dateMatch = (endDate >= dateFrom);
-            } else if (dateTo) {
-                dateMatch = (startDate <= dateTo);
-            }
-
-            if(nameMatch && siteMatch && statMatch && normalStatusMatch && dateMatch) row.style.display = '';
-            else row.style.display = 'none';
-        });
-    }
-
-    function cleanArabicNum(str) {
-        if(!str) return "";
-        return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.').replace(/٬/g, '');
-    }
+    function cleanArabicNum(str) { if(!str) return ""; return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.'); }
 
     function exportTableToCSV(filename) {
-        let csv = []; csv.push('\uFEFF'); let rows = document.querySelectorAll("#vacationsTable tr");
+        let csv = []; csv.push('\uFEFF'); let rows = document.querySelectorAll("#masterVacTable tr");
         for (let i = 0; i < rows.length; i++) {
             if(rows[i].style.display === 'none') continue; 
             let row = [], cols = rows[i].querySelectorAll("td, th");
             for (let j = 0; j < cols.length; j++) {
-                if (cols[j].classList.contains('col-action')) continue; 
+                if (cols[j].classList.contains('col-action') || cols[j].id === 'headerVacActions') continue; 
                 let rawData = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, " ").replace(/,/g, "-"); 
                 row.push('"' + cleanArabicNum(rawData) + '"');
             }
             csv.push(row.join(","));
         }
         let csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
-        let downloadLink = document.createElement("a");
-        downloadLink.download = filename;
-        downloadLink.href = window.URL.createObjectURL(csvFile);
-        downloadLink.style.display = "none";
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
+        let downloadLink = document.createElement("a"); downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile); downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink); downloadLink.click();
     }
+    
+    function fmt(n) { return Number(n||0).toLocaleString('ar-EG'); }
 </script>
 </body>
 </html>
