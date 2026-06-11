@@ -24,6 +24,7 @@
         .badge-pending { background-color: #f39c12; }
         .badge-approved { background-color: #27ae60; }
         .badge-rejected { background-color: #c0392b; }
+        .badge-suggested { background-color: #d35400; }
 
         .conflict-row { background-color: #fff3cd !important; border-right: 4px solid #ffc107; }
         .conflict-row:hover { background-color: #ffeeba !important; }
@@ -87,6 +88,10 @@
             <h4>قيد المراجعة</h4>
             <p id="statPending" style="color: #f39c12;">0</p>
         </div>
+        <div class="summary-card" style="border-bottom: 4px solid #d35400;" onclick="setFilterCard('suggested')">
+            <h4>مواعيد مقترحة 🚧</h4>
+            <p id="statSuggested" style="color: #d35400;">0</p>
+        </div>
         <div class="summary-card" style="border-bottom: 4px solid #27ae60;" onclick="setFilterCard('approved')">
             <h4>تم الاعتماد</h4>
             <p id="statApproved" style="color: #27ae60;">0</p>
@@ -98,7 +103,7 @@
     </div>
 
     <div class="action-bar" style="margin-bottom: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #eee;">
-        <div class="filter-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px;">
+        <div class="filter-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px;">
             <div class="filter-group">
                 <label>بحث بالاسم / الرقم</label>
                 <input type="text" id="filterSearch" onkeyup="applyFilters()" placeholder="اكتب للبحث...">
@@ -112,8 +117,7 @@
                 <label>تصفية بالوظيفة (متعدد)</label>
                 <div class="multiselect-wrapper">
                     <div class="multiselect-btn" onclick="toggleJobFilter()">اختر الوظائف <i class="fa-solid fa-chevron-down"></i></div>
-                    <div class="multiselect-content" id="jobFilterContent">
-                        </div>
+                    <div class="multiselect-content" id="jobFilterContent"></div>
                 </div>
             </div>
 
@@ -122,6 +126,7 @@
                 <select id="filterStatus" onchange="applyFilters()">
                     <option value="all">الكل</option>
                     <option value="pending">قيد المراجعة</option>
+                    <option value="suggested">موعد مقترح</option>
                     <option value="approved">معتمد</option>
                     <option value="rejected">مرفوض</option>
                 </select>
@@ -152,10 +157,10 @@
     <div class="modal-content" style="max-width: 800px; width: 95%; max-height: 85vh; overflow-y: auto;">
         <span class="close-modal" onclick="closeModals()">&times;</span>
         <h3 style="color:#c0392b; margin-top:0; border-bottom:2px solid #f5c6cb; padding-bottom:10px;">
-            <i class="fa-solid fa-triangle-exclamation"></i> مركز تحليل وحل تعارضات البدلاء (المحدث)
+            <i class="fa-solid fa-triangle-exclamation"></i> مركز تحليل وحل تعارضات البدلاء
         </h3>
         <p style="font-size:0.85em; color:#666; margin-bottom:20px;">
-            الطلبات أدناه تم تجميعها بناءً على **الموظف البديل المشترك** المشغول في نفس الفترة الزمنية عبر مختلف المواقع. يرجى مراجعتها واعتماد أحدهما أو تغيير البديل.
+            الطلبات أدناه تم تجميعها بناءً على **الموظف البديل المشترك** المشغول في نفس الفترة الزمنية عبر مختلف المواقع.
         </p>
         <div id="conflictResolverContainer"></div>
     </div>
@@ -185,13 +190,13 @@
             <label>اتخاذ إجراء الاعتماد</label>
             <select id="actStatus" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
                 <option value="pending">قيد المراجعة</option>
-                <option value="approved">اعتماد الطلب ✅</option>
-                <option value="rejected">رفض الطلب ❌</option>
+                <option value="approved">اعتماد الطلب الحالي ✅</option>
+                <option value="rejected">رفض / تقديم موعد مقترح ❌</option>
             </select>
         </div>
 
         <div style="background:#fffce8; padding:15px; border-radius:8px; border:1px dashed #f1c40f; margin-top:15px;">
-            <label style="color:#b7950b; font-weight:bold; font-size:0.9em; margin-bottom:10px; display:block;"><i class="fa-solid fa-calendar-plus"></i> اقتراح موعد بديل للإجازة (اختياري)</label>
+            <label style="color:#b7950b; font-weight:bold; font-size:0.9em; margin-bottom:10px; display:block;"><i class="fa-solid fa-calendar-plus"></i> اقتراح موعد بديل للإجازة (سيتم إرساله للموظف للموافقة)</label>
             <div style="display:flex; gap:10px;">
                 <div class="input-box" style="flex:1; margin:0;">
                     <label style="font-size:0.8em; color:#666;">البداية المقترحة</label>
@@ -205,11 +210,10 @@
             <p id="autoSuggestMsg" style="color: #27ae60; font-size: 0.8em; margin: 8px 0 0 0; font-weight: bold; display: none;">
                 <i class="fa-solid fa-wand-magic-sparkles"></i> النظام اقترح هذا الموعد آلياً بناءً على توفر البديل المختار!
             </p>
-            <p style="font-size:0.75em; color:#888; margin:8px 0 0 0;">في حال الرفض أو التأجيل، يمكنك اقتراح الموعد المناسب.</p>
         </div>
 
         <div class="input-box" style="margin-top:15px;">
-            <label>ملاحظات الإدارة أو سبب الرفض</label>
+            <label>ملاحظات الإدارة أو سبب الرد</label>
             <input type="text" id="actNotes" placeholder="اكتب رسالة للموظف هنا...">
         </div>
         
@@ -299,13 +303,11 @@
         db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
             allVacations = [];
             uniqueJobsGlobal.clear();
-
             snap.forEach(doc => {
                 let data = doc.data();
                 allVacations.push({id: doc.id, ...data});
                 if(data.jobTitle) uniqueJobsGlobal.add(data.jobTitle);
             });
-            
             populateJobFilter(); 
             analyzeConflicts();
             updateDashboardCards();
@@ -328,31 +330,20 @@
         content.style.display = content.style.display === 'block' ? 'none' : 'block';
     }
 
-    // 🌟 الخوارزمية المحدثة للتعارضات (Global Conflict Analysis)
     function analyzeConflicts() {
         conflictIdsGlobal.clear();
         conflictGroupsGlobal = {};
-        
         for(let i=0; i<allVacations.length; i++) {
             for(let j=i+1; j<allVacations.length; j++) {
-                let v1 = allVacations[i];
-                let v2 = allVacations[j];
-                
-                // تم إزالة شرط (v1.siteId === v2.siteId) لفحص جميع المواقع
-                if(v1.status !== 'rejected' && v2.status !== 'rejected' && v1.coverEmp && v1.coverEmp.trim() !== "" && v1.coverEmp === v2.coverEmp) {
+                let v1 = allVacations[i]; let v2 = allVacations[j];
+                if(v1.status !== 'rejected' && v1.status !== 'suggested' && v2.status !== 'rejected' && v2.status !== 'suggested' && v1.coverEmp && v1.coverEmp.trim() !== "" && v1.coverEmp === v2.coverEmp) {
                     if(v1.startDate <= v2.endDate && v1.endDate >= v2.startDate) {
-                        conflictIdsGlobal.add(v1.id);
-                        conflictIdsGlobal.add(v2.id);
-                        
-                        let groupKey = v1.coverEmp; // التجميع بناءً على اسم البديل فقط بغض النظر عن الموقع
+                        conflictIdsGlobal.add(v1.id); conflictIdsGlobal.add(v2.id);
+                        let groupKey = v1.coverEmp;
                         if(!conflictGroupsGlobal[groupKey]) {
-                            conflictGroupsGlobal[groupKey] = {
-                                coverEmp: v1.coverEmp,
-                                items: new Set()
-                            };
+                            conflictGroupsGlobal[groupKey] = { coverEmp: v1.coverEmp, items: new Set() };
                         }
-                        conflictGroupsGlobal[groupKey].items.add(v1);
-                        conflictGroupsGlobal[groupKey].items.add(v2);
+                        conflictGroupsGlobal[groupKey].items.add(v1); conflictGroupsGlobal[groupKey].items.add(v2);
                     }
                 }
             }
@@ -363,11 +354,13 @@
         let total = allVacations.length;
         let pending = allVacations.filter(v => v.status === 'pending').length;
         let approved = allVacations.filter(v => v.status === 'approved').length;
+        let suggested = allVacations.filter(v => v.status === 'suggested').length;
         let conflict = conflictIdsGlobal.size;
 
         document.getElementById('statTotal').innerText = total;
         document.getElementById('statPending').innerText = pending;
         document.getElementById('statApproved').innerText = approved;
+        document.getElementById('statSuggested').innerText = suggested;
         document.getElementById('statConflict').innerText = conflict;
     }
 
@@ -381,21 +374,14 @@
     }
 
     function buildConflictResolverUI() {
-        const container = document.getElementById('conflictResolverContainer');
-        container.innerHTML = "";
+        const container = document.getElementById('conflictResolverContainer'); container.innerHTML = "";
         let keys = Object.keys(conflictGroupsGlobal);
         if(keys.length === 0) {
-            container.innerHTML = `<p style="text-align:center; color:#888; font-style:italic;">🎉 رائِع! لا توجد أي تعارضات معلقة حالياً في النظام.</p>`;
-            return;
+            container.innerHTML = `<p style="text-align:center; color:#888; font-style:italic;">🎉 رائِع! لا توجد أي تعارضات معلقة حالياً.</p>`; return;
         }
         keys.forEach(key => {
             const group = conflictGroupsGlobal[key];
-            let cardHTML = `
-            <div class="conflict-group-card">
-                <div class="conflict-group-header">
-                    <span><i class="fa-solid fa-user-shield"></i> البديل المشترك: <b style="text-decoration:underline;">${group.coverEmp}</b></span>
-                </div>
-            `;
+            let cardHTML = `<div class="conflict-group-card"><div class="conflict-group-header"><span><i class="fa-solid fa-user-shield"></i> البديل المشترك: <b style="text-decoration:underline;">${group.coverEmp}</b></span></div>`;
             group.items.forEach(v => {
                 let itemSiteName = sitesMap.get(v.siteId) || "موقع مجهول";
                 cardHTML += `
@@ -405,25 +391,20 @@
                         <span style="font-size:0.85em; color:var(--primary); font-weight:bold;"><i class="fa-solid fa-hospital"></i> ${itemSiteName}</span><br>
                         <span style="font-size:0.85em; color:#555;"><i class="fa-regular fa-calendar-days"></i> الفترة: من <b>${v.startDate}</b> إلى <b>${v.endDate}</b> (${v.reqDays} يوم)</span>
                     </div>
-                    <div style="display:flex; gap:8px;">
-                        <button onclick="openActionModal('${v.id}')" class="btn btn-primary" style="padding:4px 10px; font-size:0.8em;"><i class="fa-solid fa-gavel"></i> معالجة / تغيير البديل</button>
-                    </div>
-                </div>
-                `;
+                    <div><button onclick="openActionModal('${v.id}')" class="btn btn-primary" style="padding:4px 10px; font-size:0.8em;"><i class="fa-solid fa-gavel"></i> معالجة</button></div>
+                </div>`;
             });
-            cardHTML += `</div>`;
-            container.innerHTML += cardHTML;
+            cardHTML += `</div>`; container.innerHTML += cardHTML;
         });
     }
 
     function renderTable() {
-        const tbody = document.getElementById('masterVacTableBody');
-        tbody.innerHTML = "";
-
+        const tbody = document.getElementById('masterVacTableBody'); tbody.innerHTML = "";
         let filtered = [...allVacations];
 
         if(currentCardFilter === 'pending') filtered = filtered.filter(v => v.status === 'pending');
         if(currentCardFilter === 'approved') filtered = filtered.filter(v => v.status === 'approved');
+        if(currentCardFilter === 'suggested') filtered = filtered.filter(v => v.status === 'suggested');
         if(currentCardFilter === 'conflict') {
             filtered = filtered.filter(v => conflictIdsGlobal.has(v.id));
             filtered.sort((a,b) => (a.coverEmp || "").localeCompare(b.coverEmp || ""));
@@ -443,18 +424,17 @@
             let matchStart = !start || v.startDate >= start;
             let matchEnd = !end || v.endDate <= end;
             let matchJob = selectedJobs.length === 0 || selectedJobs.includes(v.jobTitle);
-
             return matchSearch && matchSite && matchStatus && matchStart && matchEnd && matchJob;
         });
 
         if(filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888; padding:20px;">لا توجد طلبات إجازة مطابقة للخيارات المحددة.</td></tr>`;
-            return;
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888; padding:20px;">لا توجد طلبات إجازة مطابقة.</td></tr>`; return;
         }
 
         filtered.forEach(v => {
             let badge = '';
             if(v.status === 'pending') badge = '<span class="badge badge-pending">قيد المراجعة</span>';
+            if(v.status === 'suggested') badge = '<span class="badge badge-suggested">انتظار رد الموظف 🚧</span>';
             if(v.status === 'approved') badge = '<span class="badge badge-approved">معتمد ✅</span>';
             if(v.status === 'rejected') badge = '<span class="badge badge-rejected">مرفوض ❌</span>';
 
@@ -462,12 +442,8 @@
             let isConflict = conflictIdsGlobal.has(v.id);
             let rowClass = isConflict ? "conflict-row" : "";
             
-            let conflictDetailsBtn = "";
-            if(isConflict) {
-                conflictDetailsBtn = `<br><button onclick="event.stopPropagation(); showQuickConflictAlert('${v.id}')" class="btn-detail-conflict"><i class="fa-solid fa-triangle-exclamation"></i> ⚠️ تعارض بالبديل</button>`;
-            }
-
-            let suggestedDatesNote = v.suggestedStart ? `<div style="color:#d35400; font-size:0.85em; margin-top:5px; font-weight:bold; background:#fffce8; padding:3px 5px; border-radius:4px;"><i class="fa-solid fa-calendar-plus"></i> موعد مقترح من الإدارة: من ${v.suggestedStart} إلى ${v.suggestedEnd}</div>` : '';
+            let conflictDetailsBtn = isConflict ? `<br><button onclick="event.stopPropagation(); showQuickConflictAlert('${v.id}')" class="btn-detail-conflict"><i class="fa-solid fa-triangle-exclamation"></i> ⚠️ تعارض</button>` : "";
+            let suggestedDatesNote = v.suggestedStart ? `<div style="color:#d35400; font-size:0.85em; margin-top:5px; font-weight:bold; background:#fffce8; padding:3px 5px; border-radius:4px;"><i class="fa-solid fa-calendar-plus"></i> موعد مقترح مرسل للموظف: من ${v.suggestedStart} إلى ${v.suggestedEnd}</div>` : '';
 
             tbody.innerHTML += `
             <tr class="main-row ${rowClass}" data-status="${v.status || 'pending'}" onclick="toggleRow('vac-${v.id}')">
@@ -476,7 +452,7 @@
                 <td style="color:var(--primary); font-weight:500;">${siteName}</td>
                 <td style="text-align:center;"><b>${v.startDate}</b></td>
                 <td style="text-align:center;"><b>${v.endDate}</b></td>
-                <td style="text-align:center;">${badge} ${conflictDetailsBtn}</td>
+                <td style="text-align:center;">${badge}</td>
             </tr>
             <tr id="vac-${v.id}" class="details-row" style="display:none;">
                 <td colspan="6">
@@ -484,10 +460,9 @@
                         <div class="detail-item"><span>الرقم الوظيفي</span><strong>${v.empId}</strong></div>
                         <div class="detail-item"><span>الرصيد المتاح</span><strong>${v.balance || 0} يوم</strong></div>
                         <div class="detail-item"><span>آخر إجازة</span><strong>${v.lastVacation || 'لا يوجد'}</strong></div>
-                        <div class="detail-item"><span>مدة الإجازة المطلوبة</span><strong style="color:var(--danger);">${v.reqDays} يوم</strong></div>
+                        <div class="detail-item"><span>مدة الإجازة</span><strong>${v.reqDays} يوم</strong></div>
                         <div class="detail-item"><span>الموظف البديل</span><strong style="color:#8e44ad;">${v.coverEmp || 'لم يحدد'}</strong></div>
-                        <div class="detail-item" style="grid-column: 1 / -1;"><span>ملاحظات الطلب والردود</span><strong>${v.notes || 'لا توجد ملاحظات'} ${suggestedDatesNote}</strong></div>
-                        
+                        <div class="detail-item" style="grid-column: 1 / -1;"><span>ملاحظات والردود</span><strong>${v.notes || 'لا توجد ملاحظات'} ${suggestedDatesNote} ${conflictDetailsBtn}</strong></div>
                         <div class="detail-item" style="grid-column: 1 / -1; display:flex; gap:10px; border-right:none; border-top:1px solid #eee; padding-top:15px; margin-top:5px;">
                             <button onclick="openActionModal('${v.id}')" class="btn btn-primary" style="padding:6px 15px;"><i class="fa-solid fa-gavel"></i> معالجة وتغيير البديل</button>
                             <button onclick="deleteVacationRecord('${v.id}')" class="btn btn-outline" style="border-color:var(--danger); color:var(--danger); padding:6px 15px;"><i class="fa-solid fa-trash"></i> حذف الطلب</button>
@@ -498,110 +473,42 @@
         });
     }
 
-    function applyFilters() { renderTable(); }
-
-    function showQuickConflictAlert(vacId) {
-        let currentVac = allVacations.find(v => v.id === vacId);
-        if(!currentVac) return;
-        // التحديث هنا لفحص كل المواقع بدل موقع واحد
-        let overlappingVacs = allVacations.filter(v => v.id !== vacId && v.status !== 'rejected' && v.coverEmp && v.coverEmp === currentVac.coverEmp && v.startDate <= currentVac.endDate && v.endDate >= currentVac.startDate);
-        if(overlappingVacs.length > 0) {
-            let names = overlappingVacs.map(v => `[ ${v.empName} في ${sitesMap.get(v.siteId)} ]`).join(' و ');
-            alert(`⚠️ تنبيه تعارض البديل:\nالموظف البديل (${currentVac.coverEmp}) تم تعيينه في نفس الوقت لتغطية إجازة كل من: ${names}.\n\nيرجى الضغط على الكرت الأحمر في الأعلى لفتح مركز معالجة التعارضات.`);
-        }
-    }
-
-    function openActionModal(id) {
-        let v = allVacations.find(item => item.id === id);
-        if(!v) return;
-
-        document.getElementById('actionVacId').value = id;
-        document.getElementById('actionReqDays').value = v.reqDays || 1; 
-        document.getElementById('actEmpName').innerText = v.empName;
-        document.getElementById('actSiteName').innerText = sitesMap.get(v.siteId) || "موقع مجهول";
-        document.getElementById('actDates').innerText = `من ${v.startDate} إلى ${v.endDate}`;
-        document.getElementById('actStatus').value = v.status || 'pending';
-        document.getElementById('actNotes').value = v.notes || '';
-        
-        let todayStr = getTodayString();
-        document.getElementById('actSuggestStart').setAttribute('min', todayStr);
-        document.getElementById('actSuggestEnd').setAttribute('min', todayStr);
-
-        let coverSelect = document.getElementById('actCoverEmp');
-        coverSelect.innerHTML = '<option value="">-- بدون بديل / لم يحدد --</option>';
-        
-        let allOptions = new Set([...altEmployeesList]);
-        if(v.coverEmp) allOptions.add(v.coverEmp);
-        
-        allOptions.forEach(emp => {
-            coverSelect.innerHTML += `<option value="${emp}">${emp}</option>`;
-        });
-        coverSelect.value = v.coverEmp || '';
-
-        recheckConflictsInModal();
-        document.getElementById('actionModal').classList.add('show');
-    }
-
-    // 🌟 التحديث هنا للبحث في جميع المواقع عن تعارضات البديل المختار
     function recheckConflictsInModal() {
         let id = document.getElementById('actionVacId').value;
-        let v = allVacations.find(item => item.id === id);
-        if(!v) return;
-
+        let v = allVacations.find(item => item.id === id); if(!v) return;
         let selectedCover = document.getElementById('actCoverEmp').value;
         let warningDiv = document.getElementById('actConflictWarning');
         let autoSuggestMsg = document.getElementById('autoSuggestMsg');
         
-        warningDiv.style.display = 'none';
-        autoSuggestMsg.style.display = 'none';
-        
+        warningDiv.style.display = 'none'; autoSuggestMsg.style.display = 'none';
         if(!selectedCover) return;
 
         let todayStr = getTodayString();
-        
-        // إزالة شرط الموقع (siteId) لفحص البديل المختار على مستوى النظام كله
-        let overlappingVacs = allVacations.filter(alt => 
-            alt.id !== id && 
-            alt.status !== 'rejected' && 
-            alt.coverEmp === selectedCover && 
-            alt.startDate <= v.endDate && 
-            alt.endDate >= v.startDate
-        );
+        let overlappingVacs = allVacations.filter(alt => alt.id !== id && alt.status !== 'rejected' && alt.status !== 'suggested' && alt.coverEmp === selectedCover && alt.startDate <= v.endDate && alt.endDate >= v.startDate);
         
         if(overlappingVacs.length > 0) {
             let names = overlappingVacs.map(alt => `<b>${alt.empName}</b> (${sitesMap.get(alt.siteId)} | ${alt.startDate} إلى ${alt.endDate})`).join('<br> - ');
-            warningDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <b>تنبيه تعارض:</b> الموظف البديل المختار (${selectedCover}) مشغول بالفعل بتغطية إجازة الأشخاص التاليين في النظام:<br> - ${names}`;
+            warningDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <b>تنبيه تعارض:</b> الموظف البديل المختار (${selectedCover}) مشغول بالفترة المحددة:<br> - ${names}`;
             warningDiv.style.display = 'block';
 
             let reqDays = Number(v.reqDays) || 1;
             let candidateStartStr = v.startDate < todayStr ? todayStr : v.startDate;
             let candidateStart = new Date(candidateStartStr);
             
-            // جلب جدول البديل كاملا من جميع المواقع
-            let busyVacs = allVacations.filter(alt => alt.id !== id && alt.status !== 'rejected' && alt.coverEmp === selectedCover);
+            let busyVacs = allVacations.filter(alt => alt.id !== id && alt.status !== 'rejected' && alt.status !== 'suggested' && alt.coverEmp === selectedCover);
             busyVacs.sort((a,b) => new Date(a.startDate) - new Date(b.startDate));
             
             for(let busy of busyVacs) {
-                let bStart = new Date(busy.startDate);
-                let bEnd = new Date(busy.endDate);
-                
+                let bStart = new Date(busy.startDate); let bEnd = new Date(busy.endDate);
                 if(candidateStart >= bStart && candidateStart <= bEnd) {
-                    candidateStart = new Date(bEnd);
-                    candidateStart.setDate(candidateStart.getDate() + 1);
+                    candidateStart = new Date(bEnd); candidateStart.setDate(candidateStart.getDate() + 1);
                 } else if (candidateStart < bStart) {
-                    let neededEnd = new Date(candidateStart);
-                    neededEnd.setDate(neededEnd.getDate() + reqDays - 1);
+                    let neededEnd = new Date(candidateStart); neededEnd.setDate(neededEnd.getDate() + reqDays - 1);
                     if(neededEnd < bStart) { break; } 
-                    else {
-                        candidateStart = new Date(bEnd);
-                        candidateStart.setDate(candidateStart.getDate() + 1);
-                    }
+                    else { candidateStart = new Date(bEnd); candidateStart.setDate(candidateStart.getDate() + 1); }
                 }
             }
-            
-            let finalEnd = new Date(candidateStart);
-            finalEnd.setDate(finalEnd.getDate() + reqDays - 1);
-            
+            let finalEnd = new Date(candidateStart); finalEnd.setDate(finalEnd.getDate() + reqDays - 1);
             document.getElementById('actSuggestStart').value = candidateStart.toISOString().split('T')[0];
             document.getElementById('actSuggestEnd').value = finalEnd.toISOString().split('T')[0];
             autoSuggestMsg.style.display = 'block';
@@ -613,99 +520,63 @@
 
     async function submitAdminAction() {
         const id = document.getElementById('actionVacId').value;
-        const status = document.getElementById('actStatus').value;
+        let status = document.getElementById('actStatus').value;
         const notes = document.getElementById('actNotes').value;
         const suggestedStart = document.getElementById('actSuggestStart').value;
         const suggestedEnd = document.getElementById('actSuggestEnd').value;
         const newCoverEmp = document.getElementById('actCoverEmp').value;
         const todayStr = getTodayString();
 
-        if(suggestedStart || suggestedEnd) {
-            if(!suggestedStart || !suggestedEnd) {
-                return alert("يرجى إكمال تاريخ البداية والنهاية للموعد المقترح معاً، أو تركهما فارغين بالكامل.");
-            }
-            if(suggestedStart < todayStr) {
-                return alert("🚫 خطأ: لا يمكن إعطاء أو اقتراح إجازة في تاريخ ماضي (قبل تاريخ اليوم).");
-            }
-            if(suggestedEnd < suggestedStart) {
-                return alert("🚫 خطأ: لا يمكن أن يكون تاريخ العودة من الإجازة قبل تاريخ بدايتها!");
-            }
-        }
+        let updateData = { notes: notes, coverEmp: newCoverEmp };
 
-        let updateData = { 
-            status: status, 
-            notes: notes,
-            coverEmp: newCoverEmp 
-        };
-        
         if(suggestedStart && suggestedEnd) {
+            if(suggestedStart < todayStr) return alert("🚫 لا يمكن اقتراح إجازة في تاريخ ماضي.");
+            if(suggestedEnd < suggestedStart) return alert("🚫 تاريخ العودة لا يمكن أن يكون قبل البداية.");
+            
             updateData.suggestedStart = suggestedStart;
             updateData.suggestedEnd = suggestedEnd;
+            status = "suggested"; // 🌟 إجبار الحالة تصبح "موعد مقترح" طالما كتبنا مواعيد بديلة
         } else {
             updateData.suggestedStart = firebase.firestore.FieldValue.delete();
             updateData.suggestedEnd = firebase.firestore.FieldValue.delete();
         }
 
+        updateData.status = status;
+
         try {
-            await db.collection("vacations").doc(id).update(updateData);
-            closeModals();
-            if(document.getElementById('conflictResolverModal').classList.contains('show')) {
-                analyzeConflicts();
-                buildConflictResolverUI();
-            }
+            await db.collection("vacations").doc(id).update(updateData); closeModals();
         } catch(e) { alert("حدث خطأ: " + e.message); }
     }
 
-    function openAlternativeEmpModal() {
-        document.getElementById('newAltName').value = "";
-        document.getElementById('alternativeEmpModal').classList.add('show');
+    function openActionModal(id) {
+        let v = allVacations.find(item => item.id === id); if(!v) return;
+        document.getElementById('actionVacId').value = id;
+        document.getElementById('actionReqDays').value = v.reqDays || 1; 
+        document.getElementById('actEmpName').innerText = v.empName;
+        document.getElementById('actSiteName').innerText = sitesMap.get(v.siteId) || "موقع مجهول";
+        document.getElementById('actDates').innerText = `من ${v.startDate} إلى ${v.endDate}`;
+        document.getElementById('actStatus').value = v.status === 'suggested' ? 'pending' : v.status;
+        document.getElementById('actNotes').value = v.notes || '';
+        
+        let coverSelect = document.getElementById('actCoverEmp');
+        coverSelect.innerHTML = '<option value="">-- بدون بديل --</option>';
+        let allOptions = new Set([...altEmployeesList]); if(v.coverEmp) allOptions.add(v.coverEmp);
+        allOptions.forEach(emp => { coverSelect.innerHTML += `<option value="${emp}">${emp}</option>`; });
+        coverSelect.value = v.coverEmp || '';
+
+        recheckConflictsInModal();
+        document.getElementById('actionModal').classList.add('show');
     }
 
+    function openAlternativeEmpModal() { document.getElementById('newAltName').value = ""; document.getElementById('alternativeEmpModal').classList.add('show'); }
     async function saveAlternativeEmployee() {
-        const name = document.getElementById('newAltName').value;
-        if(!name) return alert("يرجى إدخال اسم الموظف البديل!");
-        try {
-            await db.collection("alternative_employees").add({ name: name.trim(), createdAt: new Date().toISOString() });
-            alert("✅ تم إضافة الموظف بنجاح إلى قائمة البدلاء المعتمدين.");
-            closeModals();
-        } catch(e) { alert(e.message); }
+        const name = document.getElementById('newAltName').value; if(!name) return alert("أدخل الاسم!");
+        await db.collection("alternative_employees").add({ name: name.trim(), createdAt: new Date().toISOString() });
+        closeModals();
     }
-
-    async function deleteVacationRecord(id) {
-        if(confirm("هل أنت متأكد من حذف هذا السجل بشكل نهائي من النظام؟")) {
-            await db.collection("vacations").doc(id).delete();
-        }
-    }
-
+    async function deleteVacationRecord(id) { if(confirm("حذف؟")) await db.collection("vacations").doc(id).delete(); }
     function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show')); }
-
-    function cleanArabicNum(str) { if(!str) return ""; return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.'); }
-
-    function exportTableToCSV(filename) {
-        let csv = []; 
-        csv.push('\uFEFF'); 
-        csv.push("الموظف,الرقم الوظيفي,الوظيفة,الموقع,آخر إجازة,الرصيد,بداية الإجازة,نهاية الإجازة,مدة الأيام,الموظف البديل,الموعد المقترح,الحالة,الملاحظات");
-        
-        let rows = document.querySelectorAll(".main-row");
-        rows.forEach(row => {
-            if(row.style.display !== 'none') {
-                let targetId = row.getAttribute('onclick').match(/'([^']+)'/)[1].replace('vac-', '');
-                let v = allVacations.find(item => item.id === targetId);
-                if(v) {
-                    let siteName = sitesMap.get(v.siteId) || "";
-                    let statusTxt = v.status === 'approved' ? 'معتمد' : (v.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة');
-                    let suggestTxt = v.suggestedStart ? `من ${v.suggestedStart} إلى ${v.suggestedEnd}` : '-';
-                    let line = [v.empName, v.empId, v.jobTitle, siteName, v.lastVacation, v.balance, v.startDate, v.endDate, v.reqDays, v.coverEmp, suggestTxt, statusTxt, v.notes];
-                    csv.push('"' + line.map(l => cleanArabicNum(String(l || '').replace(/"/g, '""'))).join('","') + '"');
-                }
-            }
-        });
-        
-        let csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
-        let downloadLink = document.createElement("a"); downloadLink.download = filename;
-        downloadLink.href = window.URL.createObjectURL(csvFile); downloadLink.style.display = "none";
-        document.body.appendChild(downloadLink); downloadLink.click();
-    }
+    function applyFilters() { renderTable(); }
 </script>
 </body>
 </html>
