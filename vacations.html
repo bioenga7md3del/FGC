@@ -32,7 +32,7 @@
         .btn-detail-conflict:hover { background: #c0392b; color: white; }
 
         .conflict-group-card { background: #fff; border: 1px solid #f5c6cb; border-radius: 8px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 8px rgba(192,57,43,0.05); }
-        .conflict-group-header { background: #fff5f5; color: #c0392b; padding: 12px 15px; font-weight: bold; font-size: 0.95rem; border-bottom: 1px solid #f5c6cb; display: flex; justify-content: space-between; align-items: center; }
+        .conflict-group-header { background: #fff5f5; color: #c0392b; padding: 12px 15px; font-weight: bold; font-size: 0.95rem; border-bottom: 1px solid #f5c6cb; display: flex; justify-content: flex-start; align-items: center; gap: 10px; }
         .conflict-item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f1f5f9; font-size: 0.9em; }
         .conflict-item-row:last-child { border-bottom: none; }
 
@@ -50,7 +50,6 @@
         .detail-item span { display: block; color: #64748b; font-size: 0.85em; margin-bottom: 5px; }
         .detail-item strong { color: #334155; font-size: 1.1em; }
 
-        /* --- تصميم الفلتر المتعدد للوظائف (Custom Multi-Select) --- */
         .multiselect-wrapper { position: relative; width: 100%; }
         .multiselect-btn { background: white; border: 1px solid #ccc; padding: 8px 10px; border-radius: 5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; color: #333; min-height: 38px;}
         .multiselect-content { display: none; position: absolute; background: white; width: 100%; border: 1px solid #ccc; max-height: 200px; overflow-y: auto; z-index: 100; border-radius: 5px; margin-top: 2px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
@@ -153,10 +152,10 @@
     <div class="modal-content" style="max-width: 800px; width: 95%; max-height: 85vh; overflow-y: auto;">
         <span class="close-modal" onclick="closeModals()">&times;</span>
         <h3 style="color:#c0392b; margin-top:0; border-bottom:2px solid #f5c6cb; padding-bottom:10px;">
-            <i class="fa-solid fa-triangle-exclamation"></i> مركز تحليل وحل تعارضات البدلاء
+            <i class="fa-solid fa-triangle-exclamation"></i> مركز تحليل وحل تعارضات البدلاء (المحدث)
         </h3>
         <p style="font-size:0.85em; color:#666; margin-bottom:20px;">
-            الطلبات أدناه تم تجميعها بناءً على **الموظف البديل المشترك** المشغول في نفس الفترة الزمنية. يرجى مراجعتها واعتماد أحدهما.
+            الطلبات أدناه تم تجميعها بناءً على **الموظف البديل المشترك** المشغول في نفس الفترة الزمنية عبر مختلف المواقع. يرجى مراجعتها واعتماد أحدهما أو تغيير البديل.
         </p>
         <div id="conflictResolverContainer"></div>
     </div>
@@ -169,7 +168,7 @@
         <input type="hidden" id="actionVacId">
         <input type="hidden" id="actionReqDays"> 
         
-        <div id="actConflictWarning" style="display:none; background:#f8d7da; color:#721c24; padding:12px; border-radius:6px; margin-bottom:15px; font-size:0.85em; border:1px solid #f5c6cb;"></div>
+        <div id="actConflictWarning" style="display:none; background:#f8d7da; color:#721c24; padding:12px; border-radius:6px; margin-bottom:15px; font-size:0.85em; border:1px solid #f5c6cb; line-height: 1.5;"></div>
 
         <div style="background:#f8fafc; padding:12px; border-radius:6px; margin-bottom:15px; font-size:0.9em; border:1px solid #eee;">
             <p style="margin:0 0 5px 0;"><b>الموظف:</b> <span id="actEmpName"></span></p>
@@ -178,7 +177,7 @@
         </div>
 
         <div class="input-box" style="margin-bottom: 15px;">
-            <label style="color:var(--primary); font-weight:bold;"><i class="fa-solid fa-user-shield"></i> الموظف البديل (يمكنك تغييره لحل التعارض)</label>
+            <label style="color:var(--primary); font-weight:bold;"><i class="fa-solid fa-user-shield"></i> الموظف البديل (تغييره قد يحل التعارض)</label>
             <select id="actCoverEmp" onchange="recheckConflictsInModal()" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc; font-weight:bold;"></select>
         </div>
 
@@ -206,7 +205,7 @@
             <p id="autoSuggestMsg" style="color: #27ae60; font-size: 0.8em; margin: 8px 0 0 0; font-weight: bold; display: none;">
                 <i class="fa-solid fa-wand-magic-sparkles"></i> النظام اقترح هذا الموعد آلياً بناءً على توفر البديل المختار!
             </p>
-            <p style="font-size:0.75em; color:#888; margin:8px 0 0 0;">في حال الرفض أو التأجيل، يمكنك اقتراح الموعد المناسب للموقع.</p>
+            <p style="font-size:0.75em; color:#888; margin:8px 0 0 0;">في حال الرفض أو التأجيل، يمكنك اقتراح الموعد المناسب.</p>
         </div>
 
         <div class="input-box" style="margin-top:15px;">
@@ -234,7 +233,7 @@
 
     let allVacations = [];
     let sitesMap = new Map();
-    let uniqueJobsGlobal = new Set(); // لحفظ جميع المسميات الوظيفية الفريدة
+    let uniqueJobsGlobal = new Set();
     let currentCardFilter = 'all';
     let conflictIdsGlobal = new Set();
     let conflictGroupsGlobal = {}; 
@@ -253,7 +252,6 @@
         loadMasterVacations();
     });
 
-    // إغلاق قائمة فلتر الوظائف عند النقر خارجها
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.multiselect-wrapper')) {
             const content = document.getElementById('jobFilterContent');
@@ -308,20 +306,16 @@
                 if(data.jobTitle) uniqueJobsGlobal.add(data.jobTitle);
             });
             
-            populateJobFilter(); // تحديث الفلتر بالوظائف الجديدة
+            populateJobFilter(); 
             analyzeConflicts();
             updateDashboardCards();
             renderTable();
         });
     }
 
-    // 🌟 بناء فلتر الوظائف الذكي (Multi-Select)
     function populateJobFilter() {
         const container = document.getElementById('jobFilterContent');
-        
-        // حفظ الاختيارات الحالية حتى لا تضيع عند التحديث الحي
         const currentSelections = Array.from(document.querySelectorAll('.job-filter-cb:checked')).map(cb => cb.value);
-        
         container.innerHTML = '';
         uniqueJobsGlobal.forEach(job => {
             const isChecked = currentSelections.includes(job) ? 'checked' : '';
@@ -334,6 +328,7 @@
         content.style.display = content.style.display === 'block' ? 'none' : 'block';
     }
 
+    // 🌟 الخوارزمية المحدثة للتعارضات (Global Conflict Analysis)
     function analyzeConflicts() {
         conflictIdsGlobal.clear();
         conflictGroupsGlobal = {};
@@ -343,15 +338,15 @@
                 let v1 = allVacations[i];
                 let v2 = allVacations[j];
                 
-                if(v1.status !== 'rejected' && v2.status !== 'rejected' && v1.siteId === v2.siteId && v1.coverEmp && v1.coverEmp === v2.coverEmp) {
+                // تم إزالة شرط (v1.siteId === v2.siteId) لفحص جميع المواقع
+                if(v1.status !== 'rejected' && v2.status !== 'rejected' && v1.coverEmp && v1.coverEmp.trim() !== "" && v1.coverEmp === v2.coverEmp) {
                     if(v1.startDate <= v2.endDate && v1.endDate >= v2.startDate) {
                         conflictIdsGlobal.add(v1.id);
                         conflictIdsGlobal.add(v2.id);
                         
-                        let groupKey = `${v1.siteId}_${v1.coverEmp}`;
+                        let groupKey = v1.coverEmp; // التجميع بناءً على اسم البديل فقط بغض النظر عن الموقع
                         if(!conflictGroupsGlobal[groupKey]) {
                             conflictGroupsGlobal[groupKey] = {
-                                siteId: v1.siteId,
                                 coverEmp: v1.coverEmp,
                                 items: new Set()
                             };
@@ -390,24 +385,24 @@
         container.innerHTML = "";
         let keys = Object.keys(conflictGroupsGlobal);
         if(keys.length === 0) {
-            container.innerHTML = `<p style="text-align:center; color:#888; font-style:italic;">🎉 رائِع! لا توجد أي تعارضات معلقة حالياً في أي موقع.</p>`;
+            container.innerHTML = `<p style="text-align:center; color:#888; font-style:italic;">🎉 رائِع! لا توجد أي تعارضات معلقة حالياً في النظام.</p>`;
             return;
         }
         keys.forEach(key => {
             const group = conflictGroupsGlobal[key];
-            const siteName = sitesMap.get(group.siteId) || "موقع مجهول";
             let cardHTML = `
             <div class="conflict-group-card">
                 <div class="conflict-group-header">
-                    <span><i class="fa-solid fa-hospital-user"></i> الموقع: ${siteName}</span>
                     <span><i class="fa-solid fa-user-shield"></i> البديل المشترك: <b style="text-decoration:underline;">${group.coverEmp}</b></span>
                 </div>
             `;
             group.items.forEach(v => {
+                let itemSiteName = sitesMap.get(v.siteId) || "موقع مجهول";
                 cardHTML += `
                 <div class="conflict-item-row">
                     <div>
                         <b>👤 ${v.empName}</b> (${v.jobTitle || '-'}) <br>
+                        <span style="font-size:0.85em; color:var(--primary); font-weight:bold;"><i class="fa-solid fa-hospital"></i> ${itemSiteName}</span><br>
                         <span style="font-size:0.85em; color:#555;"><i class="fa-regular fa-calendar-days"></i> الفترة: من <b>${v.startDate}</b> إلى <b>${v.endDate}</b> (${v.reqDays} يوم)</span>
                     </div>
                     <div style="display:flex; gap:8px;">
@@ -431,11 +426,7 @@
         if(currentCardFilter === 'approved') filtered = filtered.filter(v => v.status === 'approved');
         if(currentCardFilter === 'conflict') {
             filtered = filtered.filter(v => conflictIdsGlobal.has(v.id));
-            filtered.sort((a,b) => {
-                let compSite = (a.siteId || "").localeCompare(b.siteId || "");
-                if(compSite !== 0) return compSite;
-                return (a.coverEmp || "").localeCompare(b.coverEmp || "");
-            });
+            filtered.sort((a,b) => (a.coverEmp || "").localeCompare(b.coverEmp || ""));
         }
 
         const search = document.getElementById('filterSearch').value.toLowerCase();
@@ -443,8 +434,6 @@
         const status = document.getElementById('filterStatus').value;
         const start = document.getElementById('filterStart').value;
         const end = document.getElementById('filterEnd').value;
-        
-        // جلب قائمة الوظائف المحددة في الفلتر المتعدد
         const selectedJobs = Array.from(document.querySelectorAll('.job-filter-cb:checked')).map(cb => cb.value);
 
         filtered = filtered.filter(v => {
@@ -453,8 +442,6 @@
             let matchStatus = status === 'all' || v.status === status;
             let matchStart = !start || v.startDate >= start;
             let matchEnd = !end || v.endDate <= end;
-            
-            // 🌟 الفلتر الذكي للوظائف (لو مفيش حاجة مختارة يعتبر الكل متاح)
             let matchJob = selectedJobs.length === 0 || selectedJobs.includes(v.jobTitle);
 
             return matchSearch && matchSite && matchStatus && matchStart && matchEnd && matchJob;
@@ -516,10 +503,11 @@
     function showQuickConflictAlert(vacId) {
         let currentVac = allVacations.find(v => v.id === vacId);
         if(!currentVac) return;
-        let overlappingVacs = allVacations.filter(v => v.id !== vacId && v.status !== 'rejected' && v.siteId === currentVac.siteId && v.coverEmp === currentVac.coverEmp && v.startDate <= currentVac.endDate && v.endDate >= currentVac.startDate);
+        // التحديث هنا لفحص كل المواقع بدل موقع واحد
+        let overlappingVacs = allVacations.filter(v => v.id !== vacId && v.status !== 'rejected' && v.coverEmp && v.coverEmp === currentVac.coverEmp && v.startDate <= currentVac.endDate && v.endDate >= currentVac.startDate);
         if(overlappingVacs.length > 0) {
-            let names = overlappingVacs.map(v => `[ ${v.empName} للفترة من ${v.startDate} إلى ${v.endDate} ]`).join(' و ');
-            alert(`⚠️ تنبيه تعارض البديل:\nالموظف البديل (${currentVac.coverEmp}) تم تعيينه في نفس الوقت لتغطية إجازة كل من: ${names}.\n\nيرجى الضغط على الكرت الأحمر في الأعلى لفتح مركز معالجة التعارضات حلها مجمعة.`);
+            let names = overlappingVacs.map(v => `[ ${v.empName} في ${sitesMap.get(v.siteId)} ]`).join(' و ');
+            alert(`⚠️ تنبيه تعارض البديل:\nالموظف البديل (${currentVac.coverEmp}) تم تعيينه في نفس الوقت لتغطية إجازة كل من: ${names}.\n\nيرجى الضغط على الكرت الأحمر في الأعلى لفتح مركز معالجة التعارضات.`);
         }
     }
 
@@ -554,6 +542,7 @@
         document.getElementById('actionModal').classList.add('show');
     }
 
+    // 🌟 التحديث هنا للبحث في جميع المواقع عن تعارضات البديل المختار
     function recheckConflictsInModal() {
         let id = document.getElementById('actionVacId').value;
         let v = allVacations.find(item => item.id === id);
@@ -570,25 +559,26 @@
 
         let todayStr = getTodayString();
         
+        // إزالة شرط الموقع (siteId) لفحص البديل المختار على مستوى النظام كله
         let overlappingVacs = allVacations.filter(alt => 
             alt.id !== id && 
             alt.status !== 'rejected' && 
-            alt.siteId === v.siteId && 
             alt.coverEmp === selectedCover && 
             alt.startDate <= v.endDate && 
             alt.endDate >= v.startDate
         );
         
         if(overlappingVacs.length > 0) {
-            let names = overlappingVacs.map(alt => `<b>${alt.empName}</b> (${alt.startDate} إلى ${alt.endDate})`).join('<br> - ');
-            warningDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <b>تنبيه تعارض:</b> الموظف البديل المختار (${selectedCover}) مشغول بالفعل بتغطية إجازة الأشخاص التاليين في نفس هذه الفترة:<br> - ${names}`;
+            let names = overlappingVacs.map(alt => `<b>${alt.empName}</b> (${sitesMap.get(alt.siteId)} | ${alt.startDate} إلى ${alt.endDate})`).join('<br> - ');
+            warningDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <b>تنبيه تعارض:</b> الموظف البديل المختار (${selectedCover}) مشغول بالفعل بتغطية إجازة الأشخاص التاليين في النظام:<br> - ${names}`;
             warningDiv.style.display = 'block';
 
             let reqDays = Number(v.reqDays) || 1;
             let candidateStartStr = v.startDate < todayStr ? todayStr : v.startDate;
             let candidateStart = new Date(candidateStartStr);
             
-            let busyVacs = allVacations.filter(alt => alt.id !== id && alt.status !== 'rejected' && alt.siteId === v.siteId && alt.coverEmp === selectedCover);
+            // جلب جدول البديل كاملا من جميع المواقع
+            let busyVacs = allVacations.filter(alt => alt.id !== id && alt.status !== 'rejected' && alt.coverEmp === selectedCover);
             busyVacs.sort((a,b) => new Date(a.startDate) - new Date(b.startDate));
             
             for(let busy of busyVacs) {
@@ -652,7 +642,6 @@
             updateData.suggestedStart = suggestedStart;
             updateData.suggestedEnd = suggestedEnd;
         } else {
-            // حذف التواريخ المقترحة لو الأدمن مسحها
             updateData.suggestedStart = firebase.firestore.FieldValue.delete();
             updateData.suggestedEnd = firebase.firestore.FieldValue.delete();
         }
