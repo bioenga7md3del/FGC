@@ -7,6 +7,7 @@
     
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -50,7 +51,13 @@
             </div>
         </div>
         
-        <div id="actionButtons" style="display:none; gap: 10px;">
+        <div id="actionButtons" style="display:none; gap: 10px; flex-wrap: wrap;">
+            <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333;">
+                <i class="fa-solid fa-print"></i> طباعة
+            </button>
+            <button onclick="exportTableToCSV('خطة_إجازات_الموقع.csv')" class="btn btn-success" style="background: #217346;">
+                <i class="fa-solid fa-file-excel"></i> تصدير Excel
+            </button>
             <button onclick="openVacationModal()" class="btn btn-warning" style="color:white; background-color: #e67e22;">
                 <i class="fa-solid fa-plane-departure"></i> تقديم طلب إجازة
             </button>
@@ -62,6 +69,24 @@
         <a href="#" id="tabVacations" class="tab-link active"><i class="fa-solid fa-umbrella-beach"></i> إجازات الموظفين</a>
         <a href="#" id="tabSubcontracts" class="tab-link"><i class="fa-solid fa-handshake"></i> مقاولي الباطن والعمالة</a>
         <a href="#" id="tabCalibration" class="tab-link"><i class="fa-solid fa-compass-drafting"></i> أجهزة القياس والمعايرة</a>
+    </div>
+
+    <div class="action-bar" style="margin-bottom: 20px;">
+        <div class="filter-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div class="filter-group">
+                <label>بحث بالاسم / الرقم الوظيفي</label>
+                <input type="text" id="filterName" onkeyup="applyFilters()" placeholder="بحث...">
+            </div>
+            <div class="filter-group">
+                <label>حالة الطلب</label>
+                <select id="filterStatus" onchange="applyFilters()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; width: 100%;">
+                    <option value="all">الكل</option>
+                    <option value="pending">قيد المراجعة</option>
+                    <option value="approved">معتمد</option>
+                    <option value="rejected">مرفوض</option>
+                </select>
+            </div>
+        </div>
     </div>
 
     <div class="card" style="padding: 0; overflow: hidden;">
@@ -80,7 +105,7 @@
                         <th>الأيام</th>
                         <th>الموظف البديل</th>
                         <th>الحالة والملاحظات</th>
-                        <th id="headerVacActions" style="display:none;">تحكم</th>
+                        <th id="headerVacActions" style="display:none;" class="col-action">تحكم</th>
                     </tr>
                 </thead>
                 <tbody id="vacationTableBody"></tbody>
@@ -256,24 +281,25 @@
                 if(canEdit) {
                     if(currentUserRole === 'admin' || val.status === 'pending') {
                         actionCell = `
-                        <td>
+                        <td class="col-action">
                             <button onclick="editVacation('${val.id}')" class="btn btn-outline" style="padding:4px 6px; font-size:0.8em;"><i class="fa-solid fa-pen"></i></button>
                             <button onclick="deleteVacation('${val.id}')" class="btn btn-danger" style="padding:4px 6px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>
                         </td>`;
-                    } else { actionCell = `<td>-</td>`; }
+                    } else { actionCell = `<td class="col-action">-</td>`; }
                 }
 
                 let conflictWarning = '';
-                let rowClass = '';
+                let rowClass = 'data-row'; // تم إضافة الكلاس للفلترة
                 if(currentUserRole === 'admin' && coverConflicts.has(val.id)) {
-                    rowClass = 'conflict-row';
+                    rowClass += ' conflict-row';
                     conflictWarning = `<div style="color: #dc3545; font-size: 0.75em; font-weight: bold; margin-top: 5px;"><i class="fa-solid fa-triangle-exclamation"></i> البديل يغطي إجازة أخرى بالموقع</div>`;
                 }
 
+                // تم إضافة data-status وغيرها لتسهيل عمل دالة الفلترة
                 vacTbody.innerHTML += `
-                <tr class="${rowClass}">
-                    <td><b>${val.empName}</b></td>
-                    <td>${val.empId}</td>
+                <tr class="${rowClass}" data-status="${val.status || 'pending'}">
+                    <td class="col-name"><b>${val.empName}</b></td>
+                    <td class="col-id">${val.empId}</td>
                     <td>${val.jobTitle || '-'}</td>
                     <td>${val.lastVacation || '-'}</td>
                     <td>${val.balance || 0}</td>
@@ -285,8 +311,63 @@
                     ${canEdit ? actionCell : ''}
                 </tr>`;
             });
+
+            // تطبيق الفلاتر تلقائياً بعد تحميل البيانات
+            applyFilters();
         });
     }
+
+    // --- الدوال الجديدة للفلترة والتصدير ---
+    function applyFilters() {
+        const nameFilter = document.getElementById('filterName').value.toLowerCase();
+        const statusFilter = document.getElementById('filterStatus').value;
+
+        document.querySelectorAll('.data-row').forEach(row => {
+            const name = row.querySelector('.col-name').innerText.toLowerCase();
+            const id = row.querySelector('.col-id').innerText.toLowerCase();
+            const status = row.getAttribute('data-status');
+
+            const nameMatch = name.includes(nameFilter) || id.includes(nameFilter);
+            const statusMatch = statusFilter === 'all' || status === statusFilter;
+
+            if(nameMatch && statusMatch) row.style.display = '';
+            else row.style.display = 'none';
+        });
+    }
+
+    function cleanArabicNum(str) {
+        if(!str) return "";
+        return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.').replace(/٬/g, '');
+    }
+
+    function exportTableToCSV(filename) {
+        let csv = []; 
+        csv.push('\uFEFF'); // لدعم اللغة العربية في الإكسيل
+        let rows = document.querySelectorAll("#vacationsTable tr");
+        
+        for (let i = 0; i < rows.length; i++) {
+            if(rows[i].style.display === 'none') continue; 
+            
+            let row = [], cols = rows[i].querySelectorAll("td, th");
+            for (let j = 0; j < cols.length; j++) {
+                // تخطي عمود "تحكم" أثناء التصدير
+                if (cols[j].id === 'headerVacActions' || cols[j].classList.contains('col-action')) continue; 
+                
+                let rawData = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, " ").replace(/,/g, "-"); 
+                row.push('"' + cleanArabicNum(rawData) + '"');
+            }
+            csv.push(row.join(","));
+        }
+        
+        let csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
+        let downloadLink = document.createElement("a");
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+    }
+    // ----------------------------------------
 
     function openVacationModal() {
         document.getElementById('editVacationId').value = "";
