@@ -7,6 +7,7 @@
     
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;800&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -18,19 +19,33 @@
         .badge-approved { background-color: #27ae60; }
         .badge-rejected { background-color: #c0392b; }
         .badge-suggested { background-color: #d35400; }
-        .notes-text { font-size: 0.85rem; color: #555; display: block; margin-top: 5px; font-style: italic; }
         
         .tabs-nav { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap; }
         .tab-link { padding: 10px 20px; text-decoration: none; color: #64748b; border-radius: 5px; font-weight: bold; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; }
         .tab-link:hover { background: #f1f5f9; color: var(--primary); }
         .tab-link.active { background: var(--primary); color: white !important; }
         
-        /* ستايل أزرار التفاعل مع الموعد المقترح */
+        /* أزرار التفاعل مع الموعد المقترح */
         .btn-action-suggested { padding: 5px 10px; font-size: 0.85em; font-weight: bold; border-radius: 5px; border: none; cursor: pointer; color: white; display: inline-flex; align-items: center; gap: 5px; transition: 0.2s;}
         .btn-accept-sug { background-color: #27ae60; }
         .btn-accept-sug:hover { background-color: #219653; box-shadow: 0 2px 5px rgba(39, 174, 96, 0.4); }
         .btn-reject-sug { background-color: #c0392b; }
         .btn-reject-sug:hover { background-color: #a02d23; box-shadow: 0 2px 5px rgba(192, 57, 43, 0.4); }
+
+        /* --- تصميم الصفوف المنسدلة (Expandable Rows) للجدول --- */
+        table { width: 100%; border-collapse: collapse; }
+        .main-row { cursor: pointer; transition: 0.2s; background-color: #fff; border-bottom: 1px solid #edf2f7; }
+        .main-row:hover { background-color: #f8fafc; }
+        .main-row td { padding: 15px 10px; vertical-align: middle; }
+        
+        .toggle-btn { background: #eef2f7; color: var(--primary); border: none; width: 30px; height: 30px; border-radius: 50%; display: inline-flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; font-size: 0.85em; }
+        .main-row:hover .toggle-btn { background: var(--primary); color: white; }
+        
+        .details-row { background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+        .details-container { padding: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; border-radius: 8px; border: 1px solid #cbd5e1; margin: 10px 15px 20px 15px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .detail-item { font-size: 0.9em; padding: 5px; border-right: 2px solid var(--primary); padding-right: 10px; text-align: right; }
+        .detail-item span { display: block; color: #64748b; font-size: 0.85em; margin-bottom: 5px; }
+        .detail-item strong { color: #334155; font-size: 1.1em; }
     </style>
 </head>
 <body>
@@ -93,23 +108,17 @@
         </div>
     </div>
 
-    <div class="card" style="padding: 0; overflow: hidden;">
+    <div class="card" style="padding: 0; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
         <h3 style="padding: 20px; margin: 0; background: #fdfdfd; border-bottom: 1px solid #eee;"><i class="fa-solid fa-umbrella-beach"></i> خطة إجازات موظفي الموقع</h3>
-        <div class="table-container" style="box-shadow: none; border-radius: 0; overflow-x: auto;">
-            <table id="vacationsTable" style="min-width: 1100px;">
-                <thead>
+        <div class="table-container" style="box-shadow: none; border-radius: 0;">
+            <table id="vacationsTable">
+                <thead style="background: #f8fafc; border-bottom: 2px solid #cbd5e1;">
                     <tr>
-                        <th>الموظف</th>
-                        <th>الرقم الوظيفي</th>
-                        <th>المسمى الوظيفي</th>
-                        <th>آخر إجازة</th>
-                        <th>الرصيد المتاح</th>
-                        <th>البداية المقترحة</th>
-                        <th>النهاية</th>
-                        <th>الأيام</th>
-                        <th>الموظف البديل</th>
-                        <th style="width: 250px;">الحالة والملاحظات</th>
-                        <th id="headerVacActions" style="display:none;">تحكم</th>
+                        <th style="width: 50px; text-align: center; padding: 15px 10px;">#</th>
+                        <th style="text-align: right; padding: 15px 10px;">الموظف</th>
+                        <th style="text-align: center; padding: 15px 10px;">البداية</th>
+                        <th style="text-align: center; padding: 15px 10px;">النهاية</th>
+                        <th style="text-align: center; padding: 15px 10px;">الحالة والملاحظات</th>
                     </tr>
                 </thead>
                 <tbody id="vacationTableBody"></tbody>
@@ -172,15 +181,14 @@
     const siteId = new URLSearchParams(window.location.search).get('id');
     if(!siteId) window.location.href = "dashboard.html";
 
-    // تفعيل شريط التنقل
     document.getElementById('tabFinance').href = `details_finance.html?id=${siteId}`;
     document.getElementById('tabVacations').href = `details_vacations.html?id=${siteId}`;
     document.getElementById('tabSubcontracts').href = `details_subcontracts.html?id=${siteId}`;
     document.getElementById('tabCalibration').href = `details_calibration.html?id=${siteId}`;
-
     document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
 
     let currentUserRole = 'user'; 
+    let localVacations = []; // مصفوفة لتخزين البيانات المحلية لتسهيل التصدير والبحث
 
     function getTodayString() {
         const d = new Date(); let m = '' + (d.getMonth() + 1); let day = '' + d.getDate();
@@ -198,7 +206,23 @@
         }
     }
 
-    // جلب قائمة البدلاء لنموذج الإدخال
+    // دالة توسيع وإخفاء السطر
+    window.toggleRow = function(id) {
+        const row = document.getElementById(id);
+        const btn = document.getElementById('btn-' + id);
+        if(row.style.display === 'none') {
+            row.style.display = 'table-row';
+            btn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+            btn.style.background = 'var(--primary)';
+            btn.style.color = 'white';
+        } else {
+            row.style.display = 'none';
+            btn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+            btn.style.background = '#eef2f7';
+            btn.style.color = 'var(--primary)';
+        }
+    };
+
     function loadCoverEmps() {
         db.collection("alternative_employees").onSnapshot(snap => {
             const coverSelect = document.getElementById('vacCoverEmp');
@@ -215,7 +239,6 @@
             const canEdit = (currentUserRole === 'admin' || currentUserRole === 'user');
             document.getElementById('actionButtons').style.display = 'flex';
             if(currentUserRole === 'admin') document.getElementById('homeBtn').style.display = 'inline-flex';
-            if(canEdit) document.getElementById('headerVacActions').style.display = 'table-cell';
 
             loadCoverEmps();
             loadPageData(canEdit);
@@ -231,13 +254,15 @@
         });
 
         db.collection("vacations").where("siteId", "==", siteId).onSnapshot(snap => {
+            localVacations = [];
             const vacTbody = document.getElementById('vacationTableBody');
             vacTbody.innerHTML = "";
             
             snap.forEach(doc => {
                 const val = doc.id; 
                 const v = doc.data();
-                
+                localVacations.push({id: doc.id, ...v}); // حفظها محلياً للتصدير
+
                 let badge = '';
                 let suggestionBlock = '';
 
@@ -245,45 +270,53 @@
                 if(v.status === 'approved') badge = '<span class="badge badge-approved">معتمد ✅</span>';
                 if(v.status === 'rejected') badge = '<span class="badge badge-rejected">مرفوض ❌</span>';
                 
-                // 🌟 بلوك المواعيد المقترحة والتفاعل من الموظف
                 if(v.status === 'suggested') {
                     badge = '<span class="badge badge-suggested">تعديل مقترح من الإدارة 🚧</span>';
                     suggestionBlock = `
                     <div style="background:#fffce8; border:1px dashed #f1c40f; padding:10px; border-radius:6px; margin-top:8px;">
                         <span style="color:#d35400; font-weight:bold; font-size:0.85em; display:block; margin-bottom:8px;"><i class="fa-solid fa-calendar-plus"></i> الموعد البديل: من ${v.suggestedStart} إلى ${v.suggestedEnd}</span>
                         <div style="display:flex; gap:8px;">
-                            <button onclick="respondToSuggestion('${doc.id}', 'accept')" class="btn-action-suggested btn-accept-sug"><i class="fa-solid fa-check"></i> قبول واعتماد</button>
-                            <button onclick="respondToSuggestion('${doc.id}', 'reject')" class="btn-action-suggested btn-reject-sug"><i class="fa-solid fa-xmark"></i> رفض المقترح</button>
+                            <button onclick="event.stopPropagation(); respondToSuggestion('${doc.id}', 'accept')" class="btn-action-suggested btn-accept-sug"><i class="fa-solid fa-check"></i> قبول واعتماد</button>
+                            <button onclick="event.stopPropagation(); respondToSuggestion('${doc.id}', 'reject')" class="btn-action-suggested btn-reject-sug"><i class="fa-solid fa-xmark"></i> رفض المقترح</button>
                         </div>
                     </div>`;
                 }
 
-                // زر التعديل يظهر فقط لو الطلب لسه قيد المراجعة والمستخدم عنده صلاحية
-                let actionCell = canEdit ? `<td class="col-action">
-                    ${v.status === 'pending' ? `<button onclick="editVacation('${doc.id}')" class="btn btn-outline" style="padding:4px 8px; font-size:0.8em;"><i class="fa-solid fa-pen"></i></button>` : '-'}
-                    ${currentUserRole === 'admin' ? `<button onclick="deleteVacation('${doc.id}')" class="btn btn-danger" style="padding:4px 8px; font-size:0.8em; background:transparent; color:var(--danger); border:1px solid var(--danger); margin-right:5px;"><i class="fa-solid fa-trash"></i></button>` : ''}
-                </td>` : '';
+                // أزرار التحكم بتظهر جوا التفاصيل عشان الجدول يفضل أنيق
+                let actionCell = canEdit ? `
+                <div class="detail-item" style="grid-column: 1 / -1; display:flex; gap:10px; border-right:none; border-top:1px solid #eee; padding-top:15px; margin-top:5px;">
+                    ${v.status === 'pending' ? `<button onclick="editVacation('${doc.id}')" class="btn btn-outline" style="padding:6px 15px;"><i class="fa-solid fa-pen"></i> تعديل الطلب</button>` : ''}
+                    ${currentUserRole === 'admin' ? `<button onclick="deleteVacation('${doc.id}')" class="btn btn-outline" style="border-color:var(--danger); color:var(--danger); padding:6px 15px;"><i class="fa-solid fa-trash"></i> حذف الطلب نهائياً</button>` : ''}
+                </div>` : '';
 
+                // السطر الرئيسي + السطر المنسدل
                 vacTbody.innerHTML += `
-                <tr class="data-row" data-status="${v.status || 'pending'}">
-                    <td class="col-name"><b>${v.empName}</b></td>
-                    <td class="col-id">${v.empId}</td>
-                    <td>${v.jobTitle || '-'}</td>
-                    <td>${v.lastVacation || '-'}</td>
-                    <td>${v.balance || 0}</td>
-                    <td style="font-weight:bold;">${v.startDate}</td>
-                    <td style="font-weight:bold;">${v.endDate}</td>
-                    <td>${v.reqDays}</td>
-                    <td style="color:#8e44ad; font-weight:bold;">${v.coverEmp || '<span style="color:#aaa;">لم يحدد</span>'}</td>
-                    <td>${badge} ${suggestionBlock} ${v.notes ? `<div class="notes-text"><b>الرد:</b> ${v.notes}</div>` : ''}</td>
-                    ${actionCell}
+                <tr class="main-row data-row" data-status="${v.status || 'pending'}" onclick="toggleRow('vac-${doc.id}')">
+                    <td style="text-align:center;"><button class="toggle-btn" id="btn-vac-${doc.id}"><i class="fa-solid fa-chevron-down"></i></button></td>
+                    <td class="col-name"><b>${v.empName}</b><br><span style="font-size:0.8em; color:#666;">${v.jobTitle || '-'}</span><span class="col-id" style="display:none;">${v.empId}</span></td>
+                    <td style="text-align:center; font-weight:bold;">${v.startDate}</td>
+                    <td style="text-align:center; font-weight:bold;">${v.endDate}</td>
+                    <td style="text-align:center;">${badge} ${suggestionBlock}</td>
+                </tr>
+                <tr id="vac-${doc.id}" class="details-row" style="display:none;">
+                    <td colspan="5">
+                        <div class="details-container">
+                            <div class="detail-item"><span>الرقم الوظيفي</span><strong>${v.empId}</strong></div>
+                            <div class="detail-item"><span>الرصيد المتاح</span><strong>${v.balance || 0} يوم</strong></div>
+                            <div class="detail-item"><span>آخر إجازة</span><strong>${v.lastVacation || 'لا يوجد'}</strong></div>
+                            <div class="detail-item"><span>مدة الإجازة</span><strong style="color:var(--danger);">${v.reqDays} يوم</strong></div>
+                            <div class="detail-item"><span>الموظف البديل</span><strong style="color:#8e44ad;">${v.coverEmp || 'لم يحدد'}</strong></div>
+                            <div class="detail-item" style="grid-column: 1 / -1;"><span>ملاحظات والردود</span><strong>${v.notes || 'لا توجد ملاحظات'}</strong></div>
+                            ${actionCell}
+                        </div>
+                    </td>
                 </tr>`;
             });
-            applyFilters(); // تطبيق الفلتر تلقائياً لو كان المستخدم مختار حاجة
+            applyFilters(); 
         });
     }
 
-    // --- الفلاتر الذكية ---
+    // --- الفلاتر الذكية المتوافقة مع Expandable Rows ---
     function applyFilters() {
         const nameFilter = document.getElementById('filterName').value.toLowerCase();
         const statusFilter = document.getElementById('filterStatus').value;
@@ -292,16 +325,29 @@
             const name = row.querySelector('.col-name').innerText.toLowerCase();
             const id = row.querySelector('.col-id').innerText.toLowerCase();
             const status = row.getAttribute('data-status');
+            
+            const targetId = row.getAttribute('onclick').match(/'([^']+)'/)[1];
+            const detailRow = document.getElementById(targetId);
+            const toggleBtn = document.getElementById('btn-' + targetId);
 
             const nameMatch = name.includes(nameFilter) || id.includes(nameFilter);
             const statusMatch = statusFilter === 'all' || status === statusFilter;
 
-            if(nameMatch && statusMatch) row.style.display = '';
-            else row.style.display = 'none';
+            if(nameMatch && statusMatch) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+                if(detailRow) detailRow.style.display = 'none';
+                if(toggleBtn) {
+                    toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+                    toggleBtn.style.background = '#eef2f7';
+                    toggleBtn.style.color = 'var(--primary)';
+                }
+            }
         });
     }
 
-    // --- 🌟 دالة تفاعل الموظف مع مقترح الإدارة ---
+    // --- دالة تفاعل الموظف مع مقترح الإدارة ---
     window.respondToSuggestion = async function(id, action) {
         try {
             const docRef = db.collection("vacations").doc(id);
@@ -310,7 +356,6 @@
             const data = docSnap.data();
 
             if(action === 'accept') {
-                // استبدال الموعد القديم بالموعد المقترح الجديد وحساب الأيام أوتوماتيكياً
                 const d1 = new Date(data.suggestedStart); const d2 = new Date(data.suggestedEnd);
                 const newDays = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24)) + 1;
 
@@ -318,14 +363,13 @@
                     startDate: data.suggestedStart,
                     endDate: data.suggestedEnd,
                     reqDays: newDays,
-                    status: 'approved', // يتحول لمعتمد فوراً
-                    suggestedStart: firebase.firestore.FieldValue.delete(), // نمسح الاقتراح بعد قبوله
+                    status: 'approved',
+                    suggestedStart: firebase.firestore.FieldValue.delete(), 
                     suggestedEnd: firebase.firestore.FieldValue.delete(),
                     notes: 'تم قبول الموعد البديل المقترح من الإدارة واعتماده.'
                 });
                 alert("✅ تم قبول الموعد الجديد واعتماد الإجازة بنجاح!");
             } else {
-                // رفض المقترح ويصبح الطلب مرفوض نهائي
                 await docRef.update({
                     status: 'rejected',
                     suggestedStart: firebase.firestore.FieldValue.delete(),
@@ -337,14 +381,12 @@
         } catch(e) { alert("خطأ: " + e.message); }
     }
 
-    // --- حفظ الطلب (جديد أو تعديل) مع قيود التواريخ ---
     async function saveVacation() {
         const id = document.getElementById('editVacationId').value;
         const todayStr = getTodayString();
         const start = document.getElementById('vacStartDate').value;
         const end = document.getElementById('vacEndDate').value;
 
-        // 🌟 قيود التواريخ
         if(!start || !end) return alert("يرجى تحديد بداية ونهاية الإجازة!");
         if(start < todayStr) return alert("🚫 خطأ: لا يمكن تقديم طلب إجازة في تاريخ ماضي.");
         if(end < start) return alert("🚫 خطأ: لا يمكن أن يكون تاريخ نهاية الإجازة قبل تاريخ بدايتها.");
@@ -360,7 +402,7 @@
             startDate: start, 
             endDate: end, 
             reqDays: Number(document.getElementById('vacReqDays').value) || 0, 
-            status: 'pending' // التعديل يرجعه قيد المراجعة
+            status: 'pending' 
         };
 
         if(!data.empName || !data.empId) return alert("املاً حقول الاسم والرقم الوظيفي!");
@@ -375,7 +417,6 @@
         finally { btn.disabled = false; btn.innerText = "حفظ الطلب"; }
     }
 
-    // --- فتح مودال الإضافة ---
     function openVacationModal() {
         document.getElementById('editVacationId').value = ""; 
         document.getElementById('vacationModalTitle').innerText = "تقديم طلب إجازة جديد";
@@ -383,13 +424,10 @@
         document.getElementById('vacJobTitle').selectedIndex = 0;
         document.getElementById('vacCoverEmp').value = "";
         
-        // منع اختيار تواريخ في الماضي
         document.getElementById('vacStartDate').setAttribute('min', getTodayString());
-        
         document.getElementById('vacationModal').classList.add('show');
     }
 
-    // --- فتح مودال التعديل ---
     async function editVacation(id) {
         const doc = await db.collection("vacations").doc(id).get();
         if(!doc.exists) return;
@@ -414,10 +452,10 @@
     function closeVacationModal() { document.getElementById('vacationModal').classList.remove('show'); }
 
     async function deleteVacation(id) {
-        if(confirm("هل أنت متأكد من حذف هذا الطلب؟")) await db.collection("vacations").doc(id).delete();
+        if(confirm("هل أنت متأكد من حذف هذا الطلب نهائياً؟")) await db.collection("vacations").doc(id).delete();
     }
 
-    // --- تصدير للإكسيل ---
+    // --- تصدير البيانات المخفية والظاهرة للإكسيل من المصفوفة المحلية ---
     function cleanArabicNum(str) {
         if(!str) return "";
         return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.').replace(/٬/g, '');
@@ -425,20 +463,21 @@
 
     function exportTableToCSV(filename) {
         let csv = []; 
-        csv.push('\uFEFF'); // لدعم اللغة العربية في الإكسيل
-        let rows = document.querySelectorAll("#vacationsTable tr");
+        csv.push('\uFEFF'); 
+        csv.push("الموظف,الرقم الوظيفي,المسمى الوظيفي,آخر إجازة,الرصيد المتاح,البداية,النهاية,الأيام,البديل,الحالة,الملاحظات");
         
-        for (let i = 0; i < rows.length; i++) {
-            if(rows[i].style.display === 'none') continue; 
-            
-            let row = [], cols = rows[i].querySelectorAll("td, th");
-            for (let j = 0; j < cols.length; j++) {
-                if (cols[j].id === 'headerVacActions' || cols[j].classList.contains('col-action')) continue; 
-                let rawData = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, " ").replace(/,/g, "-"); 
-                row.push('"' + cleanArabicNum(rawData) + '"');
+        let rows = document.querySelectorAll(".data-row");
+        rows.forEach(row => {
+            if(row.style.display !== 'none') {
+                let targetId = row.getAttribute('onclick').match(/'([^']+)'/)[1].replace('vac-', '');
+                let v = localVacations.find(item => item.id === targetId);
+                if(v) {
+                    let statusTxt = v.status === 'approved' ? 'معتمد' : (v.status === 'rejected' ? 'مرفوض' : (v.status === 'suggested' ? 'موعد مقترح' : 'قيد المراجعة'));
+                    let line = [v.empName, v.empId, v.jobTitle, v.lastVacation, v.balance, v.startDate, v.endDate, v.reqDays, v.coverEmp, statusTxt, v.notes];
+                    csv.push('"' + line.map(l => cleanArabicNum(String(l || '').replace(/"/g, '""'))).join('","') + '"');
+                }
             }
-            csv.push(row.join(","));
-        }
+        });
         
         let csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
         let downloadLink = document.createElement("a");
