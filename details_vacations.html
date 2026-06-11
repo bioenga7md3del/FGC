@@ -19,20 +19,19 @@
         .badge-approved { background-color: #27ae60; }
         .badge-rejected { background-color: #c0392b; }
         .badge-suggested { background-color: #d35400; }
+        .notes-text { font-size: 0.85rem; color: #555; display: block; margin-top: 5px; font-style: italic; }
         
         .tabs-nav { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap; }
         .tab-link { padding: 10px 20px; text-decoration: none; color: #64748b; border-radius: 5px; font-weight: bold; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; }
         .tab-link:hover { background: #f1f5f9; color: var(--primary); }
         .tab-link.active { background: var(--primary); color: white !important; }
         
-        /* أزرار التفاعل مع الموعد المقترح */
         .btn-action-suggested { padding: 5px 10px; font-size: 0.85em; font-weight: bold; border-radius: 5px; border: none; cursor: pointer; color: white; display: inline-flex; align-items: center; gap: 5px; transition: 0.2s;}
         .btn-accept-sug { background-color: #27ae60; }
         .btn-accept-sug:hover { background-color: #219653; box-shadow: 0 2px 5px rgba(39, 174, 96, 0.4); }
         .btn-reject-sug { background-color: #c0392b; }
         .btn-reject-sug:hover { background-color: #a02d23; box-shadow: 0 2px 5px rgba(192, 57, 43, 0.4); }
 
-        /* --- تصميم الصفوف المنسدلة (Expandable Rows) للجدول --- */
         table { width: 100%; border-collapse: collapse; }
         .main-row { cursor: pointer; transition: 0.2s; background-color: #fff; border-bottom: 1px solid #edf2f7; }
         .main-row:hover { background-color: #f8fafc; }
@@ -110,8 +109,8 @@
 
     <div class="card" style="padding: 0; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
         <h3 style="padding: 20px; margin: 0; background: #fdfdfd; border-bottom: 1px solid #eee;"><i class="fa-solid fa-umbrella-beach"></i> خطة إجازات موظفي الموقع</h3>
-        <div class="table-container" style="box-shadow: none; border-radius: 0;">
-            <table id="vacationsTable">
+        <div class="table-container" style="box-shadow: none; border-radius: 0; overflow-x: auto;">
+            <table id="vacationsTable" style="min-width: 1100px;">
                 <thead style="background: #f8fafc; border-bottom: 2px solid #cbd5e1;">
                     <tr>
                         <th style="width: 50px; text-align: center; padding: 15px 10px;">#</th>
@@ -188,7 +187,7 @@
     document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
 
     let currentUserRole = 'user'; 
-    let localVacations = []; // مصفوفة لتخزين البيانات المحلية لتسهيل التصدير والبحث
+    let localVacations = []; 
 
     function getTodayString() {
         const d = new Date(); let m = '' + (d.getMonth() + 1); let day = '' + d.getDate();
@@ -206,7 +205,6 @@
         }
     }
 
-    // دالة توسيع وإخفاء السطر
     window.toggleRow = function(id) {
         const row = document.getElementById(id);
         const btn = document.getElementById('btn-' + id);
@@ -259,9 +257,8 @@
             vacTbody.innerHTML = "";
             
             snap.forEach(doc => {
-                const val = doc.id; 
                 const v = doc.data();
-                localVacations.push({id: doc.id, ...v}); // حفظها محلياً للتصدير
+                localVacations.push({id: doc.id, ...v});
 
                 let badge = '';
                 let suggestionBlock = '';
@@ -282,14 +279,22 @@
                     </div>`;
                 }
 
-                // أزرار التحكم بتظهر جوا التفاصيل عشان الجدول يفضل أنيق
+                // 🌟 السماح بالتعديل للطلبات المعلقة والمرفوضة
+                let editButtonHTML = '';
+                if(canEdit) {
+                    if(v.status === 'pending') {
+                        editButtonHTML = `<button onclick="editVacation('${doc.id}')" class="btn btn-outline" style="padding:6px 15px;"><i class="fa-solid fa-pen"></i> تعديل الطلب</button>`;
+                    } else if(v.status === 'rejected') {
+                        editButtonHTML = `<button onclick="editVacation('${doc.id}')" class="btn btn-warning" style="color:white; padding:6px 15px;"><i class="fa-solid fa-rotate-right"></i> تعديل وإعادة تقديم</button>`;
+                    }
+                }
+
                 let actionCell = canEdit ? `
                 <div class="detail-item" style="grid-column: 1 / -1; display:flex; gap:10px; border-right:none; border-top:1px solid #eee; padding-top:15px; margin-top:5px;">
-                    ${v.status === 'pending' ? `<button onclick="editVacation('${doc.id}')" class="btn btn-outline" style="padding:6px 15px;"><i class="fa-solid fa-pen"></i> تعديل الطلب</button>` : ''}
+                    ${editButtonHTML}
                     ${currentUserRole === 'admin' ? `<button onclick="deleteVacation('${doc.id}')" class="btn btn-outline" style="border-color:var(--danger); color:var(--danger); padding:6px 15px;"><i class="fa-solid fa-trash"></i> حذف الطلب نهائياً</button>` : ''}
                 </div>` : '';
 
-                // السطر الرئيسي + السطر المنسدل
                 vacTbody.innerHTML += `
                 <tr class="main-row data-row" data-status="${v.status || 'pending'}" onclick="toggleRow('vac-${doc.id}')">
                     <td style="text-align:center;"><button class="toggle-btn" id="btn-vac-${doc.id}"><i class="fa-solid fa-chevron-down"></i></button></td>
@@ -316,7 +321,6 @@
         });
     }
 
-    // --- الفلاتر الذكية المتوافقة مع Expandable Rows ---
     function applyFilters() {
         const nameFilter = document.getElementById('filterName').value.toLowerCase();
         const statusFilter = document.getElementById('filterStatus').value;
@@ -347,7 +351,6 @@
         });
     }
 
-    // --- دالة تفاعل الموظف مع مقترح الإدارة ---
     window.respondToSuggestion = async function(id, action) {
         try {
             const docRef = db.collection("vacations").doc(id);
@@ -402,7 +405,8 @@
             startDate: start, 
             endDate: end, 
             reqDays: Number(document.getElementById('vacReqDays').value) || 0, 
-            status: 'pending' 
+            status: 'pending', // 🌟 إجبار الحالة على العودة لـ "قيد المراجعة" حتى لو كان مرفوض مسبقاً
+            notes: '' // تصفير ملاحظة الرفض القديمة
         };
 
         if(!data.empName || !data.empId) return alert("املاً حقول الاسم والرقم الوظيفي!");
@@ -410,8 +414,13 @@
         const btn = document.getElementById('saveVacBtn'); 
         btn.disabled = true; btn.innerText = "جاري الحفظ...";
         try {
-            if(id) await db.collection("vacations").doc(id).update(data);
-            else { data.createdAt = new Date().toISOString(); data.notes = ""; await db.collection("vacations").add(data); }
+            if(id) {
+                // إذا كان تعديل، نمسح التواريخ المقترحة القديمة لو كانت موجودة
+                data.suggestedStart = firebase.firestore.FieldValue.delete();
+                data.suggestedEnd = firebase.firestore.FieldValue.delete();
+                await db.collection("vacations").doc(id).update(data);
+            }
+            else { data.createdAt = new Date().toISOString(); await db.collection("vacations").add(data); }
             closeVacationModal();
         } catch(e) { alert("خطأ: " + e.message); }
         finally { btn.disabled = false; btn.innerText = "حفظ الطلب"; }
@@ -455,7 +464,6 @@
         if(confirm("هل أنت متأكد من حذف هذا الطلب نهائياً؟")) await db.collection("vacations").doc(id).delete();
     }
 
-    // --- تصدير البيانات المخفية والظاهرة للإكسيل من المصفوفة المحلية ---
     function cleanArabicNum(str) {
         if(!str) return "";
         return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.').replace(/٬/g, '');
