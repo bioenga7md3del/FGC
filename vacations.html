@@ -149,9 +149,7 @@
         <span class="close-modal" onclick="closeModals()">&times;</span>
         <h3 style="color:var(--primary); margin-top:0;"><i class="fa-solid fa-gavel"></i> معالجة طلب إجازة موظف</h3>
         <input type="hidden" id="actionVacId">
-        
-        <div id="actConflictWarning" style="display:none; background:#f8d7da; color:#721c24; padding:12px; border-radius:6px; margin-bottom:15px; font-size:0.85em; border:1px solid #f5c6cb;">
-            </div>
+        <input type="hidden" id="actionReqDays"> <div id="actConflictWarning" style="display:none; background:#f8d7da; color:#721c24; padding:12px; border-radius:6px; margin-bottom:15px; font-size:0.85em; border:1px solid #f5c6cb;"></div>
 
         <div style="background:#f8fafc; padding:12px; border-radius:6px; margin-bottom:15px; font-size:0.9em; border:1px solid #eee;">
             <p style="margin:0 0 5px 0;"><b>الموظف:</b> <span id="actEmpName"></span></p>
@@ -163,7 +161,7 @@
             <label>اتخاذ إجراء الاعتماد</label>
             <select id="actStatus" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
                 <option value="pending">قيد المراجعة</option>
-                <option value="approved">اعتماد الطلب الحالي ✅</option>
+                <option value="approved">اعتماد الطلب ✅</option>
                 <option value="rejected">رفض الطلب ❌</option>
             </select>
         </div>
@@ -180,6 +178,9 @@
                     <input type="date" id="actSuggestEnd" style="padding:8px;">
                 </div>
             </div>
+            <p id="autoSuggestMsg" style="color: #27ae60; font-size: 0.8em; margin: 8px 0 0 0; font-weight: bold; display: none;">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> النظام اقترح هذا الموعد آلياً بناءً على توفر البديل!
+            </p>
             <p style="font-size:0.75em; color:#888; margin:8px 0 0 0;">في حال الرفض أو التأجيل، يمكنك اقتراح الموعد المناسب للموقع.</p>
         </div>
 
@@ -211,6 +212,17 @@
     let currentCardFilter = 'all';
     let conflictIdsGlobal = new Set();
     let conflictGroupsGlobal = {}; 
+
+    // مساعدة للحصول على تاريخ اليوم بصيغة YYYY-MM-DD
+    function getTodayString() {
+        const d = new Date();
+        let month = '' + (d.getMonth() + 1);
+        let day = '' + d.getDate();
+        let year = d.getFullYear();
+        if (month.length < 2) month = '0' + month;
+        if (day.length < 2) day = '0' + day;
+        return [year, month, day].join('-');
+    }
 
     document.addEventListener("DOMContentLoaded", () => {
         loadSitesList();
@@ -393,7 +405,6 @@
             if(v.status === 'rejected') badge = '<span class="badge badge-rejected">مرفوض ❌</span>';
 
             let siteName = sitesMap.get(v.siteId) || "جاري التحميل...";
-            
             let isConflict = conflictIdsGlobal.has(v.id);
             let rowClass = isConflict ? "conflict-row" : "";
             
@@ -402,7 +413,7 @@
                 conflictDetailsBtn = `<br><button onclick="event.stopPropagation(); showQuickConflictAlert('${v.id}')" class="btn-detail-conflict"><i class="fa-solid fa-triangle-exclamation"></i> ⚠️ تعارض بالبديل</button>`;
             }
 
-            // ظهور المواعيد المقترحة لو موجودة
+            // ظهور المواعيد المقترحة في الجدول
             let suggestedDatesNote = v.suggestedStart ? `<div style="color:#d35400; font-size:0.85em; margin-top:5px; font-weight:bold; background:#fffce8; padding:3px 5px; border-radius:4px;"><i class="fa-solid fa-calendar-plus"></i> موعد مقترح من الإدارة: من ${v.suggestedStart} إلى ${v.suggestedEnd}</div>` : '';
 
             tbody.innerHTML += `
@@ -446,48 +457,110 @@
         }
     }
 
-    // --- 🌟 دالة فتح مودال المعالجة المحدثة (شاملة التحذير والموعد المقترح) ---
+    // --- 🌟 دالة فتح مودال المعالجة المحدثة (مع المساعد الذكي لاقتراح المواعيد) ---
     function openActionModal(id) {
         let v = allVacations.find(item => item.id === id);
         if(!v) return;
 
         document.getElementById('actionVacId').value = id;
+        document.getElementById('actionReqDays').value = v.reqDays || 1; // تخزين عدد الأيام لحساب الفجوات
         document.getElementById('actEmpName').innerText = v.empName;
         document.getElementById('actSiteName').innerText = sitesMap.get(v.siteId) || "موقع مجهول";
         document.getElementById('actDates').innerText = `من ${v.startDate} إلى ${v.endDate}`;
         document.getElementById('actStatus').value = v.status || 'pending';
         document.getElementById('actNotes').value = v.notes || '';
-        document.getElementById('actSuggestStart').value = v.suggestedStart || '';
-        document.getElementById('actSuggestEnd').value = v.suggestedEnd || '';
+        
+        let todayStr = getTodayString();
+        document.getElementById('actSuggestStart').setAttribute('min', todayStr);
+        document.getElementById('actSuggestEnd').setAttribute('min', todayStr);
 
-        // تشغيل كاشف التعارضات داخل المودال نفسه!
         let overlappingVacs = allVacations.filter(alt => alt.id !== id && alt.status !== 'rejected' && alt.siteId === v.siteId && alt.coverEmp && alt.coverEmp === v.coverEmp && alt.startDate <= v.endDate && alt.endDate >= v.startDate);
         let warningDiv = document.getElementById('actConflictWarning');
+        let autoSuggestMsg = document.getElementById('autoSuggestMsg');
         
         if(overlappingVacs.length > 0) {
+            // عرض رسالة التعارض الحمراء
             let names = overlappingVacs.map(alt => `<b>${alt.empName}</b> (${alt.startDate} إلى ${alt.endDate})`).join('<br> - ');
             warningDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <b>تنبيه تعارض خطير:</b> الموظف البديل (${v.coverEmp}) مشغول بالفعل بتغطية إجازة الأشخاص التاليين في نفس هذه الفترة:<br> - ${names}`;
             warningDiv.style.display = 'block';
+
+            // 🤖 خوارزمية إيجاد الفراغات واقتراح تاريخ (Gap Finder AI)
+            let reqDays = Number(v.reqDays) || 1;
+            let candidateStartStr = v.startDate < todayStr ? todayStr : v.startDate; // لا تبدأ البحث في الماضي
+            let candidateStart = new Date(candidateStartStr);
+            
+            // نجلب كل إجازات الموظف البديل لنفس الموقع ونرتبها
+            let busyVacs = allVacations.filter(alt => alt.id !== id && alt.status !== 'rejected' && alt.siteId === v.siteId && alt.coverEmp === v.coverEmp);
+            busyVacs.sort((a,b) => new Date(a.startDate) - new Date(b.startDate));
+            
+            for(let busy of busyVacs) {
+                let bStart = new Date(busy.startDate);
+                let bEnd = new Date(busy.endDate);
+                
+                if(candidateStart >= bStart && candidateStart <= bEnd) {
+                    // إذا كان التاريخ المقترح يقع داخل إجازة مشغول فيها البديل، نزحفه ليوم بعد نهايتها
+                    candidateStart = new Date(bEnd);
+                    candidateStart.setDate(candidateStart.getDate() + 1);
+                } else if (candidateStart < bStart) {
+                    // إذا وجدنا فجوة، هل الفجوة تكفي لعدد الأيام المطلوبة؟
+                    let neededEnd = new Date(candidateStart);
+                    neededEnd.setDate(neededEnd.getDate() + reqDays - 1);
+                    if(neededEnd < bStart) {
+                        break; // الفجوة تكفي! وجدنا التاريخ المناسب
+                    } else {
+                        // الفجوة ضيقة، نزحف التاريخ لبعد الإجازة الحالية
+                        candidateStart = new Date(bEnd);
+                        candidateStart.setDate(candidateStart.getDate() + 1);
+                    }
+                }
+            }
+            
+            let finalEnd = new Date(candidateStart);
+            finalEnd.setDate(finalEnd.getDate() + reqDays - 1);
+            
+            document.getElementById('actSuggestStart').value = candidateStart.toISOString().split('T')[0];
+            document.getElementById('actSuggestEnd').value = finalEnd.toISOString().split('T')[0];
+            autoSuggestMsg.style.display = 'block'; // عرض رسالة الاقتراح الآلي
+
         } else {
+            // لا يوجد تعارض، نضع القيم المحفوظة مسبقاً (إن وجدت) ونخفي رسالة التحذير والاقتراح الآلي
             warningDiv.style.display = 'none';
+            autoSuggestMsg.style.display = 'none';
+            document.getElementById('actSuggestStart').value = v.suggestedStart || '';
+            document.getElementById('actSuggestEnd').value = v.suggestedEnd || '';
         }
         
         document.getElementById('actionModal').classList.add('show');
     }
 
-    // --- 🌟 دالة الحفظ المحدثة (لإرسال التواريخ المقترحة) ---
+    // --- 🌟 دالة الحفظ المحدثة بالقيود المنطقية للتواريخ (Validations) ---
     async function submitAdminAction() {
         const id = document.getElementById('actionVacId').value;
         const status = document.getElementById('actStatus').value;
         const notes = document.getElementById('actNotes').value;
         const suggestedStart = document.getElementById('actSuggestStart').value;
         const suggestedEnd = document.getElementById('actSuggestEnd').value;
+        const todayStr = getTodayString();
+
+        // تطبيق قيود المنطق على التواريخ
+        if(suggestedStart || suggestedEnd) {
+            if(!suggestedStart || !suggestedEnd) {
+                return alert("يرجى إكمال تاريخ البداية والنهاية للموعد المقترح معاً، أو تركهما فارغين بالكامل.");
+            }
+            if(suggestedStart < todayStr) {
+                return alert("🚫 خطأ: لا يمكن إعطاء أو اقتراح إجازة في تاريخ ماضي (قبل تاريخ اليوم).");
+            }
+            if(suggestedEnd < suggestedStart) {
+                return alert("🚫 خطأ: لا يمكن أن يكون تاريخ العودة من الإجازة قبل تاريخ بدايتها!");
+            }
+        }
 
         let updateData = { status: status, notes: notes };
         
-        // إذا قام الأدمن بإدخال تواريخ مقترحة، يتم حفظها
-        if(suggestedStart) updateData.suggestedStart = suggestedStart;
-        if(suggestedEnd) updateData.suggestedEnd = suggestedEnd;
+        if(suggestedStart && suggestedEnd) {
+            updateData.suggestedStart = suggestedStart;
+            updateData.suggestedEnd = suggestedEnd;
+        }
 
         try {
             await db.collection("vacations").doc(id).update(updateData);
