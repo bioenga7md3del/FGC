@@ -9,6 +9,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;800&display=swap" rel="stylesheet">
     
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/ar.js'></script>
+
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -57,6 +61,11 @@
         .multiselect-content label { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.85em; margin: 0; transition: 0.2s;}
         .multiselect-content label:hover { background: #f8fafc; color: var(--primary); }
         .multiselect-content input { margin: 0; cursor: pointer; accent-color: var(--primary); }
+
+        /* ستايل نافذة التقويم */
+        #calendarModal .modal-content { max-width: 95%; width: 1000px; height: 90vh; display: flex; flex-direction: column; }
+        #calendar { flex: 1; margin-top: 15px; background: white; padding: 15px; border-radius: 8px; border: 1px solid #eee;}
+        .fc-event { cursor: pointer; }
     </style>
 </head>
 <body>
@@ -71,12 +80,18 @@
                 <p style="margin:5px 0 0 0; color:#666; font-size:0.9em;">الشركة الخليجية الأولى - لوحة تحكم المسؤول</p>
             </div>
         </div>
-        <div id="actionButtons" style="display:flex; gap: 10px; flex-wrap: wrap;">
-            <button onclick="openAlternativeEmpModal()" class="btn btn-primary" style="background-color: #e67e22;"><i class="fa-solid fa-user-plus"></i> إضافة موظف بديل للقائمة</button>
+        <div id="actionButtons" style="display:flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <button onclick="openAlternativeEmpModal()" class="btn btn-primary" style="background-color: #e67e22;"><i class="fa-solid fa-user-plus"></i> إضافة موظف بديل</button>
             <button onclick="window.print()" class="btn btn-outline"><i class="fa-solid fa-print"></i> طباعة</button>
             <button onclick="exportTableToCSV('fgc_master_vacations.csv')" class="btn btn-success" style="background: #217346;"><i class="fa-solid fa-file-excel"></i> تصدير Excel</button>
             <a href="dashboard.html" class="btn btn-outline" style="text-decoration:none; font-size:0.85em; padding:8px 12px;"><i class="fa-solid fa-house"></i> الرئيسية</a>
         </div>
+    </div>
+    
+    <div style="margin-bottom: 20px; text-align: left;">
+        <button onclick="openCalendarModal()" class="btn btn-outline" style="border-color: #d35400; color: #d35400; font-weight: bold;">
+            <i class="fa-regular fa-calendar-days"></i> عرض التقويم الزمني للإجازات (Calendar)
+        </button>
     </div>
 
     <div class="summary-dashboard">
@@ -112,7 +127,6 @@
                 <label>تصفية بالموقع</label>
                 <select id="filterSite" onchange="applyFilters()"><option value="all">الكل</option></select>
             </div>
-            
             <div class="filter-group">
                 <label>تصفية بالوظيفة (متعدد)</label>
                 <div class="multiselect-wrapper">
@@ -120,7 +134,6 @@
                     <div class="multiselect-content" id="jobFilterContent"></div>
                 </div>
             </div>
-
             <div class="filter-group">
                 <label>الحالة</label>
                 <select id="filterStatus" onchange="applyFilters()">
@@ -150,6 +163,21 @@
             </thead>
             <tbody id="masterVacTableBody"></tbody>
         </table>
+    </div>
+</div>
+
+<div id="calendarModal" class="modal-overlay">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModals()">&times;</span>
+        <h3 style="color:var(--primary); margin-top:0;"><i class="fa-regular fa-calendar-days"></i> التقويم الزمني لإجازات الموظفين</h3>
+        
+        <div style="display:flex; gap:15px; margin-bottom: 10px; font-size: 0.85em; font-weight: bold;">
+            <span style="color:#27ae60;">🟢 معتمد</span>
+            <span style="color:#f39c12;">🟡 قيد المراجعة</span>
+            <span style="color:#d35400;">🟠 مقترح للإدارة</span>
+        </div>
+
+        <div id="calendar"></div>
     </div>
 </div>
 
@@ -242,6 +270,7 @@
     let conflictIdsGlobal = new Set();
     let conflictGroupsGlobal = {}; 
     let altEmployeesList = []; 
+    let fcCalendar; // متغير التقويم
 
     function getTodayString() {
         const d = new Date();
@@ -445,7 +474,7 @@
             let isConflict = conflictIdsGlobal.has(v.id);
             let rowClass = isConflict ? "conflict-row" : "";
             
-            let conflictDetailsBtn = isConflict ? `<br><button onclick="event.stopPropagation(); showQuickConflictAlert('${v.id}')" class="btn-detail-conflict"><i class="fa-solid fa-triangle-exclamation"></i> ⚠️ تعارض</button>` : "";
+            let conflictDetailsBtn = isConflict ? `<br><button onclick="event.stopPropagation(); showQuickConflictAlert('${v.id}')" class="btn-detail-conflict"><i class="fa-solid fa-triangle-exclamation"></i> ⚠️ تعارض بالبديل</button>` : "";
             let suggestedDatesNote = v.suggestedStart ? `<div style="color:#d35400; font-size:0.85em; margin-top:5px; font-weight:bold; background:#fffce8; padding:3px 5px; border-radius:4px;"><i class="fa-solid fa-calendar-plus"></i> موعد مقترح مرسل للموظف: من ${v.suggestedStart} إلى ${v.suggestedEnd}</div>` : '';
 
             tbody.innerHTML += `
@@ -455,7 +484,7 @@
                 <td style="color:var(--primary); font-weight:500;">${siteName}</td>
                 <td style="text-align:center;"><b>${v.startDate}</b></td>
                 <td style="text-align:center;"><b>${v.endDate}</b></td>
-                <td style="text-align:center;">${badge}</td>
+                <td style="text-align:center;">${badge} ${conflictDetailsBtn}</td>
             </tr>
             <tr id="vac-${v.id}" class="details-row" style="display:none;">
                 <td colspan="6">
@@ -463,9 +492,10 @@
                         <div class="detail-item"><span>الرقم الوظيفي</span><strong>${v.empId}</strong></div>
                         <div class="detail-item"><span>الرصيد المتاح</span><strong>${v.balance || 0} يوم</strong></div>
                         <div class="detail-item"><span>آخر إجازة</span><strong>${v.lastVacation || 'لا يوجد'}</strong></div>
-                        <div class="detail-item"><span>مدة الإجازة</span><strong>${v.reqDays} يوم</strong></div>
+                        <div class="detail-item"><span>مدة الإجازة المطلوبة</span><strong style="color:var(--danger);">${v.reqDays} يوم</strong></div>
                         <div class="detail-item"><span>الموظف البديل</span><strong style="color:#8e44ad;">${v.coverEmp || 'لم يحدد'}</strong></div>
-                        <div class="detail-item" style="grid-column: 1 / -1;"><span>ملاحظات والردود</span><strong>${v.notes || 'لا توجد ملاحظات'} ${suggestedDatesNote} ${conflictDetailsBtn}</strong></div>
+                        <div class="detail-item" style="grid-column: 1 / -1;"><span>ملاحظات والردود</span><strong>${v.notes || 'لا توجد ملاحظات'} ${suggestedDatesNote}</strong></div>
+                        
                         <div class="detail-item" style="grid-column: 1 / -1; display:flex; gap:10px; border-right:none; border-top:1px solid #eee; padding-top:15px; margin-top:5px;">
                             <button onclick="openActionModal('${v.id}')" class="btn btn-primary" style="padding:6px 15px;"><i class="fa-solid fa-gavel"></i> معالجة وتغيير البديل</button>
                             <button onclick="deleteVacationRecord('${v.id}')" class="btn btn-outline" style="border-color:var(--danger); color:var(--danger); padding:6px 15px;"><i class="fa-solid fa-trash"></i> حذف الطلب</button>
@@ -474,6 +504,88 @@
                 </td>
             </tr>`;
         });
+    }
+
+    function applyFilters() { renderTable(); }
+
+    function showQuickConflictAlert(vacId) {
+        let currentVac = allVacations.find(v => v.id === vacId);
+        if(!currentVac) return;
+        let overlappingVacs = allVacations.filter(v => v.id !== vacId && v.status !== 'rejected' && v.status !== 'suggested' && v.coverEmp && v.coverEmp === currentVac.coverEmp && v.startDate <= currentVac.endDate && v.endDate >= currentVac.startDate);
+        if(overlappingVacs.length > 0) {
+            let names = overlappingVacs.map(v => `[ ${v.empName} في ${sitesMap.get(v.siteId)} ]`).join(' و ');
+            alert(`⚠️ تنبيه تعارض البديل:\nالموظف البديل (${currentVac.coverEmp}) تم تعيينه في نفس الوقت لتغطية إجازة كل من: ${names}.\n\nيرجى الضغط على الكرت الأحمر في الأعلى لفتح مركز معالجة التعارضات.`);
+        }
+    }
+
+    // --- 🌟 دالة التقويم الزمني ---
+    function openCalendarModal() {
+        document.getElementById('calendarModal').classList.add('show');
+        
+        let events = [];
+        allVacations.forEach(v => {
+            if(v.status === 'rejected') return; 
+            
+            let color = '#f39c12'; // Pending
+            if(v.status === 'approved') color = '#27ae60'; // Approved
+            if(v.status === 'suggested') color = '#d35400'; // Suggested
+            
+            let siteName = sitesMap.get(v.siteId) || 'مجهول';
+            let actualEnd = new Date(v.endDate);
+            actualEnd.setDate(actualEnd.getDate() + 1); // FullCalendar requires end date +1 to display correctly
+
+            events.push({
+                title: `${v.empName} (${siteName})`,
+                start: v.startDate,
+                end: actualEnd.toISOString().split('T')[0],
+                color: color,
+                extendedProps: { cover: v.coverEmp || 'بدون بديل', status: v.status }
+            });
+        });
+
+        const calendarEl = document.getElementById('calendar');
+        if (fcCalendar) fcCalendar.destroy(); // تنظيف التقويم القديم
+
+        fcCalendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ar',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek'
+            },
+            events: events,
+            eventClick: function(info) {
+                alert(`📌 الموظف: ${info.event.title}\n🛡️ البديل المخصص: ${info.event.extendedProps.cover}`);
+            }
+        });
+        
+        // Render inside setTimeout to ensure the modal is fully displayed before drawing
+        setTimeout(() => { fcCalendar.render(); }, 100); 
+    }
+
+    function openActionModal(id) {
+        let v = allVacations.find(item => item.id === id); if(!v) return;
+        document.getElementById('actionVacId').value = id;
+        document.getElementById('actionReqDays').value = v.reqDays || 1; 
+        document.getElementById('actEmpName').innerText = v.empName;
+        document.getElementById('actSiteName').innerText = sitesMap.get(v.siteId) || "موقع مجهول";
+        document.getElementById('actDates').innerText = `من ${v.startDate} إلى ${v.endDate}`;
+        document.getElementById('actStatus').value = v.status === 'suggested' ? 'pending' : v.status;
+        document.getElementById('actNotes').value = v.notes || '';
+        
+        let todayStr = getTodayString();
+        document.getElementById('actSuggestStart').setAttribute('min', todayStr);
+        document.getElementById('actSuggestEnd').setAttribute('min', todayStr);
+
+        let coverSelect = document.getElementById('actCoverEmp');
+        coverSelect.innerHTML = '<option value="">-- بدون بديل / لم يحدد --</option>';
+        let allOptions = new Set([...altEmployeesList]); if(v.coverEmp) allOptions.add(v.coverEmp);
+        allOptions.forEach(emp => { coverSelect.innerHTML += `<option value="${emp}">${emp}</option>`; });
+        coverSelect.value = v.coverEmp || '';
+
+        recheckConflictsInModal();
+        document.getElementById('actionModal').classList.add('show');
     }
 
     function recheckConflictsInModal() {
@@ -521,7 +633,6 @@
         }
     }
 
-    // 🌟 التعديل الجذري لحل مشكلة التواريخ الإجبارية
     async function submitAdminAction() {
         const id = document.getElementById('actionVacId').value;
         let status = document.getElementById('actStatus').value;
@@ -534,20 +645,18 @@
         let updateData = { notes: notes, coverEmp: newCoverEmp };
 
         if (status === 'approved') {
-            // لو الأدمن اختار اعتماد الطلب الحالي، نمسح التواريخ المقترحة تماماً
             updateData.status = 'approved';
             updateData.suggestedStart = firebase.firestore.FieldValue.delete();
             updateData.suggestedEnd = firebase.firestore.FieldValue.delete();
         } 
         else if (status === 'rejected') {
-            // لو اختار رفض أو تقديم مقترح، نفحص خانات المواعيد
             if (suggestedStart && suggestedEnd) {
                 if (suggestedStart < todayStr) return alert("🚫 لا يمكن اقتراح إجازة في تاريخ ماضي.");
                 if (suggestedEnd < suggestedStart) return alert("🚫 تاريخ العودة لا يمكن أن يكون قبل البداية.");
                 
                 updateData.suggestedStart = suggestedStart;
                 updateData.suggestedEnd = suggestedEnd;
-                updateData.status = "suggested"; // 🌟 تحويل الحالة لـ "مقترح"
+                updateData.status = "suggested";
             } else {
                 updateData.status = 'rejected';
                 updateData.suggestedStart = firebase.firestore.FieldValue.delete();
@@ -555,7 +664,6 @@
             }
         } 
         else {
-            // في حالة القيد المراجعة
             updateData.status = status;
             updateData.suggestedStart = firebase.firestore.FieldValue.delete();
             updateData.suggestedEnd = firebase.firestore.FieldValue.delete();
@@ -571,26 +679,6 @@
         } catch(e) { alert("حدث خطأ: " + e.message); }
     }
 
-    function openActionModal(id) {
-        let v = allVacations.find(item => item.id === id); if(!v) return;
-        document.getElementById('actionVacId').value = id;
-        document.getElementById('actionReqDays').value = v.reqDays || 1; 
-        document.getElementById('actEmpName').innerText = v.empName;
-        document.getElementById('actSiteName').innerText = sitesMap.get(v.siteId) || "موقع مجهول";
-        document.getElementById('actDates').innerText = `من ${v.startDate} إلى ${v.endDate}`;
-        document.getElementById('actStatus').value = v.status === 'suggested' ? 'pending' : v.status;
-        document.getElementById('actNotes').value = v.notes || '';
-        
-        let coverSelect = document.getElementById('actCoverEmp');
-        coverSelect.innerHTML = '<option value="">-- بدون بديل --</option>';
-        let allOptions = new Set([...altEmployeesList]); if(v.coverEmp) allOptions.add(v.coverEmp);
-        allOptions.forEach(emp => { coverSelect.innerHTML += `<option value="${emp}">${emp}</option>`; });
-        coverSelect.value = v.coverEmp || '';
-
-        recheckConflictsInModal();
-        document.getElementById('actionModal').classList.add('show');
-    }
-
     function openAlternativeEmpModal() { document.getElementById('newAltName').value = ""; document.getElementById('alternativeEmpModal').classList.add('show'); }
     async function saveAlternativeEmployee() {
         const name = document.getElementById('newAltName').value; if(!name) return alert("أدخل الاسم!");
@@ -599,7 +687,6 @@
     }
     async function deleteVacationRecord(id) { if(confirm("حذف؟")) await db.collection("vacations").doc(id).delete(); }
     function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show')); }
-    function applyFilters() { renderTable(); }
 </script>
 </body>
 </html>
