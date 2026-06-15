@@ -45,14 +45,52 @@
         .detail-item { font-size: 0.9em; padding: 5px; border-right: 2px solid var(--primary); padding-right: 10px; text-align: right; }
         .detail-item span { display: block; color: #64748b; font-size: 0.85em; margin-bottom: 5px; }
         .detail-item strong { color: #334155; font-size: 1.1em; }
+
+        /* --- 🌟 إعدادات الطباعة الاحترافية --- */
+        .print-header { display: none; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; }
+        .print-header h1 { margin: 0 0 10px 0; color: #1e293b; font-size: 26px; font-weight: 800;}
+        .print-header h2 { margin: 0 0 5px 0; color: var(--primary); font-size: 20px;}
+        .print-header p { margin: 0; color: #64748b; font-size: 14px;}
+
+        @media print {
+            @page { size: A4 landscape; margin: 15mm; }
+            body { background: white !important; margin: 0 !important; padding: 0 !important; }
+            
+            /* إخفاء كل الفلاتر والزراير والتبويبات */
+            .header-bar, .tabs-nav, .action-bar, .toggle-btn, .col-action, .modal-overlay, #actionButtons, .detail-item button { 
+                display: none !important; 
+            }
+
+            /* إظهار الترويسة الرسمية */
+            .print-header { display: block !important; }
+
+            /* تحرير الجدول من حاويات الـ Scroll عشان يفرش على الورقة */
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            .card { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
+            .table-container { overflow: visible !important; box-shadow: none !important; max-height: none !important;}
+
+            /* تظبيط مقاسات الجدول وألوانه */
+            table { width: 100% !important; border-collapse: collapse !important; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 10px !important; color: #0f172a !important; font-size: 14px !important; }
+            thead th { background-color: #f1f5f9 !important; color: #1e293b !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            
+            /* منع قص السطور في نص الورقة */
+            tr { page-break-inside: avoid; }
+            
+            /* تفعيل ألوان البادجات في الطباعة */
+            .badge { border: 1px solid #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .details-container { border: none !important; background: transparent !important; padding: 5px !important; margin: 0 !important;}
+            .detail-item { border-right: 2px solid #ccc !important; }
+        }
     </style>
 </head>
 <body>
 
 <div class="print-header">
+    <img src="FGC.jpeg" alt="Logo" style="max-height: 60px; margin-bottom: 10px;">
     <h1>خطة إجازات موظفي الموقع</h1>
     <h2 id="printSiteName"></h2>
-    <p>تاريخ التقرير: <span id="printDate"></span></p>
+    <p>تاريخ استخراج التقرير: <span id="printDate"></span></p>
 </div>
 
 <div class="container">
@@ -69,8 +107,8 @@
             </div>
         </div>
         <div id="actionButtons" style="display:none; gap: 10px; flex-wrap: wrap;">
-            <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333;">
-                <i class="fa-solid fa-print"></i> طباعة
+            <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333; background: #fff;">
+                <i class="fa-solid fa-print"></i> طباعة التقرير
             </button>
             <button onclick="exportTableToCSV('خطة_إجازات_الموقع.csv')" class="btn btn-success" style="background: #217346;">
                 <i class="fa-solid fa-file-excel"></i> تصدير Excel
@@ -184,6 +222,8 @@
     document.getElementById('tabVacations').href = `details_vacations.html?id=${siteId}`;
     document.getElementById('tabSubcontracts').href = `details_subcontracts.html?id=${siteId}`;
     document.getElementById('tabCalibration').href = `details_calibration.html?id=${siteId}`;
+    
+    // تاريخ اليوم للطباعة
     document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
 
     let currentUserRole = 'user'; 
@@ -279,7 +319,6 @@
                     </div>`;
                 }
 
-                // 🌟 السماح بالتعديل للطلبات المعلقة والمرفوضة
                 let editButtonHTML = '';
                 if(canEdit) {
                     if(v.status === 'pending') {
@@ -405,8 +444,8 @@
             startDate: start, 
             endDate: end, 
             reqDays: Number(document.getElementById('vacReqDays').value) || 0, 
-            status: 'pending', // 🌟 إجبار الحالة على العودة لـ "قيد المراجعة" حتى لو كان مرفوض مسبقاً
-            notes: '' // تصفير ملاحظة الرفض القديمة
+            status: 'pending',
+            notes: '' 
         };
 
         if(!data.empName || !data.empId) return alert("املاً حقول الاسم والرقم الوظيفي!");
@@ -415,7 +454,6 @@
         btn.disabled = true; btn.innerText = "جاري الحفظ...";
         try {
             if(id) {
-                // إذا كان تعديل، نمسح التواريخ المقترحة القديمة لو كانت موجودة
                 data.suggestedStart = firebase.firestore.FieldValue.delete();
                 data.suggestedEnd = firebase.firestore.FieldValue.delete();
                 await db.collection("vacations").doc(id).update(data);
