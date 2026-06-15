@@ -19,7 +19,6 @@
         .badge-approved { background-color: #27ae60; }
         .badge-rejected { background-color: #c0392b; }
         .badge-suggested { background-color: #d35400; }
-        .notes-text { font-size: 0.85rem; color: #555; display: block; margin-top: 5px; font-style: italic; }
         
         .tabs-nav { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap; }
         .tab-link { padding: 10px 20px; text-decoration: none; color: #64748b; border-radius: 5px; font-weight: bold; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; }
@@ -46,51 +45,42 @@
         .detail-item span { display: block; color: #64748b; font-size: 0.85em; margin-bottom: 5px; }
         .detail-item strong { color: #334155; font-size: 1.1em; }
 
-        /* --- 🌟 إعدادات الطباعة الاحترافية --- */
-        .print-header { display: none; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; }
-        .print-header h1 { margin: 0 0 10px 0; color: #1e293b; font-size: 26px; font-weight: 800;}
-        .print-header h2 { margin: 0 0 5px 0; color: var(--primary); font-size: 20px;}
-        .print-header p { margin: 0; color: #64748b; font-size: 14px;}
-
+        /* 🌟 ستايلات إخفاء عناصر الموقع أثناء الطباعة وإظهار الجدول الرسمي */
         @media print {
-            @page { size: A4 landscape; margin: 15mm; }
-            body { background: white !important; margin: 0 !important; padding: 0 !important; }
-            
-            /* إخفاء كل الفلاتر والزراير والتبويبات */
-            .header-bar, .tabs-nav, .action-bar, .toggle-btn, .col-action, .modal-overlay, #actionButtons, .detail-item button { 
-                display: none !important; 
-            }
-
-            /* إظهار الترويسة الرسمية */
-            .print-header { display: block !important; }
-
-            /* تحرير الجدول من حاويات الـ Scroll عشان يفرش على الورقة */
-            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
-            .card { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
-            .table-container { overflow: visible !important; box-shadow: none !important; max-height: none !important;}
-
-            /* تظبيط مقاسات الجدول وألوانه */
-            table { width: 100% !important; border-collapse: collapse !important; }
-            th, td { border: 1px solid #cbd5e1 !important; padding: 10px !important; color: #0f172a !important; font-size: 14px !important; }
-            thead th { background-color: #f1f5f9 !important; color: #1e293b !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            
-            /* منع قص السطور في نص الورقة */
-            tr { page-break-inside: avoid; }
-            
-            /* تفعيل ألوان البادجات في الطباعة */
-            .badge { border: 1px solid #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .details-container { border: none !important; background: transparent !important; padding: 5px !important; margin: 0 !important;}
-            .detail-item { border-right: 2px solid #ccc !important; }
+            body * { visibility: hidden; }
+            #printSection, #printSection * { visibility: visible; }
+            #printSection { position: absolute; left: 0; top: 0; width: 100%; display: block !important; direction: rtl; }
+            @page { size: A4 landscape; margin: 10mm; }
         }
     </style>
 </head>
 <body>
 
-<div class="print-header">
-    <img src="FGC.jpeg" alt="Logo" style="max-height: 60px; margin-bottom: 10px;">
-    <h1>خطة إجازات موظفي الموقع</h1>
-    <h2 id="printSiteName"></h2>
-    <p>تاريخ استخراج التقرير: <span id="printDate"></span></p>
+<div id="printSection" style="display: none; background: white;">
+    <div style="text-align: center; border-bottom: 3px solid #1e293b; padding-bottom: 15px; margin-bottom: 20px;">
+        <img src="FGC.jpeg" alt="Logo" style="max-height: 70px; margin-bottom: 10px;">
+        <h2 style="margin: 0 0 5px 0; color: #1e293b; font-size: 24px;">خطة إجازات موظفي الموقع</h2>
+        <h3 id="printSiteNameTitle" style="margin: 0 0 5px 0; color: var(--primary); font-size: 18px;"></h3>
+        <p style="margin: 0; font-size: 12px; color: #555;">تاريخ استخراج التقرير: <span id="printDateActual"></span></p>
+    </div>
+    
+    <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: center;" id="actualPrintTable">
+        <thead>
+            <tr style="background-color: #f1f5f9; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الرقم</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">اسم الموظف</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الوظيفة</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الرصيد</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">تاريخ البداية</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">تاريخ النهاية</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الأيام</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الموظف البديل</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">حالة الطلب</th>
+            </tr>
+        </thead>
+        <tbody id="printTableBody">
+            </tbody>
+    </table>
 </div>
 
 <div class="container">
@@ -107,7 +97,7 @@
             </div>
         </div>
         <div id="actionButtons" style="display:none; gap: 10px; flex-wrap: wrap;">
-            <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333; background: #fff;">
+            <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333;">
                 <i class="fa-solid fa-print"></i> طباعة التقرير
             </button>
             <button onclick="exportTableToCSV('خطة_إجازات_الموقع.csv')" class="btn btn-success" style="background: #217346;">
@@ -130,7 +120,7 @@
         <div class="filter-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
             <div class="filter-group">
                 <label>بحث بالاسم / الرقم الوظيفي</label>
-                <input type="text" id="filterName" onkeyup="applyFilters()" placeholder="بحث...">
+                <input type="text" id="filterName" oninput="applyFilters()" placeholder="بحث سريع...">
             </div>
             <div class="filter-group">
                 <label>حالة الطلب</label>
@@ -147,8 +137,8 @@
 
     <div class="card" style="padding: 0; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
         <h3 style="padding: 20px; margin: 0; background: #fdfdfd; border-bottom: 1px solid #eee;"><i class="fa-solid fa-umbrella-beach"></i> خطة إجازات موظفي الموقع</h3>
-        <div class="table-container" style="box-shadow: none; border-radius: 0; overflow-x: auto;">
-            <table id="vacationsTable" style="min-width: 1100px;">
+        <div class="table-container" style="box-shadow: none; border-radius: 0;">
+            <table id="vacationsTable">
                 <thead style="background: #f8fafc; border-bottom: 2px solid #cbd5e1;">
                     <tr>
                         <th style="width: 50px; text-align: center; padding: 15px 10px;">#</th>
@@ -173,7 +163,6 @@
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
             <div class="input-box"><label>اسم الموظف *</label><input type="text" id="vacEmpName"></div>
             <div class="input-box"><label>الرقم الوظيفي *</label><input type="number" id="vacEmpId"></div>
-            
             <div class="input-box">
                 <label>المسمى الوظيفي *</label>
                 <select id="vacJobTitle" style="width:100%; padding:12px; border-radius:5px; border:1px solid #ccc;">
@@ -184,10 +173,8 @@
                     <option value="فني (ج)">فني (ج)</option>
                 </select>
             </div>
-            
             <div class="input-box"><label>رصيد الإجازات المتاح</label><input type="number" id="vacBalance"></div>
             <div class="input-box"><label>تاريخ آخر إجازة</label><input type="date" id="vacLastDate"></div>
-            
             <div class="input-box">
                 <label>الموظف البديل (اختياري)</label>
                 <select id="vacCoverEmp" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
@@ -223,11 +210,11 @@
     document.getElementById('tabSubcontracts').href = `details_subcontracts.html?id=${siteId}`;
     document.getElementById('tabCalibration').href = `details_calibration.html?id=${siteId}`;
     
-    // تاريخ اليوم للطباعة
-    document.getElementById('printDate').innerText = new Date().toLocaleDateString('ar-EG');
+    // تاريخ اليوم לلطباعة
+    document.getElementById('printDateActual').innerText = new Date().toLocaleDateString('ar-EG');
 
     let currentUserRole = 'user'; 
-    let localVacations = []; 
+    let localVacations = []; // 🌟 مصفوفة الداتا الأصلية اللي هتغذي الإكسيل والطباعة بحرية
 
     function getTodayString() {
         const d = new Date(); let m = '' + (d.getMonth() + 1); let day = '' + d.getDate();
@@ -287,18 +274,18 @@
         db.collection("budgets").doc(siteId).onSnapshot(doc => {
             if(doc.exists) {
                 document.getElementById('siteTitle').innerText = doc.data().itemName + " - خطة الإجازات";
-                document.getElementById('printSiteName').innerText = doc.data().itemName;
+                document.getElementById('printSiteNameTitle').innerText = doc.data().itemName;
             }
         });
 
-        db.collection("vacations").where("siteId", "==", siteId).onSnapshot(snap => {
+        db.collection("vacations").where("siteId", "==", siteId).orderBy("createdAt", "desc").onSnapshot(snap => {
             localVacations = [];
             const vacTbody = document.getElementById('vacationTableBody');
             vacTbody.innerHTML = "";
             
             snap.forEach(doc => {
                 const v = doc.data();
-                localVacations.push({id: doc.id, ...v});
+                localVacations.push({id: doc.id, ...v}); // 🌟 تحديث المصفوفة المحلية بكل التفاصيل
 
                 let badge = '';
                 let suggestionBlock = '';
@@ -334,10 +321,11 @@
                     ${currentUserRole === 'admin' ? `<button onclick="deleteVacation('${doc.id}')" class="btn btn-outline" style="border-color:var(--danger); color:var(--danger); padding:6px 15px;"><i class="fa-solid fa-trash"></i> حذف الطلب نهائياً</button>` : ''}
                 </div>` : '';
 
+                // ربط السطر ببيانات الفلترة
                 vacTbody.innerHTML += `
-                <tr class="main-row data-row" data-status="${v.status || 'pending'}" onclick="toggleRow('vac-${doc.id}')">
+                <tr class="main-row data-row" data-search="${v.empName} ${v.empId}" data-status="${v.status || 'pending'}" onclick="toggleRow('vac-${doc.id}')">
                     <td style="text-align:center;"><button class="toggle-btn" id="btn-vac-${doc.id}"><i class="fa-solid fa-chevron-down"></i></button></td>
-                    <td class="col-name"><b>${v.empName}</b><br><span style="font-size:0.8em; color:#666;">${v.jobTitle || '-'}</span><span class="col-id" style="display:none;">${v.empId}</span></td>
+                    <td><b>${v.empName}</b><br><span style="font-size:0.8em; color:#666;">${v.jobTitle || '-'}</span></td>
                     <td style="text-align:center; font-weight:bold;">${v.startDate}</td>
                     <td style="text-align:center; font-weight:bold;">${v.endDate}</td>
                     <td style="text-align:center;">${badge} ${suggestionBlock}</td>
@@ -360,23 +348,56 @@
         });
     }
 
+    // --- 🌟 دالة توليد جدول الطباعة الرسمي قبل الطباعة مباشرة ---
+    window.onbeforeprint = function() {
+        const printBody = document.getElementById('printTableBody');
+        printBody.innerHTML = '';
+        
+        let visibleIds = [];
+        document.querySelectorAll('.data-row').forEach(row => {
+            if(row.style.display !== 'none') {
+                visibleIds.push(row.getAttribute('onclick').match(/'([^']+)'/)[1].replace('vac-', ''));
+            }
+        });
+
+        visibleIds.forEach(id => {
+            let v = localVacations.find(item => item.id === id);
+            if(v) {
+                let statusTxt = v.status === 'approved' ? 'معتمد ✅' : (v.status === 'rejected' ? 'مرفوض ❌' : (v.status === 'suggested' ? 'موعد مقترح' : 'قيد المراجعة ⏳'));
+                
+                printBody.innerHTML += `
+                    <tr>
+                        <td style="border: 1px solid #333; padding: 6px;">${v.empId}</td>
+                        <td style="border: 1px solid #333; padding: 6px; font-weight: bold; text-align: right;">${v.empName}</td>
+                        <td style="border: 1px solid #333; padding: 6px;">${v.jobTitle || '-'}</td>
+                        <td style="border: 1px solid #333; padding: 6px;">${v.balance || 0}</td>
+                        <td style="border: 1px solid #333; padding: 6px; font-weight:bold;">${v.startDate}</td>
+                        <td style="border: 1px solid #333; padding: 6px; font-weight:bold;">${v.endDate}</td>
+                        <td style="border: 1px solid #333; padding: 6px;">${v.reqDays}</td>
+                        <td style="border: 1px solid #333; padding: 6px; color:#8e44ad; font-weight:bold;">${v.coverEmp || '-'}</td>
+                        <td style="border: 1px solid #333; padding: 6px;">${statusTxt}</td>
+                    </tr>
+                `;
+            }
+        });
+    };
+
     function applyFilters() {
-        const nameFilter = document.getElementById('filterName').value.toLowerCase();
-        const statusFilter = document.getElementById('filterStatus').value;
+        const searchStr = document.getElementById('filterName').value.toLowerCase();
+        const statusStr = document.getElementById('filterStatus').value;
 
         document.querySelectorAll('.data-row').forEach(row => {
-            const name = row.querySelector('.col-name').innerText.toLowerCase();
-            const id = row.querySelector('.col-id').innerText.toLowerCase();
-            const status = row.getAttribute('data-status');
+            const rowSearch = (row.getAttribute('data-search') || '').toLowerCase();
+            const rowStatus = row.getAttribute('data-status') || 'pending';
             
             const targetId = row.getAttribute('onclick').match(/'([^']+)'/)[1];
             const detailRow = document.getElementById(targetId);
             const toggleBtn = document.getElementById('btn-' + targetId);
 
-            const nameMatch = name.includes(nameFilter) || id.includes(nameFilter);
-            const statusMatch = statusFilter === 'all' || status === statusFilter;
+            let matchSearch = !searchStr || rowSearch.includes(searchStr);
+            let matchStatus = statusStr === 'all' || rowStatus === statusStr;
 
-            if(nameMatch && statusMatch) {
+            if(matchSearch && matchStatus) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
@@ -408,17 +429,17 @@
                     status: 'approved',
                     suggestedStart: firebase.firestore.FieldValue.delete(), 
                     suggestedEnd: firebase.firestore.FieldValue.delete(),
-                    notes: 'تم قبول الموعد البديل المقترح من الإدارة واعتماده.'
+                    notes: 'تم قبول الموعد البديل واعتماده.'
                 });
-                alert("✅ تم قبول الموعد الجديد واعتماد الإجازة بنجاح!");
+                alert("✅ تم قبول الموعد واعتماد الإجازة!");
             } else {
                 await docRef.update({
                     status: 'rejected',
                     suggestedStart: firebase.firestore.FieldValue.delete(),
                     suggestedEnd: firebase.firestore.FieldValue.delete(),
-                    notes: 'تم رفض الموعد البديل المقترح من قِبل الموظف.'
+                    notes: 'تم رفض الموعد المقترح من الموظف.'
                 });
-                alert("❌ تم رفض الموعد المقترح.");
+                alert("❌ تم رفض الموعد.");
             }
         } catch(e) { alert("خطأ: " + e.message); }
     }
@@ -429,29 +450,20 @@
         const start = document.getElementById('vacStartDate').value;
         const end = document.getElementById('vacEndDate').value;
 
-        if(!start || !end) return alert("يرجى تحديد بداية ونهاية الإجازة!");
-        if(start < todayStr) return alert("🚫 خطأ: لا يمكن تقديم طلب إجازة في تاريخ ماضي.");
-        if(end < start) return alert("🚫 خطأ: لا يمكن أن يكون تاريخ نهاية الإجازة قبل تاريخ بدايتها.");
+        if(!start || !end) return alert("حدد البداية والنهاية!");
+        if(start < todayStr) return alert("🚫 لا يمكن تقديم طلب بتاريخ ماضي.");
+        if(end < start) return alert("🚫 تاريخ العودة يجب أن يكون بعد البداية.");
 
         const data = {
-            siteId: siteId, 
-            empName: document.getElementById('vacEmpName').value, 
-            empId: document.getElementById('vacEmpId').value,
-            jobTitle: document.getElementById('vacJobTitle').value, 
-            balance: Number(document.getElementById('vacBalance').value) || 0,
-            lastVacation: document.getElementById('vacLastDate').value, 
-            coverEmp: document.getElementById('vacCoverEmp').value,
-            startDate: start, 
-            endDate: end, 
-            reqDays: Number(document.getElementById('vacReqDays').value) || 0, 
-            status: 'pending',
-            notes: '' 
+            siteId: siteId, empName: document.getElementById('vacEmpName').value, empId: document.getElementById('vacEmpId').value,
+            jobTitle: document.getElementById('vacJobTitle').value, balance: Number(document.getElementById('vacBalance').value) || 0,
+            lastVacation: document.getElementById('vacLastDate').value, coverEmp: document.getElementById('vacCoverEmp').value,
+            startDate: start, endDate: end, reqDays: Number(document.getElementById('vacReqDays').value) || 0, status: 'pending', notes: '' 
         };
 
-        if(!data.empName || !data.empId) return alert("املاً حقول الاسم والرقم الوظيفي!");
+        if(!data.empName || !data.empId) return alert("املاً الاسم والرقم!");
 
-        const btn = document.getElementById('saveVacBtn'); 
-        btn.disabled = true; btn.innerText = "جاري الحفظ...";
+        const btn = document.getElementById('saveVacBtn'); btn.disabled = true; btn.innerText = "جاري الحفظ...";
         try {
             if(id) {
                 data.suggestedStart = firebase.firestore.FieldValue.delete();
@@ -465,43 +477,28 @@
     }
 
     function openVacationModal() {
-        document.getElementById('editVacationId').value = ""; 
-        document.getElementById('vacationModalTitle').innerText = "تقديم طلب إجازة جديد";
+        document.getElementById('editVacationId').value = ""; document.getElementById('vacationModalTitle').innerText = "طلب إجازة جديد";
         document.querySelectorAll('#vacationModal input').forEach(i => i.value = "");
-        document.getElementById('vacJobTitle').selectedIndex = 0;
-        document.getElementById('vacCoverEmp').value = "";
-        
+        document.getElementById('vacJobTitle').selectedIndex = 0; document.getElementById('vacCoverEmp').value = "";
         document.getElementById('vacStartDate').setAttribute('min', getTodayString());
         document.getElementById('vacationModal').classList.add('show');
     }
 
     async function editVacation(id) {
-        const doc = await db.collection("vacations").doc(id).get();
-        if(!doc.exists) return;
-        const d = doc.data();
-        
-        document.getElementById('editVacationId').value = id;
-        document.getElementById('vacationModalTitle').innerText = "تعديل طلب الإجازة";
-        document.getElementById('vacEmpName').value = d.empName;
-        document.getElementById('vacEmpId').value = d.empId;
-        document.getElementById('vacJobTitle').value = d.jobTitle || 'مدير الموقع';
-        document.getElementById('vacBalance').value = d.balance || 0;
-        document.getElementById('vacLastDate').value = d.lastVacation || '';
-        document.getElementById('vacCoverEmp').value = d.coverEmp || '';
-        document.getElementById('vacStartDate').value = d.startDate;
-        document.getElementById('vacEndDate').value = d.endDate;
+        const doc = await db.collection("vacations").doc(id).get(); if(!doc.exists) return; const d = doc.data();
+        document.getElementById('editVacationId').value = id; document.getElementById('vacationModalTitle').innerText = "تعديل الطلب";
+        document.getElementById('vacEmpName').value = d.empName; document.getElementById('vacEmpId').value = d.empId;
+        document.getElementById('vacJobTitle').value = d.jobTitle || 'مدير الموقع'; document.getElementById('vacBalance').value = d.balance || 0;
+        document.getElementById('vacLastDate').value = d.lastVacation || ''; document.getElementById('vacCoverEmp').value = d.coverEmp || '';
+        document.getElementById('vacStartDate').value = d.startDate; document.getElementById('vacEndDate').value = d.endDate;
         document.getElementById('vacReqDays').value = d.reqDays;
-
-        document.getElementById('vacStartDate').setAttribute('min', getTodayString());
-        document.getElementById('vacationModal').classList.add('show');
+        document.getElementById('vacStartDate').setAttribute('min', getTodayString()); document.getElementById('vacationModal').classList.add('show');
     }
 
     function closeVacationModal() { document.getElementById('vacationModal').classList.remove('show'); }
+    async function deleteVacation(id) { if(confirm("حذف الطلب نهائياً؟")) await db.collection("vacations").doc(id).delete(); }
 
-    async function deleteVacation(id) {
-        if(confirm("هل أنت متأكد من حذف هذا الطلب نهائياً؟")) await db.collection("vacations").doc(id).delete();
-    }
-
+    // --- 🌟 تصدير إكسيل ذكي يقرأ البيانات الأصلية الكاملة ---
     function cleanArabicNum(str) {
         if(!str) return "";
         return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.').replace(/٬/g, '');
@@ -510,28 +507,28 @@
     function exportTableToCSV(filename) {
         let csv = []; 
         csv.push('\uFEFF'); 
-        csv.push("الموظف,الرقم الوظيفي,المسمى الوظيفي,آخر إجازة,الرصيد المتاح,البداية,النهاية,الأيام,البديل,الحالة,الملاحظات");
+        csv.push("الرقم الوظيفي,اسم الموظف,المسمى الوظيفي,تاريخ آخر إجازة,الرصيد المتاح,البداية,النهاية,الأيام,الموظف البديل,حالة الطلب,الملاحظات");
         
-        let rows = document.querySelectorAll(".data-row");
-        rows.forEach(row => {
+        let visibleIds = [];
+        document.querySelectorAll('.data-row').forEach(row => {
             if(row.style.display !== 'none') {
-                let targetId = row.getAttribute('onclick').match(/'([^']+)'/)[1].replace('vac-', '');
-                let v = localVacations.find(item => item.id === targetId);
-                if(v) {
-                    let statusTxt = v.status === 'approved' ? 'معتمد' : (v.status === 'rejected' ? 'مرفوض' : (v.status === 'suggested' ? 'موعد مقترح' : 'قيد المراجعة'));
-                    let line = [v.empName, v.empId, v.jobTitle, v.lastVacation, v.balance, v.startDate, v.endDate, v.reqDays, v.coverEmp, statusTxt, v.notes];
-                    csv.push('"' + line.map(l => cleanArabicNum(String(l || '').replace(/"/g, '""'))).join('","') + '"');
-                }
+                visibleIds.push(row.getAttribute('onclick').match(/'([^']+)'/)[1].replace('vac-', ''));
+            }
+        });
+
+        visibleIds.forEach(id => {
+            let v = localVacations.find(item => item.id === id);
+            if(v) {
+                let statusTxt = v.status === 'approved' ? 'معتمد' : (v.status === 'rejected' ? 'مرفوض' : (v.status === 'suggested' ? 'موعد مقترح' : 'قيد المراجعة'));
+                let line = [v.empId, v.empName, v.jobTitle || '-', v.lastVacation || '-', v.balance || 0, v.startDate, v.endDate, v.reqDays, v.coverEmp || 'لا يوجد', statusTxt, v.notes || '-'];
+                csv.push('"' + line.map(l => cleanArabicNum(String(l || '').replace(/"/g, '""'))).join('","') + '"');
             }
         });
         
         let csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
-        let downloadLink = document.createElement("a");
-        downloadLink.download = filename;
-        downloadLink.href = window.URL.createObjectURL(csvFile);
-        downloadLink.style.display = "none";
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
+        let downloadLink = document.createElement("a"); downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile); downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink); downloadLink.click();
     }
 </script>
 </body>
