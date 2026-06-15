@@ -58,12 +58,13 @@
         .multiselect-content label:hover { background: #f8fafc; color: var(--primary); }
         .multiselect-content input { margin: 0; cursor: pointer; accent-color: var(--primary); }
 
-        /* --- 🌟 إعدادات الطباعة الاحترافية للإدارة المركزية --- */
+        /* --- 🌟 إعدادات الطباعة الاحترافية --- */
         @media print {
             body * { visibility: hidden; }
             #printSection, #printSection * { visibility: visible; }
             #printSection { position: absolute; left: 0; top: 0; width: 100%; display: block !important; direction: rtl; }
             @page { size: A4 landscape; margin: 10mm; }
+            #actualPrintTable tr { page-break-inside: avoid; }
         }
     </style>
 </head>
@@ -79,16 +80,17 @@
     <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: center;" id="actualPrintTable">
         <thead>
             <tr style="background-color: #f1f5f9; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
-                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الرقم الوظيفي</th>
-                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">اسم الموظف</th>
-                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الموقع التابع له</th>
-                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الوظيفة</th>
-                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الرصيد</th>
-                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">تاريخ البداية</th>
-                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">تاريخ النهاية</th>
-                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الأيام</th>
-                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الموظف البديل</th>
-                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">حالة الطلب</th>
+                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">الرقم الوظيفي</th>
+                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">اسم الموظف</th>
+                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">الموقع التابع له</th>
+                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">الوظيفة</th>
+                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">الرصيد</th>
+                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">تاريخ البداية</th>
+                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">تاريخ النهاية</th>
+                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">الأيام</th>
+                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">البديل</th>
+                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">الحالة</th>
+                <th style="border: 1px solid #333; padding: 6px; font-weight: bold; width: 15%;">الملاحظات والمقترح</th>
             </tr>
         </thead>
         <tbody id="printTableBody"></tbody>
@@ -529,7 +531,12 @@
             let v = allVacations.find(item => item.id === id);
             if(v) {
                 let siteName = sitesMap.get(v.siteId) || "-";
-                let statusTxt = v.status === 'approved' ? 'معتمد ✅' : (v.status === 'rejected' ? 'مرفوض ❌' : (v.status === 'suggested' ? 'موعد مقترح' : 'قيد المراجعة ⏳'));
+                let statusTxt = v.status === 'approved' ? 'معتمد ✅' : (v.status === 'rejected' ? 'مرفوض ❌' : (v.status === 'suggested' ? 'موعد مقترح 🚧' : 'قيد المراجعة ⏳'));
+                
+                // 🌟 دمج الملاحظات والتاريخ المقترح للطباعة بشكل أنيق
+                let notesHtml = v.notes ? `<div>${v.notes}</div>` : '';
+                let suggestHtml = v.suggestedStart ? `<div style="color:#d35400; font-weight:bold; margin-top:4px; font-size:0.9em;">مقترح: من ${v.suggestedStart} إلى ${v.suggestedEnd}</div>` : '';
+                let finalNotes = (notesHtml || suggestHtml) ? (notesHtml + suggestHtml) : '-';
                 
                 printBody.innerHTML += `
                     <tr>
@@ -538,11 +545,12 @@
                         <td style="border: 1px solid #333; padding: 6px; font-weight: bold; color: #1e293b;">${siteName}</td>
                         <td style="border: 1px solid #333; padding: 6px;">${v.jobTitle || '-'}</td>
                         <td style="border: 1px solid #333; padding: 6px;">${v.balance || 0}</td>
-                        <td style="border: 1px solid #333; padding: 6px; font-weight:bold;">${v.startDate}</td>
-                        <td style="border: 1px solid #333; padding: 6px; font-weight:bold;">${v.endDate}</td>
+                        <td style="border: 1px solid #333; padding: 6px; font-weight:bold; color: #0f172a;">${v.startDate}</td>
+                        <td style="border: 1px solid #333; padding: 6px; font-weight:bold; color: #0f172a;">${v.endDate}</td>
                         <td style="border: 1px solid #333; padding: 6px;">${v.reqDays}</td>
                         <td style="border: 1px solid #333; padding: 6px; color:#8e44ad; font-weight:bold;">${v.coverEmp || '-'}</td>
                         <td style="border: 1px solid #333; padding: 6px;">${statusTxt}</td>
+                        <td style="border: 1px solid #333; padding: 6px; text-align: right; font-size: 0.9em;">${finalNotes}</td>
                     </tr>
                 `;
             }
