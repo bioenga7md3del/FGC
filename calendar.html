@@ -13,92 +13,117 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
-        body { background-color: #f1f5f9; margin: 0; padding: 0; font-family: 'Tajawal', sans-serif; }
+        body { background-color: #f8fafc; margin: 0; padding: 0; font-family: 'Tajawal', sans-serif; }
         
-        .cal-header { background: #fff; padding: 15px 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-        .cal-title { margin: 0; color: #1e293b; font-size: 1.4em; display: flex; align-items: center; gap: 10px; }
+        .cal-header { background: #fff; padding: 15px 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; border-bottom: 2px solid var(--primary); }
+        .cal-title { margin: 0; color: #1e293b; font-size: 1.4em; display: flex; align-items: center; gap: 10px; font-weight: 800; }
         .cal-subtitle { color: #64748b; font-size: 0.6em; font-weight: normal; }
         
-        .controls-card { background: #fff; margin: 20px 25px; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-wrap: wrap; gap: 20px; align-items: center; border: 1px solid #e2e8f0; }
+        /* كارت الفلاتر */
+        .controls-card { background: #fff; margin: 20px 25px; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; border: 1px solid #e2e8f0; }
         
-        .filter-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px; }
         .filter-group label { font-size: 0.85em; font-weight: bold; color: #475569; }
-        .filter-group select { padding: 10px 15px; border-radius: 8px; border: 1px solid #cbd5e1; background: #f8fafc; font-family: inherit; font-size: 0.95em; outline: none; transition: 0.3s; cursor: pointer; }
-        .filter-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); background: #fff; }
+        .filter-group select, .filter-group input { padding: 10px 15px; border-radius: 8px; border: 1px solid #cbd5e1; background: #f1f5f9; font-family: inherit; font-size: 0.95em; outline: none; transition: 0.3s; cursor: pointer; width: 100%; box-sizing: border-box; }
+        .filter-group select:focus, .filter-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(33, 115, 70, 0.1); background: #fff; }
 
-        .legend-box { display: flex; gap: 20px; padding: 15px; border-radius: 8px; font-size: 0.85em; font-weight: bold; flex-wrap: wrap; justify-content: center; width: 100%; margin-top: 10px; border-top: 1px dashed #e2e8f0;}
+        /* فلتر الوظائف المتعدد */
+        .multiselect-wrapper { position: relative; width: 100%; }
+        .multiselect-btn { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 10px 15px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.95em; color: #333; min-height: 40px; transition: 0.3s;}
+        .multiselect-btn:hover { background: #fff; border-color: var(--primary); }
+        .multiselect-content { display: none; position: absolute; background: white; width: 100%; border: 1px solid #ccc; max-height: 250px; overflow-y: auto; z-index: 200; border-radius: 8px; margin-top: 5px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .multiselect-content label { display: flex; align-items: center; gap: 8px; padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.9em; margin: 0; transition: 0.2s;}
+        .multiselect-content label:hover { background: #f8fafc; color: var(--primary); }
+        .multiselect-content input { margin: 0; cursor: pointer; accent-color: var(--primary); transform: scale(1.2); }
+
+        .legend-box { display: flex; gap: 20px; padding: 10px 20px; background: #f8fafc; border-radius: 8px; font-size: 0.85em; font-weight: bold; flex-wrap: wrap; justify-content: center; width: 100%; margin-top: 5px; border: 1px dashed #cbd5e1;}
         .legend-item { display: flex; align-items: center; gap: 8px; color: #475569; }
         .color-block { width: 24px; height: 12px; border-radius: 20px; }
 
-        /* --- 🌟 تصميم الجانت شارت العالمي --- */
-        .gantt-wrapper { margin: 0 25px 30px 25px; background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); overflow: hidden; border: 1px solid #e2e8f0; }
-        .gantt-scroll { overflow-x: auto; overflow-y: auto; max-height: 70vh; }
+        /* عنوان الشهر الضخم */
+        .month-display-container { text-align: center; margin: 10px 0 20px 0; }
+        .month-display-title { font-size: 2.8em; font-weight: 800; color: var(--primary); margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.05); }
+
+        /* --- 🌟 تصميم الجانت شارت العالمي المتصل --- */
+        .gantt-wrapper { margin: 0 25px 30px 25px; background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #e2e8f0; }
+        .gantt-scroll { overflow-x: auto; overflow-y: auto; max-height: 65vh; }
         
-        .gantt-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1200px; }
-        .gantt-table th, .gantt-table td { padding: 0; height: 45px; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f8fafc; text-align: center; vertical-align: middle; position: relative; }
+        .gantt-table { width: 100%; border-collapse: collapse; min-width: 1200px; }
+        .gantt-table th, .gantt-table td { height: 45px; border: 1px solid #e2e8f0; text-align: center; vertical-align: middle; padding: 0; }
         
         /* تجميد الهيدر العلوي */
-        .gantt-table thead th { background: #f8fafc; color: #475569; font-size: 0.85em; font-weight: 700; position: sticky; top: 0; z-index: 40; border-bottom: 2px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); padding: 8px 0;}
+        .gantt-table thead th { background: #f8fafc; color: #334155; font-size: 0.9em; font-weight: 800; position: sticky; top: 0; z-index: 40; box-shadow: inset 0 -2px 0 #cbd5e1; }
         
         /* تجميد عمود الموظف (اليمين) */
-        .emp-col { min-width: 220px; max-width: 220px; text-align: right !important; padding: 0 15px !important; background: #fff !important; position: sticky; right: 0; z-index: 30; border-left: 2px solid #e2e8f0 !important; box-shadow: -4px 0 10px rgba(0,0,0,0.03); }
-        .gantt-table thead th.emp-col { z-index: 50; background: #f8fafc !important; }
+        .emp-col { min-width: 250px; max-width: 250px; text-align: right !important; padding: 0 15px !important; background: #fff !important; position: sticky; right: 0; z-index: 30; box-shadow: -3px 0 8px rgba(0,0,0,0.04); border-left: 2px solid #cbd5e1 !important;}
+        .gantt-table thead th.emp-col { z-index: 50; background: #f1f5f9 !important; }
         
-        .emp-name { font-weight: 800; color: #1e293b; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;}
-        .emp-meta { font-size: 0.75em; color: #64748b; display: block; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .emp-name { font-weight: 800; color: #0f172a; font-size: 0.95em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;}
+        .emp-meta { font-size: 0.75em; color: #64748b; display: block; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
         
-        .day-cell { min-width: 38px; max-width: 38px; }
-        .weekend-bg { background-color: #f8fafc; }
-        .today-bg { background-color: #e0f2fe; border-left: 1px solid #7dd3fc; border-right: 1px solid #7dd3fc; }
+        .day-cell { min-width: 40px; max-width: 40px; font-weight: bold; }
+        .weekend-bg { background-color: #f1f5f9; color: #94a3b8; }
+        .today-bg { background-color: #e0f2fe; color: #0369a1; border-left: 2px solid #38bdf8 !important; border-right: 2px solid #38bdf8 !important; }
 
-        /* --- 🌟 تصميم الأشرطة المتصلة (Fluid Pills) --- */
-        .v-bar { height: 28px; margin: 0; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8em; font-weight: bold; cursor: pointer; position: relative; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1); transition: 0.2s; }
-        .v-bar:hover { filter: brightness(0.9); transform: translateY(-1px); z-index: 10; box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+        /* --- 🌟 تصميم الأشرطة المتصلة تماماً (Seamless Fluid Pills) --- */
+        .v-cell-wrapper { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
         
-        .v-pending { background: linear-gradient(90deg, #f59e0b, #facc15); color: #fff; }
-        .v-suggested { background: linear-gradient(90deg, #d946ef, #f472b6); color: #fff; }
-        .v-approved { background: linear-gradient(90deg, #10b981, #34d399); color: #fff; }
-        .v-conflict { background: linear-gradient(90deg, #ef4444, #f87171); animation: pulse 1.5s infinite; }
+        .v-bar { height: 32px; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.85em; font-weight: bold; cursor: pointer; position: relative; z-index: 10; transition: filter 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .v-bar:hover { filter: brightness(0.85); z-index: 20; transform: scaleY(1.05); }
+        
+        /* ألوان صلبة واضحة لضمان الاتصال البصري */
+        .v-pending { background-color: #f59e0b; }
+        .v-suggested { background-color: #d946ef; }
+        .v-approved { background-color: #10b981; }
+        .v-conflict { background-color: #ef4444; animation: pulse 1.5s infinite; }
 
-        /* حواف ذكية للأشرطة */
-        .v-start { border-top-right-radius: 20px; border-bottom-right-radius: 20px; margin-right: 4px; padding-right: 5px;}
-        .v-end { border-top-left-radius: 20px; border-bottom-left-radius: 20px; margin-left: 4px; padding-left: 5px;}
-        .v-mid { border-radius: 0; margin: 0; }
-        .v-single { border-radius: 20px; margin: 0 4px; }
+        /* 🌟 الخدعة البصرية للاتصال: إلغاء الـ Margin بالكامل وجعل العرض يتجاوز الخلية لإخفاء حدود الجدول */
+        .v-start { border-top-right-radius: 16px; border-bottom-right-radius: 16px; width: calc(100% + 1px); margin-left: -1px; justify-content: flex-start; padding-right: 8px;}
+        .v-end { border-top-left-radius: 16px; border-bottom-left-radius: 16px; width: calc(100% + 1px); margin-right: -1px; }
+        .v-mid { border-radius: 0; width: calc(100% + 2px); margin: 0 -1px; }
+        .v-single { border-radius: 16px; width: 90%; margin: 0 auto; justify-content: center; padding: 0;}
 
         .empty-state { text-align: center; padding: 60px 20px; color: #64748b; }
         .empty-state i { font-size: 4em; color: #cbd5e1; margin-bottom: 15px; }
 
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
-        /* ستايل التولتيب للملاحظات */
-        .tooltip { position: relative; display: inline-block; }
-        .tooltip .tooltiptext { visibility: hidden; width: max-content; max-width: 250px; background-color: #1e293b; color: #fff; text-align: center; border-radius: 6px; padding: 8px 12px; position: absolute; z-index: 100; bottom: 125%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 12px; font-weight: normal; line-height: 1.5; pointer-events: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
-        .tooltip .tooltiptext::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #1e293b transparent transparent transparent; }
-        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+        /* التولتيب المطور */
+        .v-bar[title]:hover::after { content: attr(title); position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: normal; white-space: nowrap; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.2); pointer-events: none;}
+        .v-bar[title]:hover::before { content: ""; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #1e293b; z-index: 1000; pointer-events: none;}
     </style>
 </head>
 <body>
 
 <div class="cal-header">
     <h1 class="cal-title">
-        <i class="fa-solid fa-chart-gantt" style="color: #3b82f6;"></i> المخطط الزمني للإجازات 
+        <i class="fa-solid fa-calendar-check" style="color: var(--primary);"></i> الخط الزمني للإجازات 
         <span class="cal-subtitle">FGC - الإدارة المركزية</span>
     </h1>
-    <a href="vacations.html" class="btn btn-outline" style="text-decoration: none; padding: 8px 15px; font-weight: bold;">
-        <i class="fa-solid fa-arrow-right"></i> العودة لإدارة الإجازات
-    </a>
+    <button onclick="window.close()" class="btn btn-outline" style="text-decoration: none; padding: 8px 15px; font-weight: bold; cursor:pointer;">
+        <i class="fa-solid fa-xmark"></i> إغلاق النافذة
+    </button>
 </div>
 
 <div class="controls-card">
     <div class="filter-group">
-        <label>الموقع / المستشفى</label>
+        <label><i class="fa-solid fa-hospital"></i> الموقع / المستشفى</label>
         <select id="calSiteFilter" onchange="drawGantt()">
             <option value="all">🌐 كافة المواقع</option>
         </select>
     </div>
+    
     <div class="filter-group">
-        <label>الشهر</label>
+        <label><i class="fa-solid fa-briefcase"></i> تصفية بالوظيفة (متعدد)</label>
+        <div class="multiselect-wrapper">
+            <div class="multiselect-btn" onclick="toggleJobFilter()">اختر المسميات الوظيفية <i class="fa-solid fa-chevron-down"></i></div>
+            <div class="multiselect-content" id="jobFilterContent">
+                </div>
+        </div>
+    </div>
+
+    <div class="filter-group" style="max-width: 150px;">
+        <label><i class="fa-solid fa-calendar"></i> الشهر</label>
         <select id="calMonthFilter" onchange="drawGantt()">
             <option value="0">يناير (01)</option><option value="1">فبراير (02)</option><option value="2">مارس (03)</option>
             <option value="3">أبريل (04)</option><option value="4">مايو (05)</option><option value="5">يونيو (06)</option>
@@ -106,8 +131,8 @@
             <option value="9">أكتوبر (10)</option><option value="10">نوفمبر (11)</option><option value="11">ديسمبر (12)</option>
         </select>
     </div>
-    <div class="filter-group">
-        <label>السنة</label>
+    <div class="filter-group" style="max-width: 120px;">
+        <label><i class="fa-solid fa-calendar-days"></i> السنة</label>
         <select id="calYearFilter" onchange="drawGantt()">
             <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option>
         </select>
@@ -119,6 +144,10 @@
         <div class="legend-item"><div class="color-block v-suggested"></div> مقترح للإدارة 🚧</div>
         <div class="legend-item"><div class="color-block v-conflict"></div> تعارض (البديل مشغول) ⚠️</div>
     </div>
+</div>
+
+<div class="month-display-container">
+    <h2 id="monthDisplayTitle" class="month-display-title">جاري التحميل...</h2>
 </div>
 
 <div class="gantt-wrapper">
@@ -138,6 +167,10 @@
     let allVacations = [];
     let sitesMap = new Map();
     let conflictIdsGlobal = new Set();
+    let uniqueJobsGlobal = new Set(); // لحفظ الوظائف لفلتر الاختيار المتعدد
+
+    // أسماء الشهور للعنوان الضخم
+    const monthNamesAr = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
 
     // تعيين التاريخ الحالي
     const today = new Date();
@@ -147,6 +180,14 @@
     document.addEventListener("DOMContentLoaded", () => {
         loadSites();
         loadVacations();
+    });
+
+    // إغلاق الفلتر المتعدد عند الضغط خارجه
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.multiselect-wrapper')) {
+            const content = document.getElementById('jobFilterContent');
+            if(content) content.style.display = 'none';
+        }
     });
 
     function loadSites() {
@@ -165,10 +206,33 @@
     function loadVacations() {
         db.collection("vacations").onSnapshot(snap => {
             allVacations = [];
-            snap.forEach(doc => allVacations.push({id: doc.id, ...doc.data()}));
+            uniqueJobsGlobal.clear();
+
+            snap.forEach(doc => {
+                let data = doc.data();
+                allVacations.push({id: doc.id, ...data});
+                if(data.jobTitle) uniqueJobsGlobal.add(data.jobTitle);
+            });
+            
+            populateJobFilter();
             analyzeConflicts();
             drawGantt();
         });
+    }
+
+    function populateJobFilter() {
+        const container = document.getElementById('jobFilterContent');
+        const currentSelections = Array.from(document.querySelectorAll('.job-filter-cb:checked')).map(cb => cb.value);
+        container.innerHTML = '';
+        uniqueJobsGlobal.forEach(job => {
+            const isChecked = currentSelections.includes(job) ? 'checked' : '';
+            container.innerHTML += `<label><input type="checkbox" class="job-filter-cb" value="${job}" onchange="drawGantt()" ${isChecked}> ${job}</label>`;
+        });
+    }
+
+    function toggleJobFilter() {
+        const content = document.getElementById('jobFilterContent');
+        content.style.display = content.style.display === 'block' ? 'none' : 'block';
     }
 
     function analyzeConflicts() {
@@ -189,6 +253,12 @@
         const siteFilter = document.getElementById('calSiteFilter').value;
         const monthFilter = parseInt(document.getElementById('calMonthFilter').value);
         const yearFilter = parseInt(document.getElementById('calYearFilter').value);
+        
+        // جلب الوظائف المحددة
+        const selectedJobs = Array.from(document.querySelectorAll('.job-filter-cb:checked')).map(cb => cb.value);
+
+        // 🌟 تحديث العنوان الضخم
+        document.getElementById('monthDisplayTitle').innerText = `${monthNamesAr[monthFilter]} ${yearFilter}`;
 
         const daysInMonth = new Date(yearFilter, monthFilter + 1, 0).getDate();
         const todayDate = new Date();
@@ -199,17 +269,17 @@
         let headerHtml = `<tr><th class="emp-col">الموظف / معلومات الطلب</th>`;
         for (let day = 1; day <= daysInMonth; day++) {
             const currentDate = new Date(yearFilter, monthFilter, day);
-            const dayName = currentDate.toLocaleDateString('ar-EG', { weekday: 'narrow' }); // س, ح, ن...
+            const dayName = currentDate.toLocaleDateString('ar-EG', { weekday: 'narrow' }); 
             let thClass = "day-cell";
             if(currentDate.getDay() === 5 || currentDate.getDay() === 6) thClass += " weekend-bg";
             if(currentDate.getTime() === todayDate.getTime()) thClass += " today-bg";
             
-            headerHtml += `<th class="${thClass}"><div style="font-size:0.8em; color:#94a3b8;">${dayName}</div><div>${day}</div></th>`;
+            headerHtml += `<th class="${thClass}"><div style="font-size:0.8em; color:#94a3b8;">${dayName}</div><div style="font-size:1.1em;">${day}</div></th>`;
         }
         headerHtml += `</tr>`;
         thead.innerHTML = headerHtml;
 
-        // 2. فلترة الطلبات (فقط التي تتقاطع مع الشهر المحدد وفقط المواقع المحددة)
+        // 2. فلترة الطلبات الذكية (يجب أن تتقاطع مع الشهر المعروض + متوافقة مع الفلاتر)
         const monthStartStr = `${yearFilter}-${String(monthFilter + 1).padStart(2, '0')}-01`;
         const monthEndStr = `${yearFilter}-${String(monthFilter + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
@@ -223,7 +293,11 @@
             activeVacs = activeVacs.filter(v => v.siteId === siteFilter);
         }
 
-        // ترتيب الطلبات (المواقع ثم الأسماء)
+        if (selectedJobs.length > 0) {
+            activeVacs = activeVacs.filter(v => selectedJobs.includes(v.jobTitle));
+        }
+
+        // الترتيب: حسب الموقع ثم الاسم
         activeVacs.sort((a,b) => {
             let sA = sitesMap.get(a.siteId) || ""; let sB = sitesMap.get(b.siteId) || "";
             if(sA !== sB) return sA.localeCompare(sB);
@@ -234,17 +308,17 @@
         tbody.innerHTML = "";
 
         if(activeVacs.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${daysInMonth + 1}"><div class="empty-state"><i class="fa-solid fa-mug-hot"></i><h3>لا توجد إجازات في هذا الشهر</h3><p>جميع الموظفين على رأس العمل أو لم يتم تحديد الموقع بشكل صحيح.</p></div></td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${daysInMonth + 1}"><div class="empty-state"><i class="fa-solid fa-mug-hot"></i><h3>لا توجد إجازات في هذا الشهر</h3><p>لا توجد طلبات إجازة تطابق فلاتر البحث أو تتقاطع مع هذا الشهر.</p></div></td></tr>`;
             return;
         }
 
-        // 3. رسم صفوف الموظفين
+        // 3. رسم صفوف الموظفين بأشرطة متصلة احترافية
         activeVacs.forEach(vac => {
             const siteDisplay = sitesMap.get(vac.siteId) || 'موقع مجهول';
             let rowHtml = `<tr>
                 <td class="emp-col">
                     <span class="emp-name">${vac.empName}</span>
-                    <span class="emp-meta"><i class="fa-solid fa-hospital"></i> ${siteDisplay} | البديل: ${vac.coverEmp || 'لا يوجد'}</span>
+                    <span class="emp-meta"><i class="fa-solid fa-briefcase"></i> ${vac.jobTitle || '-'} | <i class="fa-solid fa-hospital"></i> ${siteDisplay}</span>
                 </td>`;
             
             for (let day = 1; day <= daysInMonth; day++) {
@@ -262,11 +336,10 @@
                     let icon = "";
 
                     if (conflictIdsGlobal.has(vac.id)) { barClass = "v-conflict"; icon = '<i class="fa-solid fa-bolt"></i>'; }
-                    else if (vac.status === 'approved') barClass = "v-approved";
-                    else if (vac.status === 'suggested') barClass = "v-suggested";
-                    else barClass = "v-pending";
+                    else if (vac.status === 'approved') { barClass = "v-approved"; icon = '<i class="fa-solid fa-check"></i>'; }
+                    else if (vac.status === 'suggested') { barClass = "v-suggested"; icon = '<i class="fa-solid fa-code-pull-request"></i>'; }
+                    else { barClass = "v-pending"; icon = '<i class="fa-solid fa-clock-rotate-left"></i>'; }
 
-                    // تحديد شكل الحواف بناءً على بداية ونهاية الإجازة أو الشهر
                     let isStart = (currentDateStr === vac.startDate || day === 1);
                     let isEnd = (currentDateStr === vac.endDate || day === daysInMonth);
 
@@ -276,13 +349,9 @@
                     else if (isEnd) shapeClass = "v-end";
 
                     let innerContent = (isStart || day === 1) ? icon : "";
-                    
-                    let tooltipText = `من ${vac.startDate} إلى ${vac.endDate} (${vac.reqDays} يوم)<br>البديل: ${vac.coverEmp || 'غير محدد'}`;
+                    let tooltipText = `من ${vac.startDate} إلى ${vac.endDate}&#10;البديل: ${vac.coverEmp || 'غير محدد'}`;
 
-                    cellContent = `<div class="v-bar ${barClass} ${shapeClass} tooltip">
-                        ${innerContent}
-                        <span class="tooltiptext">${tooltipText}</span>
-                    </div>`;
+                    cellContent = `<div class="v-cell-wrapper"><div class="v-bar ${barClass} ${shapeClass}" title="${tooltipText}">${innerContent}</div></div>`;
                 }
 
                 rowHtml += `<td class="${tdClass}">${cellContent}</td>`;
