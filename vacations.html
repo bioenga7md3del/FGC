@@ -57,9 +57,43 @@
         .multiselect-content label { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.85em; margin: 0; transition: 0.2s;}
         .multiselect-content label:hover { background: #f8fafc; color: var(--primary); }
         .multiselect-content input { margin: 0; cursor: pointer; accent-color: var(--primary); }
+
+        /* --- 🌟 إعدادات الطباعة الاحترافية للإدارة المركزية --- */
+        @media print {
+            body * { visibility: hidden; }
+            #printSection, #printSection * { visibility: visible; }
+            #printSection { position: absolute; left: 0; top: 0; width: 100%; display: block !important; direction: rtl; }
+            @page { size: A4 landscape; margin: 10mm; }
+        }
     </style>
 </head>
 <body>
+
+<div id="printSection" style="display: none; background: white;">
+    <div style="text-align: center; border-bottom: 3px solid #1e293b; padding-bottom: 15px; margin-bottom: 20px;">
+        <img src="FGC.jpeg" alt="Logo" style="max-height: 70px; margin-bottom: 10px;">
+        <h2 style="margin: 0 0 5px 0; color: #1e293b; font-size: 24px;">تقرير الإجازات المركزي (شامل المواقع)</h2>
+        <p style="margin: 0; font-size: 12px; color: #555;">تاريخ استخراج التقرير: <span id="printDateActual"></span></p>
+    </div>
+    
+    <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: center;" id="actualPrintTable">
+        <thead>
+            <tr style="background-color: #f1f5f9; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الرقم الوظيفي</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">اسم الموظف</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الموقع التابع له</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الوظيفة</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الرصيد</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">تاريخ البداية</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">تاريخ النهاية</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الأيام</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الموظف البديل</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">حالة الطلب</th>
+            </tr>
+        </thead>
+        <tbody id="printTableBody"></tbody>
+    </table>
+</div>
 
 <div class="container" style="margin-top: 25px;">
     
@@ -73,7 +107,7 @@
         </div>
         <div id="actionButtons" style="display:flex; gap: 10px; flex-wrap: wrap; align-items: center;">
             <button onclick="openAlternativeEmpModal()" class="btn btn-primary" style="background-color: #e67e22;"><i class="fa-solid fa-user-plus"></i> إضافة موظف بديل</button>
-            <button onclick="window.print()" class="btn btn-outline"><i class="fa-solid fa-print"></i> طباعة</button>
+            <button onclick="window.print()" class="btn btn-outline"><i class="fa-solid fa-print"></i> طباعة التقرير</button>
             <button onclick="exportTableToCSV('fgc_master_vacations.csv')" class="btn btn-success" style="background: #217346;"><i class="fa-solid fa-file-excel"></i> تصدير Excel</button>
             <a href="dashboard.html" class="btn btn-outline" style="text-decoration:none; font-size:0.85em; padding:8px 12px;"><i class="fa-solid fa-house"></i> الرئيسية</a>
         </div>
@@ -247,6 +281,8 @@
     let conflictGroupsGlobal = {}; 
     let altEmployeesList = []; 
 
+    document.getElementById('printDateActual').innerText = new Date().toLocaleDateString('ar-EG');
+
     function getTodayString() {
         const d = new Date();
         let month = '' + (d.getMonth() + 1); let day = '' + d.getDate(); let year = d.getFullYear();
@@ -404,14 +440,12 @@
         });
     }
 
-    // 🌟 بناء الجدول الأساسي (فقط يقوم برسم الصفوف، والفلترة تتم عبر DOM)
     function renderTable() {
         const tbody = document.getElementById('masterVacTableBody'); 
         tbody.innerHTML = "";
         
         let filtered = [...allVacations];
 
-        // تطبيق فلتر الكروت העلوية لأنها تعتمد على الفرز والترتيب الخاص بالتعارضات
         if(currentCardFilter === 'pending') filtered = filtered.filter(v => v.status === 'pending');
         if(currentCardFilter === 'approved') filtered = filtered.filter(v => v.status === 'approved');
         if(currentCardFilter === 'suggested') filtered = filtered.filter(v => v.status === 'suggested');
@@ -421,7 +455,7 @@
         }
 
         if(filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888; padding:20px;">لا توجد طلبات إجازة مطابقة للخيارات.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888; padding:20px;">لا توجد طلبات إجازة مطابقة.</td></tr>`;
             return;
         }
 
@@ -439,7 +473,6 @@
             let conflictDetailsBtn = isConflict ? `<br><button onclick="event.stopPropagation(); showQuickConflictAlert('${v.id}')" class="btn-detail-conflict"><i class="fa-solid fa-triangle-exclamation"></i> ⚠️ تعارض بالبديل</button>` : "";
             let suggestedDatesNote = v.suggestedStart ? `<div style="color:#d35400; font-size:0.85em; margin-top:5px; font-weight:bold; background:#fffce8; padding:3px 5px; border-radius:4px;"><i class="fa-solid fa-calendar-plus"></i> موعد مقترح مرسل للموظف: من ${v.suggestedStart} إلى ${v.suggestedEnd}</div>` : '';
 
-            // 🌟 ربط البيانات بخاصية data- للفلترة السريعة اللحظية
             tbody.innerHTML += `
             <tr class="main-row ${rowClass}" 
                 data-search="${v.empName} ${v.empId}" 
@@ -476,11 +509,46 @@
             </tr>`;
         });
 
-        // تشغيل الفلتر لتحديث العرض بمجرد بناء الجدول
         applyFilters(); 
     }
 
-    // 🌟 الفلترة السريعة (DOM Filtering) لحل مشكلة توقف الفلاتر
+    // --- 🌟 دالة توليد جدول الطباعة الرسمي قبل الطباعة مباشرة ---
+    window.onbeforeprint = function() {
+        const printBody = document.getElementById('printTableBody');
+        printBody.innerHTML = '';
+        
+        let visibleIds = [];
+        document.querySelectorAll('.main-row').forEach(row => {
+            if(row.style.display !== 'none') {
+                let match = row.getAttribute('onclick').match(/'([^']+)'/);
+                if(match) visibleIds.push(match[1].replace('vac-', ''));
+            }
+        });
+
+        visibleIds.forEach(id => {
+            let v = allVacations.find(item => item.id === id);
+            if(v) {
+                let siteName = sitesMap.get(v.siteId) || "-";
+                let statusTxt = v.status === 'approved' ? 'معتمد ✅' : (v.status === 'rejected' ? 'مرفوض ❌' : (v.status === 'suggested' ? 'موعد مقترح' : 'قيد المراجعة ⏳'));
+                
+                printBody.innerHTML += `
+                    <tr>
+                        <td style="border: 1px solid #333; padding: 6px;">${v.empId}</td>
+                        <td style="border: 1px solid #333; padding: 6px; font-weight: bold; text-align: right;">${v.empName}</td>
+                        <td style="border: 1px solid #333; padding: 6px; font-weight: bold; color: #1e293b;">${siteName}</td>
+                        <td style="border: 1px solid #333; padding: 6px;">${v.jobTitle || '-'}</td>
+                        <td style="border: 1px solid #333; padding: 6px;">${v.balance || 0}</td>
+                        <td style="border: 1px solid #333; padding: 6px; font-weight:bold;">${v.startDate}</td>
+                        <td style="border: 1px solid #333; padding: 6px; font-weight:bold;">${v.endDate}</td>
+                        <td style="border: 1px solid #333; padding: 6px;">${v.reqDays}</td>
+                        <td style="border: 1px solid #333; padding: 6px; color:#8e44ad; font-weight:bold;">${v.coverEmp || '-'}</td>
+                        <td style="border: 1px solid #333; padding: 6px;">${statusTxt}</td>
+                    </tr>
+                `;
+            }
+        });
+    };
+
     function applyFilters() {
         const searchStr = document.getElementById('filterSearch').value.toLowerCase();
         const siteStr = document.getElementById('filterSite').value;
