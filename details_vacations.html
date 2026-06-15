@@ -45,7 +45,6 @@
         .detail-item span { display: block; color: #64748b; font-size: 0.85em; margin-bottom: 5px; }
         .detail-item strong { color: #334155; font-size: 1.1em; }
 
-        /* 🌟 ستايلات إخفاء عناصر الموقع أثناء الطباعة وإظهار الجدول الرسمي */
         @media print {
             body * { visibility: hidden; }
             #printSection, #printSection * { visibility: visible; }
@@ -67,10 +66,10 @@
     <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: center;" id="actualPrintTable">
         <thead>
             <tr style="background-color: #f1f5f9; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
-                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الرقم</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الرقم الوظيفي</th>
                 <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">اسم الموظف</th>
                 <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الوظيفة</th>
-                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الرصيد</th>
+                <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الرصيد المتاح</th>
                 <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">تاريخ البداية</th>
                 <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">تاريخ النهاية</th>
                 <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">الأيام</th>
@@ -78,8 +77,7 @@
                 <th style="border: 1px solid #333; padding: 8px; font-weight: bold;">حالة الطلب</th>
             </tr>
         </thead>
-        <tbody id="printTableBody">
-            </tbody>
+        <tbody id="printTableBody"></tbody>
     </table>
 </div>
 
@@ -163,6 +161,7 @@
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
             <div class="input-box"><label>اسم الموظف *</label><input type="text" id="vacEmpName"></div>
             <div class="input-box"><label>الرقم الوظيفي *</label><input type="number" id="vacEmpId"></div>
+            
             <div class="input-box">
                 <label>المسمى الوظيفي *</label>
                 <select id="vacJobTitle" style="width:100%; padding:12px; border-radius:5px; border:1px solid #ccc;">
@@ -173,8 +172,10 @@
                     <option value="فني (ج)">فني (ج)</option>
                 </select>
             </div>
+            
             <div class="input-box"><label>رصيد الإجازات المتاح</label><input type="number" id="vacBalance"></div>
             <div class="input-box"><label>تاريخ آخر إجازة</label><input type="date" id="vacLastDate"></div>
+            
             <div class="input-box">
                 <label>الموظف البديل (اختياري)</label>
                 <select id="vacCoverEmp" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
@@ -210,11 +211,10 @@
     document.getElementById('tabSubcontracts').href = `details_subcontracts.html?id=${siteId}`;
     document.getElementById('tabCalibration').href = `details_calibration.html?id=${siteId}`;
     
-    // تاريخ اليوم לلطباعة
     document.getElementById('printDateActual').innerText = new Date().toLocaleDateString('ar-EG');
 
     let currentUserRole = 'user'; 
-    let localVacations = []; // 🌟 مصفوفة الداتا الأصلية اللي هتغذي الإكسيل والطباعة بحرية
+    let localVacations = []; 
 
     function getTodayString() {
         const d = new Date(); let m = '' + (d.getMonth() + 1); let day = '' + d.getDate();
@@ -278,15 +278,24 @@
             }
         });
 
-        db.collection("vacations").where("siteId", "==", siteId).orderBy("createdAt", "desc").onSnapshot(snap => {
+        // 🌟 إزالة orderBy لعدم طلب Index، والقيام بالترتيب محلياً بالجافاسكريبت
+        db.collection("vacations").where("siteId", "==", siteId).onSnapshot(snap => {
             localVacations = [];
             const vacTbody = document.getElementById('vacationTableBody');
             vacTbody.innerHTML = "";
             
             snap.forEach(doc => {
-                const v = doc.data();
-                localVacations.push({id: doc.id, ...v}); // 🌟 تحديث المصفوفة المحلية بكل التفاصيل
+                localVacations.push({id: doc.id, ...doc.data()});
+            });
 
+            // 🌟 الترتيب المحلي (من الأحدث للأقدم)
+            localVacations.sort((a, b) => {
+                let dA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+                let dB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+                return dB - dA;
+            });
+
+            localVacations.forEach(v => {
                 let badge = '';
                 let suggestionBlock = '';
 
@@ -300,8 +309,8 @@
                     <div style="background:#fffce8; border:1px dashed #f1c40f; padding:10px; border-radius:6px; margin-top:8px;">
                         <span style="color:#d35400; font-weight:bold; font-size:0.85em; display:block; margin-bottom:8px;"><i class="fa-solid fa-calendar-plus"></i> الموعد البديل: من ${v.suggestedStart} إلى ${v.suggestedEnd}</span>
                         <div style="display:flex; gap:8px;">
-                            <button onclick="event.stopPropagation(); respondToSuggestion('${doc.id}', 'accept')" class="btn-action-suggested btn-accept-sug"><i class="fa-solid fa-check"></i> قبول واعتماد</button>
-                            <button onclick="event.stopPropagation(); respondToSuggestion('${doc.id}', 'reject')" class="btn-action-suggested btn-reject-sug"><i class="fa-solid fa-xmark"></i> رفض المقترح</button>
+                            <button onclick="event.stopPropagation(); respondToSuggestion('${v.id}', 'accept')" class="btn-action-suggested btn-accept-sug"><i class="fa-solid fa-check"></i> قبول واعتماد</button>
+                            <button onclick="event.stopPropagation(); respondToSuggestion('${v.id}', 'reject')" class="btn-action-suggested btn-reject-sug"><i class="fa-solid fa-xmark"></i> رفض المقترح</button>
                         </div>
                     </div>`;
                 }
@@ -309,28 +318,27 @@
                 let editButtonHTML = '';
                 if(canEdit) {
                     if(v.status === 'pending') {
-                        editButtonHTML = `<button onclick="editVacation('${doc.id}')" class="btn btn-outline" style="padding:6px 15px;"><i class="fa-solid fa-pen"></i> تعديل الطلب</button>`;
+                        editButtonHTML = `<button onclick="editVacation('${v.id}')" class="btn btn-outline" style="padding:6px 15px;"><i class="fa-solid fa-pen"></i> تعديل الطلب</button>`;
                     } else if(v.status === 'rejected') {
-                        editButtonHTML = `<button onclick="editVacation('${doc.id}')" class="btn btn-warning" style="color:white; padding:6px 15px;"><i class="fa-solid fa-rotate-right"></i> تعديل وإعادة تقديم</button>`;
+                        editButtonHTML = `<button onclick="editVacation('${v.id}')" class="btn btn-warning" style="color:white; padding:6px 15px;"><i class="fa-solid fa-rotate-right"></i> تعديل وإعادة تقديم</button>`;
                     }
                 }
 
                 let actionCell = canEdit ? `
                 <div class="detail-item" style="grid-column: 1 / -1; display:flex; gap:10px; border-right:none; border-top:1px solid #eee; padding-top:15px; margin-top:5px;">
                     ${editButtonHTML}
-                    ${currentUserRole === 'admin' ? `<button onclick="deleteVacation('${doc.id}')" class="btn btn-outline" style="border-color:var(--danger); color:var(--danger); padding:6px 15px;"><i class="fa-solid fa-trash"></i> حذف الطلب نهائياً</button>` : ''}
+                    ${currentUserRole === 'admin' ? `<button onclick="deleteVacation('${v.id}')" class="btn btn-outline" style="border-color:var(--danger); color:var(--danger); padding:6px 15px;"><i class="fa-solid fa-trash"></i> حذف الطلب نهائياً</button>` : ''}
                 </div>` : '';
 
-                // ربط السطر ببيانات الفلترة
                 vacTbody.innerHTML += `
-                <tr class="main-row data-row" data-search="${v.empName} ${v.empId}" data-status="${v.status || 'pending'}" onclick="toggleRow('vac-${doc.id}')">
-                    <td style="text-align:center;"><button class="toggle-btn" id="btn-vac-${doc.id}"><i class="fa-solid fa-chevron-down"></i></button></td>
-                    <td><b>${v.empName}</b><br><span style="font-size:0.8em; color:#666;">${v.jobTitle || '-'}</span></td>
+                <tr class="main-row data-row" data-search="${v.empName} ${v.empId}" data-status="${v.status || 'pending'}" onclick="toggleRow('vac-${v.id}')">
+                    <td style="text-align:center;"><button class="toggle-btn" id="btn-vac-${v.id}"><i class="fa-solid fa-chevron-down"></i></button></td>
+                    <td><b>${v.empName}</b><br><span style="font-size:0.8em; color:#666;">${v.jobTitle || '-'}</span><span class="col-id" style="display:none;">${v.empId}</span></td>
                     <td style="text-align:center; font-weight:bold;">${v.startDate}</td>
                     <td style="text-align:center; font-weight:bold;">${v.endDate}</td>
                     <td style="text-align:center;">${badge} ${suggestionBlock}</td>
                 </tr>
-                <tr id="vac-${doc.id}" class="details-row" style="display:none;">
+                <tr id="vac-${v.id}" class="details-row" style="display:none;">
                     <td colspan="5">
                         <div class="details-container">
                             <div class="detail-item"><span>الرقم الوظيفي</span><strong>${v.empId}</strong></div>
@@ -348,7 +356,6 @@
         });
     }
 
-    // --- 🌟 دالة توليد جدول الطباعة الرسمي قبل الطباعة مباشرة ---
     window.onbeforeprint = function() {
         const printBody = document.getElementById('printTableBody');
         printBody.innerHTML = '';
@@ -364,7 +371,6 @@
             let v = localVacations.find(item => item.id === id);
             if(v) {
                 let statusTxt = v.status === 'approved' ? 'معتمد ✅' : (v.status === 'rejected' ? 'مرفوض ❌' : (v.status === 'suggested' ? 'موعد مقترح' : 'قيد المراجعة ⏳'));
-                
                 printBody.innerHTML += `
                     <tr>
                         <td style="border: 1px solid #333; padding: 6px;">${v.empId}</td>
@@ -376,8 +382,7 @@
                         <td style="border: 1px solid #333; padding: 6px;">${v.reqDays}</td>
                         <td style="border: 1px solid #333; padding: 6px; color:#8e44ad; font-weight:bold;">${v.coverEmp || '-'}</td>
                         <td style="border: 1px solid #333; padding: 6px;">${statusTxt}</td>
-                    </tr>
-                `;
+                    </tr>`;
             }
         });
     };
@@ -389,7 +394,6 @@
         document.querySelectorAll('.data-row').forEach(row => {
             const rowSearch = (row.getAttribute('data-search') || '').toLowerCase();
             const rowStatus = row.getAttribute('data-status') || 'pending';
-            
             const targetId = row.getAttribute('onclick').match(/'([^']+)'/)[1];
             const detailRow = document.getElementById(targetId);
             const toggleBtn = document.getElementById('btn-' + targetId);
@@ -423,21 +427,13 @@
                 const newDays = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24)) + 1;
 
                 await docRef.update({
-                    startDate: data.suggestedStart,
-                    endDate: data.suggestedEnd,
-                    reqDays: newDays,
-                    status: 'approved',
-                    suggestedStart: firebase.firestore.FieldValue.delete(), 
-                    suggestedEnd: firebase.firestore.FieldValue.delete(),
-                    notes: 'تم قبول الموعد البديل واعتماده.'
+                    startDate: data.suggestedStart, endDate: data.suggestedEnd, reqDays: newDays, status: 'approved',
+                    suggestedStart: firebase.firestore.FieldValue.delete(), suggestedEnd: firebase.firestore.FieldValue.delete(), notes: 'تم قبول الموعد واعتماده.'
                 });
                 alert("✅ تم قبول الموعد واعتماد الإجازة!");
             } else {
                 await docRef.update({
-                    status: 'rejected',
-                    suggestedStart: firebase.firestore.FieldValue.delete(),
-                    suggestedEnd: firebase.firestore.FieldValue.delete(),
-                    notes: 'تم رفض الموعد المقترح من الموظف.'
+                    status: 'rejected', suggestedStart: firebase.firestore.FieldValue.delete(), suggestedEnd: firebase.firestore.FieldValue.delete(), notes: 'تم رفض الموعد المقترح من الموظف.'
                 });
                 alert("❌ تم رفض الموعد.");
             }
@@ -466,8 +462,7 @@
         const btn = document.getElementById('saveVacBtn'); btn.disabled = true; btn.innerText = "جاري الحفظ...";
         try {
             if(id) {
-                data.suggestedStart = firebase.firestore.FieldValue.delete();
-                data.suggestedEnd = firebase.firestore.FieldValue.delete();
+                data.suggestedStart = firebase.firestore.FieldValue.delete(); data.suggestedEnd = firebase.firestore.FieldValue.delete();
                 await db.collection("vacations").doc(id).update(data);
             }
             else { data.createdAt = new Date().toISOString(); await db.collection("vacations").add(data); }
@@ -480,8 +475,7 @@
         document.getElementById('editVacationId').value = ""; document.getElementById('vacationModalTitle').innerText = "طلب إجازة جديد";
         document.querySelectorAll('#vacationModal input').forEach(i => i.value = "");
         document.getElementById('vacJobTitle').selectedIndex = 0; document.getElementById('vacCoverEmp').value = "";
-        document.getElementById('vacStartDate').setAttribute('min', getTodayString());
-        document.getElementById('vacationModal').classList.add('show');
+        document.getElementById('vacStartDate').setAttribute('min', getTodayString()); document.getElementById('vacationModal').classList.add('show');
     }
 
     async function editVacation(id) {
@@ -498,22 +492,17 @@
     function closeVacationModal() { document.getElementById('vacationModal').classList.remove('show'); }
     async function deleteVacation(id) { if(confirm("حذف الطلب نهائياً؟")) await db.collection("vacations").doc(id).delete(); }
 
-    // --- 🌟 تصدير إكسيل ذكي يقرأ البيانات الأصلية الكاملة ---
     function cleanArabicNum(str) {
-        if(!str) return "";
-        return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.').replace(/٬/g, '');
+        if(!str) return ""; return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.').replace(/٬/g, '');
     }
 
     function exportTableToCSV(filename) {
-        let csv = []; 
-        csv.push('\uFEFF'); 
+        let csv = []; csv.push('\uFEFF'); 
         csv.push("الرقم الوظيفي,اسم الموظف,المسمى الوظيفي,تاريخ آخر إجازة,الرصيد المتاح,البداية,النهاية,الأيام,الموظف البديل,حالة الطلب,الملاحظات");
         
         let visibleIds = [];
         document.querySelectorAll('.data-row').forEach(row => {
-            if(row.style.display !== 'none') {
-                visibleIds.push(row.getAttribute('onclick').match(/'([^']+)'/)[1].replace('vac-', ''));
-            }
+            if(row.style.display !== 'none') visibleIds.push(row.getAttribute('onclick').match(/'([^']+)'/)[1].replace('vac-', ''));
         });
 
         visibleIds.forEach(id => {
