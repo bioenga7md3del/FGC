@@ -3,94 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الخط الزمني وجدولة الإجازات - FGC</title>
+    <title>الخط الزمني المتقدم للإجازات - FGC</title> 
     
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;800&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
-        .timeline-container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-top: 20px; overflow-x: auto; }
+        body { background-color: #f1f5f9; margin: 0; padding: 0; font-family: 'Tajawal', sans-serif; }
         
-        /* ستايل جدول التقويم الأفقي */
-        .gantt-table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: 0.9em; }
-        .gantt-table th, .gantt-table td { border: 1px solid #e2e8f0; text-align: center; padding: 8px 4px; }
-        .gantt-table th { background: #f8fafc; color: #475569; font-weight: bold; }
+        .cal-header { background: #fff; padding: 15px 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .cal-title { margin: 0; color: #1e293b; font-size: 1.4em; display: flex; align-items: center; gap: 10px; }
+        .cal-subtitle { color: #64748b; font-size: 0.6em; font-weight: normal; }
         
-        .emp-col { width: 180px; text-align: right !important; padding-right: 12px !important; font-weight: bold; background: #fff; position: sticky; right: 0; box-shadow: -2px 0 5px rgba(0,0,0,0.02); }
-        .day-header { width: 30px; min-width: 30px; }
+        .controls-card { background: #fff; margin: 20px 25px; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-wrap: wrap; gap: 20px; align-items: center; border: 1px solid #e2e8f0; }
         
-        /* تمثيل أشرطة وحالات الإجازة داخل المربعات */
-        .v-day { transition: 0.2s; }
-        .v-day-pending { background-color: #f39c12 !important; color: white; cursor: pointer; font-size: 0.75em; font-weight: bold; }
-        .v-day-approved { background-color: #27ae60 !important; color: white; cursor: pointer; font-size: 0.75em; font-weight: bold; }
-        .v-day-conflict { background-color: #dc3545 !important; color: white; cursor: pointer; font-size: 0.75em; font-weight: bold; animation: pulse 2s infinite; }
-        
-        .legend-box { display: flex; gap: 20px; margin-bottom: 15px; padding: 10px; background: #f8fafc; border-radius: 5px; font-size: 0.85em; }
-        .legend-item { display: flex; align-items: center; gap: 6px; }
-        .color-block { width: 16px; height: 16px; border-radius: 3px; }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+        .filter-group label { font-size: 0.85em; font-weight: bold; color: #475569; }
+        .filter-group select { padding: 10px 15px; border-radius: 8px; border: 1px solid #cbd5e1; background: #f8fafc; font-family: inherit; font-size: 0.95em; outline: none; transition: 0.3s; cursor: pointer; }
+        .filter-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); background: #fff; }
 
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.8; }
-            100% { opacity: 1; }
-        }
+        .legend-box { display: flex; gap: 20px; padding: 15px; border-radius: 8px; font-size: 0.85em; font-weight: bold; flex-wrap: wrap; justify-content: center; width: 100%; margin-top: 10px; border-top: 1px dashed #e2e8f0;}
+        .legend-item { display: flex; align-items: center; gap: 8px; color: #475569; }
+        .color-block { width: 24px; height: 12px; border-radius: 20px; }
+
+        /* --- 🌟 تصميم الجانت شارت العالمي --- */
+        .gantt-wrapper { margin: 0 25px 30px 25px; background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); overflow: hidden; border: 1px solid #e2e8f0; }
+        .gantt-scroll { overflow-x: auto; overflow-y: auto; max-height: 70vh; }
+        
+        .gantt-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1200px; }
+        .gantt-table th, .gantt-table td { padding: 0; height: 45px; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f8fafc; text-align: center; vertical-align: middle; position: relative; }
+        
+        /* تجميد الهيدر العلوي */
+        .gantt-table thead th { background: #f8fafc; color: #475569; font-size: 0.85em; font-weight: 700; position: sticky; top: 0; z-index: 40; border-bottom: 2px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); padding: 8px 0;}
+        
+        /* تجميد عمود الموظف (اليمين) */
+        .emp-col { min-width: 220px; max-width: 220px; text-align: right !important; padding: 0 15px !important; background: #fff !important; position: sticky; right: 0; z-index: 30; border-left: 2px solid #e2e8f0 !important; box-shadow: -4px 0 10px rgba(0,0,0,0.03); }
+        .gantt-table thead th.emp-col { z-index: 50; background: #f8fafc !important; }
+        
+        .emp-name { font-weight: 800; color: #1e293b; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;}
+        .emp-meta { font-size: 0.75em; color: #64748b; display: block; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        
+        .day-cell { min-width: 38px; max-width: 38px; }
+        .weekend-bg { background-color: #f8fafc; }
+        .today-bg { background-color: #e0f2fe; border-left: 1px solid #7dd3fc; border-right: 1px solid #7dd3fc; }
+
+        /* --- 🌟 تصميم الأشرطة المتصلة (Fluid Pills) --- */
+        .v-bar { height: 28px; margin: 0; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8em; font-weight: bold; cursor: pointer; position: relative; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1); transition: 0.2s; }
+        .v-bar:hover { filter: brightness(0.9); transform: translateY(-1px); z-index: 10; box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+        
+        .v-pending { background: linear-gradient(90deg, #f59e0b, #facc15); color: #fff; }
+        .v-suggested { background: linear-gradient(90deg, #d946ef, #f472b6); color: #fff; }
+        .v-approved { background: linear-gradient(90deg, #10b981, #34d399); color: #fff; }
+        .v-conflict { background: linear-gradient(90deg, #ef4444, #f87171); animation: pulse 1.5s infinite; }
+
+        /* حواف ذكية للأشرطة */
+        .v-start { border-top-right-radius: 20px; border-bottom-right-radius: 20px; margin-right: 4px; padding-right: 5px;}
+        .v-end { border-top-left-radius: 20px; border-bottom-left-radius: 20px; margin-left: 4px; padding-left: 5px;}
+        .v-mid { border-radius: 0; margin: 0; }
+        .v-single { border-radius: 20px; margin: 0 4px; }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: #64748b; }
+        .empty-state i { font-size: 4em; color: #cbd5e1; margin-bottom: 15px; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+
+        /* ستايل التولتيب للملاحظات */
+        .tooltip { position: relative; display: inline-block; }
+        .tooltip .tooltiptext { visibility: hidden; width: max-content; max-width: 250px; background-color: #1e293b; color: #fff; text-align: center; border-radius: 6px; padding: 8px 12px; position: absolute; z-index: 100; bottom: 125%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 12px; font-weight: normal; line-height: 1.5; pointer-events: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
+        .tooltip .tooltiptext::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #1e293b transparent transparent transparent; }
+        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header-bar">
-        <div class="header-title-box">
-            <img src="FGC.jpeg" alt="Logo" class="logo-img" style="max-height: 60px;">
-            <div>
-                <h2 style="margin:0; color: var(--primary);">التقويم والخط الزمني الرقمي (Calendar)</h2>
-                <div style="margin-top: 5px;">
-                    <a href="vacations.html" class="btn btn-outline" style="font-size:0.8em; padding: 5px 10px;">
-                        <i class="fa-solid fa-arrow-right"></i> العودة لإدارة الإجازات
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+<div class="cal-header">
+    <h1 class="cal-title">
+        <i class="fa-solid fa-chart-gantt" style="color: #3b82f6;"></i> المخطط الزمني للإجازات 
+        <span class="cal-subtitle">FGC - الإدارة المركزية</span>
+    </h1>
+    <a href="vacations.html" class="btn btn-outline" style="text-decoration: none; padding: 8px 15px; font-weight: bold;">
+        <i class="fa-solid fa-arrow-right"></i> العودة لإدارة الإجازات
+    </a>
+</div>
 
-    <div class="action-bar">
-        <div class="filter-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-            <div class="filter-group">
-                <label>تصفية بحسب الموقع</label>
-                <select id="calSiteFilter" onchange="drawCalendar()" style="padding: 10px; border-radius: 5px; border: 1px solid #ccc; width: 100%;">
-                    <option value="all">كل المواقع المتاحة</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>الشهر</label>
-                <select id="calMonthFilter" onchange="drawCalendar()" style="padding: 10px; border-radius: 5px; border: 1px solid #ccc; width: 100%;">
-                    <option value="0">يناير (01)</option><option value="1">فبراير (02)</option><option value="2">مارس (03)</option>
-                    <option value="3">أبريل (04)</option><option value="4">مايو (05)</option><option value="5">يونيو (06)</option>
-                    <option value="6">يوليو (07)</option><option value="7">أغسطس (08)</option><option value="8">سبتمبر (09)</option>
-                    <option value="9">أكتوبر (10)</option><option value="10">نوفمبر (11)</option><option value="11">ديسمبر (12)</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>السنة</label>
-                <select id="calYearFilter" onchange="drawCalendar()" style="padding: 10px; border-radius: 5px; border: 1px solid #ccc; width: 100%;">
-                    <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option>
-                </select>
-            </div>
-        </div>
+<div class="controls-card">
+    <div class="filter-group">
+        <label>الموقع / المستشفى</label>
+        <select id="calSiteFilter" onchange="drawGantt()">
+            <option value="all">🌐 كافة المواقع</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>الشهر</label>
+        <select id="calMonthFilter" onchange="drawGantt()">
+            <option value="0">يناير (01)</option><option value="1">فبراير (02)</option><option value="2">مارس (03)</option>
+            <option value="3">أبريل (04)</option><option value="4">مايو (05)</option><option value="5">يونيو (06)</option>
+            <option value="6">يوليو (07)</option><option value="7">أغسطس (08)</option><option value="8">سبتمبر (09)</option>
+            <option value="9">أكتوبر (10)</option><option value="10">نوفمبر (11)</option><option value="11">ديسمبر (12)</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>السنة</label>
+        <select id="calYearFilter" onchange="drawGantt()">
+            <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option>
+        </select>
     </div>
 
     <div class="legend-box">
-        <div class="legend-item"><div class="color-block" style="background: #27ae60;"></div> إجازة معتمدة</div>
-        <div class="legend-item"><div class="color-block" style="background: #f39c12;"></div> طلب قيد المراجعة</div>
-        <div class="legend-item"><div class="color-block" style="background: #dc3545;"></div> تعارض (البديل مشغول) ⚠️</div>
+        <div class="legend-item"><div class="color-block v-approved"></div> معتمد ✅</div>
+        <div class="legend-item"><div class="color-block v-pending"></div> قيد المراجعة ⏳</div>
+        <div class="legend-item"><div class="color-block v-suggested"></div> مقترح للإدارة 🚧</div>
+        <div class="legend-item"><div class="color-block v-conflict"></div> تعارض (البديل مشغول) ⚠️</div>
     </div>
+</div>
 
-    <div class="timeline-container">
-        <table class="gantt-table" id="ganttTable">
+<div class="gantt-wrapper">
+    <div class="gantt-scroll">
+        <table class="gantt-table">
             <thead id="ganttThead"></thead>
             <tbody id="ganttTbody"></tbody>
         </table>
@@ -99,130 +132,165 @@
 
 <script>
     const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
-    firebase.initializeApp(firebaseConfig);
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
-    const auth = firebase.auth();
 
-    let sitesMap = {};
-    let cachedVacations = [];
+    let allVacations = [];
+    let sitesMap = new Map();
+    let conflictIdsGlobal = new Set();
 
-    // تعيين الشهر والسنة الحالية تلقائياً عند الفتح
-    const currentInitDate = new Date();
-    document.getElementById('calMonthFilter').value = currentInitDate.getMonth();
-    document.getElementById('calYearFilter').value = currentInitDate.getFullYear();
+    // تعيين التاريخ الحالي
+    const today = new Date();
+    document.getElementById('calMonthFilter').value = today.getMonth();
+    document.getElementById('calYearFilter').value = today.getFullYear();
 
-    async function initCalendarPage() {
-        try {
-            // تحميل المواقع ديناميكياً
-            const budgetsSnap = await db.collection('budgets').get();
-            const filterSelect = document.getElementById('calSiteFilter');
-            budgetsSnap.forEach(doc => {
-                sitesMap[doc.id] = doc.data().itemName || "موقع بدون اسم";
-                filterSelect.innerHTML += `<option value="${doc.id}">${sitesMap[doc.id]}</option>`;
+    document.addEventListener("DOMContentLoaded", () => {
+        loadSites();
+        loadVacations();
+    });
+
+    function loadSites() {
+        db.collection("budgets").onSnapshot(snap => {
+            const select = document.getElementById('calSiteFilter');
+            select.innerHTML = '<option value="all">🌐 كافة المواقع</option>';
+            sitesMap.clear();
+            snap.forEach(doc => {
+                sitesMap.set(doc.id, doc.data().itemName);
+                select.innerHTML += `<option value="${doc.id}">${doc.data().itemName}</option>`;
             });
-
-            // مراقبة خطة الإجازات مباشرة بالسيرفر حياً
-            db.collection("vacations").onSnapshot(snap => {
-                cachedVacations = [];
-                snap.forEach(doc => cachedVacations.push({id: doc.id, ...doc.data()}));
-                drawCalendar(); // إعادة الرسم فوراً عند حدوث أي تعديل بالسيرفر
-            });
-
-        } catch(e) { console.error(e); }
-
-        auth.onAuthStateChanged(user => {
-            if(!user) window.location.href = "index.html";
+            drawGantt(); 
         });
     }
 
-    // بناء وتوليد خلايا التقويم
-    function drawCalendar() {
-        const selectedSite = document.getElementById('calSiteFilter').value;
-        const selectedMonth = parseInt(document.getElementById('calMonthFilter').value);
-        const selectedYear = parseInt(document.getElementById('calYearFilter').value);
+    function loadVacations() {
+        db.collection("vacations").onSnapshot(snap => {
+            allVacations = [];
+            snap.forEach(doc => allVacations.push({id: doc.id, ...doc.data()}));
+            analyzeConflicts();
+            drawGantt();
+        });
+    }
 
-        const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-
-        // 1. رسم الهيدر (أيام الشهر)
-        const thead = document.getElementById('ganttThead');
-        let headerHtml = `<tr><th class="emp-col">الموظف / الموقع</th>`;
-        for (let d = 1; d <= daysInMonth; d++) {
-            headerHtml += `<th class="day-header">${d}</th>`;
-        }
-        headerHtml += `</tr>`;
-        thead.innerHTML = headerHtml;
-
-        // 2. تصفية الإجازات بحسب الموقع المالي المختار
-        let filteredVacs = cachedVacations.filter(v => v.status !== 'rejected');
-        if (selectedSite !== 'all') {
-            filteredVacs = filteredVacs.filter(v => (v.siteId || v.siteName) === selectedSite);
-        }
-
-        // 3. رادار كشف تداخل البدلاء لحساب خلايا التعارض
-        let conflictedIds = new Set();
-        for(let i=0; i<filteredVacs.length; i++) {
-            for(let j=i+1; j<filteredVacs.length; j++) {
-                let v1 = filteredVacs[i]; let v2 = filteredVacs[j];
-                if(v1.coverEmp && v1.coverEmp === v2.coverEmp) {
+    function analyzeConflicts() {
+        conflictIdsGlobal.clear();
+        for(let i=0; i<allVacations.length; i++) {
+            for(let j=i+1; j<allVacations.length; j++) {
+                let v1 = allVacations[i]; let v2 = allVacations[j];
+                if(v1.status !== 'rejected' && v1.status !== 'suggested' && v2.status !== 'rejected' && v2.status !== 'suggested' && v1.coverEmp && v1.coverEmp.trim() !== "" && v1.coverEmp === v2.coverEmp) {
                     if(v1.startDate <= v2.endDate && v1.endDate >= v2.startDate) {
-                        conflictedIds.add(v1.id);
-                        conflictedIds.add(v2.id);
+                        conflictIdsGlobal.add(v1.id); conflictIdsGlobal.add(v2.id);
                     }
                 }
             }
         }
+    }
 
-        // 4. بناء الصفوف لكل موظف
+    function drawGantt() {
+        const siteFilter = document.getElementById('calSiteFilter').value;
+        const monthFilter = parseInt(document.getElementById('calMonthFilter').value);
+        const yearFilter = parseInt(document.getElementById('calYearFilter').value);
+
+        const daysInMonth = new Date(yearFilter, monthFilter + 1, 0).getDate();
+        const todayDate = new Date();
+        todayDate.setHours(0,0,0,0);
+
+        // 1. رسم الهيدر
+        const thead = document.getElementById('ganttThead');
+        let headerHtml = `<tr><th class="emp-col">الموظف / معلومات الطلب</th>`;
+        for (let day = 1; day <= daysInMonth; day++) {
+            const currentDate = new Date(yearFilter, monthFilter, day);
+            const dayName = currentDate.toLocaleDateString('ar-EG', { weekday: 'narrow' }); // س, ح, ن...
+            let thClass = "day-cell";
+            if(currentDate.getDay() === 5 || currentDate.getDay() === 6) thClass += " weekend-bg";
+            if(currentDate.getTime() === todayDate.getTime()) thClass += " today-bg";
+            
+            headerHtml += `<th class="${thClass}"><div style="font-size:0.8em; color:#94a3b8;">${dayName}</div><div>${day}</div></th>`;
+        }
+        headerHtml += `</tr>`;
+        thead.innerHTML = headerHtml;
+
+        // 2. فلترة الطلبات (فقط التي تتقاطع مع الشهر المحدد وفقط المواقع المحددة)
+        const monthStartStr = `${yearFilter}-${String(monthFilter + 1).padStart(2, '0')}-01`;
+        const monthEndStr = `${yearFilter}-${String(monthFilter + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+        let activeVacs = allVacations.filter(v => 
+            v.status !== 'rejected' && 
+            v.startDate <= monthEndStr && 
+            v.endDate >= monthStartStr
+        );
+
+        if (siteFilter !== 'all') {
+            activeVacs = activeVacs.filter(v => v.siteId === siteFilter);
+        }
+
+        // ترتيب الطلبات (المواقع ثم الأسماء)
+        activeVacs.sort((a,b) => {
+            let sA = sitesMap.get(a.siteId) || ""; let sB = sitesMap.get(b.siteId) || "";
+            if(sA !== sB) return sA.localeCompare(sB);
+            return (a.empName || "").localeCompare(b.empName || "");
+        });
+
         const tbody = document.getElementById('ganttTbody');
         tbody.innerHTML = "";
 
-        if(filteredVacs.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${daysInMonth + 1}" style="text-align:center; color:#aaa; padding:20px;">لا توجد طلبات إجازات مسجلة لهذه الفترة المحددة.</td></tr>`;
+        if(activeVacs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${daysInMonth + 1}"><div class="empty-state"><i class="fa-solid fa-mug-hot"></i><h3>لا توجد إجازات في هذا الشهر</h3><p>جميع الموظفين على رأس العمل أو لم يتم تحديد الموقع بشكل صحيح.</p></div></td></tr>`;
             return;
         }
 
-        filteredVacs.forEach(vac => {
-            const siteDisplay = sitesMap[vac.siteId || vac.siteName] || vac.siteName || 'غير محدد';
-            let rowHtml = `<tr><td class="emp-col">${vac.empName}<br><span style="font-size:0.75em; font-weight:normal; color:var(--primary-light);">${siteDisplay}</span></td>`;
+        // 3. رسم صفوف الموظفين
+        activeVacs.forEach(vac => {
+            const siteDisplay = sitesMap.get(vac.siteId) || 'موقع مجهول';
+            let rowHtml = `<tr>
+                <td class="emp-col">
+                    <span class="emp-name">${vac.empName}</span>
+                    <span class="emp-meta"><i class="fa-solid fa-hospital"></i> ${siteDisplay} | البديل: ${vac.coverEmp || 'لا يوجد'}</span>
+                </td>`;
             
-            // قراءة تواريخ الطلب
-            const startDate = new Date(vac.startDate);
-            const endDate = new Date(vac.endDate);
-
-            // المرور على كل يوم في الشهر ورسم الحالة بداخل المربع المقابل
             for (let day = 1; day <= daysInMonth; day++) {
-                const currentDate = new Date(selectedYear, selectedMonth, day);
+                const currentDateStr = `${yearFilter}-${String(monthFilter + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const currDateObj = new Date(currentDateStr);
                 
-                let cellClass = "v-day";
-                let cellContent = "";
-                let cellTitle = "";
+                let tdClass = "day-cell";
+                if(currDateObj.getDay() === 5 || currDateObj.getDay() === 6) tdClass += " weekend-bg";
+                if(currDateObj.getTime() === todayDate.getTime()) tdClass += " today-bg";
 
-                // هل يقع هذا اليوم داخل نطاق تواريخ طلب هذا الموظف؟
-                if (currentDate >= startDate && currentDate <= endDate) {
-                    if (conflictedIds.has(vac.id)) {
-                        cellClass += " v-day-conflict";
-                        cellContent = "⚠️";
-                        cellTitle = `تعارض: البديل (${vac.coverEmp || 'لم يحدد'}) مرتبط بطلبين متعارضين!`;
-                    } else if (vac.status === 'approved') {
-                        cellClass += " v-day-approved";
-                        cellContent = "✅";
-                        cellTitle = `إجازة معتمدة - البديل: ${vac.coverEmp || 'لم يحدد'}`;
-                    } else {
-                        cellClass += " v-day-pending";
-                        cellContent = "⏳";
-                        cellTitle = `طلب قيد المراجعة - البديل: ${vac.coverEmp || 'لم يحدد'}`;
-                    }
+                let cellContent = "";
+
+                if (currentDateStr >= vac.startDate && currentDateStr <= vac.endDate) {
+                    let barClass = "";
+                    let icon = "";
+
+                    if (conflictIdsGlobal.has(vac.id)) { barClass = "v-conflict"; icon = '<i class="fa-solid fa-bolt"></i>'; }
+                    else if (vac.status === 'approved') barClass = "v-approved";
+                    else if (vac.status === 'suggested') barClass = "v-suggested";
+                    else barClass = "v-pending";
+
+                    // تحديد شكل الحواف بناءً على بداية ونهاية الإجازة أو الشهر
+                    let isStart = (currentDateStr === vac.startDate || day === 1);
+                    let isEnd = (currentDateStr === vac.endDate || day === daysInMonth);
+
+                    let shapeClass = "v-mid";
+                    if (isStart && isEnd) shapeClass = "v-single";
+                    else if (isStart) shapeClass = "v-start";
+                    else if (isEnd) shapeClass = "v-end";
+
+                    let innerContent = (isStart || day === 1) ? icon : "";
+                    
+                    let tooltipText = `من ${vac.startDate} إلى ${vac.endDate} (${vac.reqDays} يوم)<br>البديل: ${vac.coverEmp || 'غير محدد'}`;
+
+                    cellContent = `<div class="v-bar ${barClass} ${shapeClass} tooltip">
+                        ${innerContent}
+                        <span class="tooltiptext">${tooltipText}</span>
+                    </div>`;
                 }
 
-                rowHtml += `<td class="${cellClass}" title="${cellTitle}">${cellContent}</td>`;
+                rowHtml += `<td class="${tdClass}">${cellContent}</td>`;
             }
             rowHtml += `</tr>`;
             tbody.innerHTML += rowHtml;
         });
     }
-
-    // تشغيل الإعدادات الأولى عند تحميل الصفحة
-    window.onload = initCalendarPage;
 </script>
 </body>
 </html>
