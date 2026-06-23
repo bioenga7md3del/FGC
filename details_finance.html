@@ -15,7 +15,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
-        /* ستايل شريط التبويبات العلوي الجديد */
         .tabs-nav { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap; }
         .tab-link { padding: 10px 20px; text-decoration: none; color: #64748b; border-radius: 5px; font-weight: bold; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; }
         .tab-link:hover { background: #f1f5f9; color: var(--primary); }
@@ -192,7 +191,6 @@
     const siteId = new URLSearchParams(window.location.search).get('id');
     if(!siteId) window.location.href = "dashboard.html";
 
-    // ربط روابط التبويبات بالـ ID الحالي تلقائياً
     document.getElementById('tabFinance').href = `details_finance.html?id=${siteId}`;
     document.getElementById('tabVacations').href = `details_vacations.html?id=${siteId}`;
     document.getElementById('tabSubcontracts').href = `details_subcontracts.html?id=${siteId}`;
@@ -342,6 +340,28 @@
         const currentBalance = globalTotalBudget - visibleSpent;
         document.getElementById('statBalance').innerText = fmt(currentBalance);
         updateChart(visibleSpent, currentBalance);
+    }
+
+    // 🌟 الدالة التي كانت مفقودة لحل مشكلة الزرار
+    function openModal() {
+        document.getElementById('editTransId').value = "";
+        document.getElementById('modalTitle').innerText = "تسجيل معاملة جديدة";
+        document.getElementById('orderNum').value = "";
+        document.getElementById('orderDate').value = "";
+        document.getElementById('supplier').value = "";
+        document.getElementById('invoiceNum').value = "";
+        document.getElementById('invoiceDate').value = "";
+        document.getElementById('poNumber').value = "";
+        document.getElementById('amount').value = "";
+        document.getElementById('ratio').value = "";
+        document.getElementById('batch').value = "";
+
+        if(currentUserRole === 'admin') { 
+            document.getElementById('divRatio').style.display = 'block'; 
+        } else { 
+            document.getElementById('divRatio').style.display = 'none'; 
+        }
+        document.getElementById('transactionModal').classList.add('show');
     }
 
     function closeModal() { document.getElementById('transactionModal').classList.remove('show'); }
