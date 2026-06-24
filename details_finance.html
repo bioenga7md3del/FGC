@@ -51,7 +51,7 @@
             <button onclick="window.print()" class="btn btn-outline" style="border-color: #333; color: #333;">
                 <i class="fa-solid fa-print"></i> طباعة
             </button>
-            <button onclick="exportTableToCSV('report.csv')" class="btn btn-success" style="background: #217346;">
+            <button onclick="exportTableToCSV('التقرير_المالي.csv')" class="btn btn-success" style="background: #217346;">
                 <i class="fa-solid fa-file-excel"></i> تصدير Excel
             </button>
             
@@ -342,7 +342,6 @@
         updateChart(visibleSpent, currentBalance);
     }
 
-    // 🌟 الدالة التي كانت مفقودة لحل مشكلة الزرار
     function openModal() {
         document.getElementById('editTransId').value = "";
         document.getElementById('modalTitle').innerText = "تسجيل معاملة جديدة";
@@ -442,20 +441,34 @@
         b.update(r,{totalSpent:0,totalProfit:0,currentBalance:org}); await b.commit(); location.reload();
     }
 
+    // 🌟 تم إصلاح الكود المسؤول عن المشكلة: مصفوفة الأرقام العربية أصبحت كاملة وصحيحة
     function cleanArabicNum(str) {
         if(!str) return "";
-        return str.replace(/[٠-٩]/g, d => '0123456789'['٠١23456789'.indexOf(d)]).replace(/٫/g, '.').replace(/٬/g, '');
+        // 1. تحويل الأرقام الهندية (العربية) إلى أرقام إنجليزية
+        let cleanStr = str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]);
+        // 2. إزالة الفواصل الإنجليزية وعلامة الآلاف العربية
+        cleanStr = cleanStr.replace(/[٬,]/g, '');
+        // 3. تحويل الفاصلة العشرية العربية إلى نقطة إنجليزية
+        cleanStr = cleanStr.replace(/٫/g, '.');
+        // 4. إزالة أي مسافات مخفية (Hidden Unicode Characters) المتصفح بيضيفها مع التنسيق العربي
+        cleanStr = cleanStr.replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, '').trim();
+        return cleanStr;
     }
 
     function exportTableToCSV(filename) {
-        let csv = []; csv.push('\uFEFF'); let rows = document.querySelectorAll("#transTable tr");
+        let csv = []; 
+        csv.push('\uFEFF'); 
+        let rows = document.querySelectorAll("#transTable tr");
+        
         for (let i = 0; i < rows.length; i++) {
             if(rows[i].style.display === 'none') continue; 
             let row = [], cols = rows[i].querySelectorAll("td, th");
             for (let j = 0; j < cols.length; j++) {
                 if (cols[j].innerText === 'تحكم' || cols[j].querySelector('button')) continue;
                 if (cols[j].style.display === 'none') continue;
-                let rawData = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/,/g, ""); 
+                
+                // تنظيف النص الأساسي
+                let rawData = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, " ").trim(); 
                 let cleanData = cleanArabicNum(rawData);
                 row.push('"' + cleanData + '"');
             }
