@@ -1,760 +1,342 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة خطط الإجازات المركزية - FGC</title> 
-    
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;800&display=swap" rel="stylesheet">
-    
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-
-    <style>
-        .summary-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .summary-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border: 1px solid #eee; text-align: center; cursor: pointer; transition: 0.3s; position: relative;}
-        .summary-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.08); }
-        .summary-card h4 { margin: 0 0 10px 0; color: #64748b; font-size: 0.95rem; }
-        .summary-card p { margin: 0; font-size: 2rem; font-weight: bold; }
-        
-        .badge { padding: 5px 10px; border-radius: 4px; font-size: 0.85em; font-weight: bold; color: white; display: inline-block;}
-        .badge-pending { background-color: #f39c12; }
-        .badge-approved { background-color: #27ae60; }
-        .badge-rejected { background-color: #c0392b; }
-        .badge-suggested { background-color: #d35400; }
-
-        .conflict-row { background-color: #fff3cd !important; border-right: 4px solid #ffc107; }
-        .conflict-row:hover { background-color: #ffeeba !important; }
-        
-        .btn-detail-conflict { background: #fff5f5; color: #c0392b; border: 1px solid #f5c6cb; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; cursor: pointer; font-weight: bold; margin-top: 4px; display: inline-block; transition: 0.2s; }
-        .btn-detail-conflict:hover { background: #c0392b; color: white; }
-
-        .conflict-group-card { background: #fff; border: 1px solid #f5c6cb; border-radius: 8px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 8px rgba(192,57,43,0.05); }
-        .conflict-group-header { background: #fff5f5; color: #c0392b; padding: 12px 15px; font-weight: bold; font-size: 0.95rem; border-bottom: 1px solid #f5c6cb; display: flex; justify-content: flex-start; align-items: center; gap: 10px; }
-        .conflict-item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f1f5f9; font-size: 0.9em; }
-        .conflict-item-row:last-child { border-bottom: none; }
-
-        table { width: 100%; border-collapse: collapse; }
-        .main-row { cursor: pointer; transition: 0.2s; background-color: #fff; border-bottom: 1px solid #edf2f7; }
-        .main-row:hover { background-color: #f8fafc; }
-        .main-row td { padding: 15px 10px; vertical-align: middle; }
-        
-        .toggle-btn { background: #eef2f7; color: var(--primary); border: none; width: 30px; height: 30px; border-radius: 50%; display: inline-flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; font-size: 0.85em; }
-        .main-row:hover .toggle-btn { background: var(--primary); color: white; }
-        
-        .details-row { background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; }
-        .details-container { padding: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; border-radius: 8px; border: 1px solid #cbd5e1; margin: 10px 15px 20px 15px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .detail-item { font-size: 0.9em; padding: 5px; border-right: 2px solid var(--primary); padding-right: 10px; text-align: right; }
-        .detail-item span { display: block; color: #64748b; font-size: 0.85em; margin-bottom: 5px; }
-        .detail-item strong { color: #334155; font-size: 1.1em; }
-
-        .multiselect-wrapper { position: relative; width: 100%; }
-        .multiselect-btn { background: white; border: 1px solid #ccc; padding: 8px 10px; border-radius: 5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; color: #333; min-height: 38px;}
-        .multiselect-content { display: none; position: absolute; background: white; width: 100%; border: 1px solid #ccc; max-height: 200px; overflow-y: auto; z-index: 100; border-radius: 5px; margin-top: 2px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .multiselect-content label { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.85em; margin: 0; transition: 0.2s;}
-        .multiselect-content label:hover { background: #f8fafc; color: var(--primary); }
-        .multiselect-content input { margin: 0; cursor: pointer; accent-color: var(--primary); }
-
-        /* --- 🌟 إعدادات الطباعة الاحترافية --- */
-        @media print {
-            body * { visibility: hidden; }
-            #printSection, #printSection * { visibility: visible; }
-            #printSection { position: absolute; left: 0; top: 0; width: 100%; display: block !important; direction: rtl; }
-            @page { size: A4 landscape; margin: 10mm; }
-            #actualPrintTable tr { page-break-inside: avoid; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الإجازات المركزية — FGC System</title>
+  <link rel="icon" href="FGC.jpeg">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="js/core.js"></script>
 </head>
 <body>
+<div id="pageLoader" class="page-loader"><div class="spinner"></div></div>
+<header id="appHeader"></header>
 
-<div id="printSection" style="display: none; background: white;">
-    <div style="text-align: center; border-bottom: 3px solid #1e293b; padding-bottom: 15px; margin-bottom: 20px;">
-        <img src="FGC.jpeg" alt="Logo" style="max-height: 70px; margin-bottom: 10px;">
-        <h2 style="margin: 0 0 5px 0; color: #1e293b; font-size: 24px;">تقرير الإجازات المركزي (شامل المواقع)</h2>
-        <p style="margin: 0; font-size: 12px; color: #555;">تاريخ استخراج التقرير: <span id="printDateActual"></span></p>
+<main class="page">
+  <div class="print-only print-head"><img src="FGC.jpeg" alt=""><h2>تقرير الإجازات المركزي</h2><div id="printDate"></div></div>
+
+  <div class="page-head">
+    <div><h1>إدارة الإجازات المركزية</h1><p>مراجعة واعتماد طلبات الإجازات لكل المواقع وكشف تعارض البدلاء</p></div>
+    <div class="actions">
+      <a class="btn btn-secondary" href="calendar.html"><i class="fa-solid fa-chart-gantt"></i> الخط الزمني</a>
+      <button class="btn btn-secondary" onclick="FGC.openModal('altModal')"><i class="fa-solid fa-user-shield"></i> الموظفين البدلاء</button>
+      <button class="btn btn-secondary" onclick="window.print()"><i class="fa-solid fa-print"></i> طباعة</button>
+      <button class="btn btn-secondary" onclick="exportCSV()"><i class="fa-solid fa-file-excel"></i> تصدير Excel</button>
     </div>
-    
-    <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: center;" id="actualPrintTable">
-        <thead>
-            <tr style="background-color: #f1f5f9; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
-                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">الرقم الوظيفي</th>
-                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">اسم الموظف</th>
-                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">الموقع التابع له</th>
-                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">الوظيفة</th>
-                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">الرصيد</th>
-                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">تاريخ البداية</th>
-                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">تاريخ النهاية</th>
-                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">الأيام</th>
-                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">البديل</th>
-                <th style="border: 1px solid #333; padding: 6px; font-weight: bold;">الحالة</th>
-                <th style="border: 1px solid #333; padding: 6px; font-weight: bold; width: 15%;">الملاحظات والمقترح</th>
-            </tr>
-        </thead>
-        <tbody id="printTableBody"></tbody>
-    </table>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+  <div id="conflictAlert"></div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="field grow"><label>بحث بالاسم / الرقم</label><div class="input-icon"><i class="fa-solid fa-magnifying-glass"></i><input class="input" id="fSearch" placeholder="اكتب للبحث..."></div></div>
+      <div class="field"><label>الموقع</label><select class="select" id="fSite"><option value="all">كل المواقع</option></select></div>
+      <div class="field"><label>الوظيفة</label>
+        <div class="dropdown" id="jobDD"><button type="button" class="btn btn-secondary dropdown__btn" onclick="this.parentNode.classList.toggle('is-open')"><span id="jobLabel">كل الوظائف</span><i class="fa-solid fa-chevron-down small"></i></button><div class="dropdown__menu" id="jobMenu"></div></div>
+      </div>
+      <div class="field"><label>الحالة</label>
+        <select class="select" id="fStatus"><option value="all">الكل</option><option value="pending">قيد المراجعة</option><option value="suggested">موعد مقترح</option><option value="approved">معتمد</option><option value="rejected">مرفوض</option><option value="conflict">تعارضات فقط</option></select>
+      </div>
+      <div class="field"><label>من</label><input type="date" class="input" id="fFrom"></div>
+      <div class="field"><label>إلى</label><input type="date" class="input" id="fTo"></div>
+    </div>
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th style="width:40px" class="col-actions"></th><th>الموظف</th><th>الموقع</th><th>البداية</th><th>النهاية</th><th class="center">الأيام</th><th>البديل</th><th>الحالة</th><th class="col-actions"></th></tr></thead>
+      <tbody id="rows"><tr><td colspan="9"><div class="skeleton"></div></td></tr></tbody>
+    </table></div>
+  </div>
+</main>
+
+<!-- Action modal -->
+<div class="modal" id="actModal">
+  <div class="modal__dialog">
+    <div class="modal__head"><div><h3>معالجة طلب إجازة</h3><p id="actInfo"></p></div><button class="btn btn-ghost btn-icon" data-close><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal__body">
+      <input type="hidden" id="aId">
+      <div id="aWarn"></div>
+      <div class="field"><label>الموظف البديل <span class="muted small">(تغييره قد يحل التعارض)</span></label><select class="select" id="aCover"></select></div>
+      <div class="field"><label>القرار</label>
+        <select class="select" id="aStatus"><option value="pending">قيد المراجعة</option><option value="approved">اعتماد الطلب</option><option value="rejected">رفض / اقتراح موعد بديل</option></select>
+      </div>
+      <fieldset class="fieldset" id="aSuggestBox"><legend>اقتراح موعد بديل (يُرسل للموظف للموافقة)</legend>
+        <div class="form-grid">
+          <div class="field"><label>من</label><input type="date" class="input" id="aSugStart"></div>
+          <div class="field"><label>إلى</label><input type="date" class="input" id="aSugEnd"></div>
+        </div>
+        <div class="small text-success" id="aAutoMsg" hidden style="margin-top:8px"><i class="fa-solid fa-wand-magic-sparkles"></i> تم اقتراح أقرب موعد متاح للبديل تلقائياً.</div>
+        <div class="small muted" style="margin-top:6px">اتركها فارغة للرفض بدون اقتراح.</div>
+      </fieldset>
+      <div class="field"><label>ملاحظات للموظف</label><textarea class="textarea" id="aNotes" rows="2"></textarea></div>
+    </div>
+    <div class="modal__foot"><button class="btn btn-secondary" data-close>إلغاء</button><button class="btn btn-primary" onclick="submitAction(this)"><i class="fa-solid fa-paper-plane"></i> حفظ القرار</button></div>
+  </div>
 </div>
 
-<div class="container" style="margin-top: 25px;">
-    
-    <div class="header-bar">
-        <div class="header-title-box">
-            <img src="FGC.jpeg" alt="Logo" class="logo-img" style="max-height: 60px;">
-            <div>
-                <h2 style="margin:0; color: var(--primary);">إدارة خطط الإجازات المركزية</h2>
-                <p style="margin:5px 0 0 0; color:#666; font-size:0.9em;">الشركة الخليجية الأولى - لوحة تحكم المسؤول</p>
-            </div>
-        </div>
-        <div id="actionButtons" style="display:flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-            <button onclick="openAlternativeEmpModal()" class="btn btn-primary" style="background-color: #e67e22;"><i class="fa-solid fa-user-plus"></i> إضافة موظف بديل</button>
-            <button onclick="window.print()" class="btn btn-outline"><i class="fa-solid fa-print"></i> طباعة التقرير</button>
-            <button onclick="exportTableToCSV('fgc_master_vacations.csv')" class="btn btn-success" style="background: #217346;"><i class="fa-solid fa-file-excel"></i> تصدير Excel</button>
-            <a href="dashboard.html" class="btn btn-outline" style="text-decoration:none; font-size:0.85em; padding:8px 12px;"><i class="fa-solid fa-house"></i> الرئيسية</a>
-        </div>
-    </div>
-    
-    <div style="margin-bottom: 20px; text-align: left;">
-        <a href="calendar.html" class="btn btn-outline" target="_blank" style="border-color: var(--primary); color: var(--primary); font-weight: bold; background: #f1f5f9; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-chart-gantt"></i> عرض التقويم والخط الزمني (Calendar)
-        </a>
-    </div>
-
-    <div class="summary-dashboard">
-        <div class="summary-card" style="border-bottom: 4px solid #64748b;" onclick="setFilterCard('all')">
-            <h4>عرض الكل</h4>
-            <p id="statTotal">0</p>
-        </div>
-        <div class="summary-card" style="border-bottom: 4px solid #f39c12;" onclick="setFilterCard('pending')">
-            <h4>قيد المراجعة</h4>
-            <p id="statPending" style="color: #f39c12;">0</p>
-        </div>
-        <div class="summary-card" style="border-bottom: 4px solid #d35400;" onclick="setFilterCard('suggested')">
-            <h4>مواعيد مقترحة 🚧</h4>
-            <p id="statSuggested" style="color: #d35400;">0</p>
-        </div>
-        <div class="summary-card" style="border-bottom: 4px solid #27ae60;" onclick="setFilterCard('approved')">
-            <h4>تم الاعتماد</h4>
-            <p id="statApproved" style="color: #27ae60;">0</p>
-        </div>
-        <div class="summary-card" style="border-bottom: 4px solid #c0392b; background: #fff5f5;" onclick="setFilterCard('conflict')">
-            <h4>تعارضات تحتاج تدخلك ⚠️</h4>
-            <p id="statConflict" style="color: #c0392b;">0</p>
-        </div>
-    </div>
-
-    <div class="action-bar" style="margin-bottom: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #eee;">
-        <div class="filter-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px;">
-            <div class="filter-group">
-                <label>بحث بالاسم / الرقم</label>
-                <input type="text" id="filterSearch" oninput="applyFilters()" placeholder="اكتب للبحث...">
-            </div>
-            <div class="filter-group">
-                <label>تصفية بالموقع</label>
-                <select id="filterSite" onchange="applyFilters()"><option value="all">الكل</option></select>
-            </div>
-            <div class="filter-group">
-                <label>تصفية بالوظيفة (متعدد)</label>
-                <div class="multiselect-wrapper">
-                    <div class="multiselect-btn" onclick="toggleJobFilter()">اختر الوظائف <i class="fa-solid fa-chevron-down"></i></div>
-                    <div class="multiselect-content" id="jobFilterContent"></div>
-                </div>
-            </div>
-            <div class="filter-group">
-                <label>الحالة</label>
-                <select id="filterStatus" onchange="applyFilters()">
-                    <option value="all">الكل</option>
-                    <option value="pending">قيد المراجعة</option>
-                    <option value="suggested">موعد مقترح</option>
-                    <option value="approved">معتمد</option>
-                    <option value="rejected">مرفوض</option>
-                </select>
-            </div>
-            <div class="filter-group"><label>من تاريخ</label><input type="date" id="filterStart" onchange="applyFilters()"></div>
-            <div class="filter-group"><label>إلى تاريخ</label><input type="date" id="filterEnd" onchange="applyFilters()"></div>
-        </div>
-    </div>
-
-    <div class="card" style="padding: 0; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-        <table id="masterVacTable">
-            <thead style="background: #f8fafc; border-bottom: 2px solid #cbd5e1;">
-                <tr>
-                    <th style="width: 50px; text-align: center; padding: 15px 10px;">#</th>
-                    <th style="text-align: right; padding: 15px 10px;">الموظف</th>
-                    <th style="text-align: right; padding: 15px 10px;">الموقع التابع له</th>
-                    <th style="text-align: center; padding: 15px 10px;">البداية المقترحة</th>
-                    <th style="text-align: center; padding: 15px 10px;">النهاية</th>
-                    <th style="text-align: center; padding: 15px 10px;">الحالة</th>
-                </tr>
-            </thead>
-            <tbody id="masterVacTableBody"></tbody>
-        </table>
-    </div>
+<!-- Conflicts modal -->
+<div class="modal" id="conflictModal">
+  <div class="modal__dialog lg">
+    <div class="modal__head"><div><h3><i class="fa-solid fa-triangle-exclamation text-danger"></i> مركز حل التعارضات</h3><p>طلبات يغطيها نفس الموظف البديل في فترات متداخلة.</p></div><button class="btn btn-ghost btn-icon" data-close><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal__body" id="conflictBody"></div>
+  </div>
 </div>
 
-<div id="conflictResolverModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 800px; width: 95%; max-height: 85vh; overflow-y: auto;">
-        <span class="close-modal" onclick="closeModals()">&times;</span>
-        <h3 style="color:#c0392b; margin-top:0; border-bottom:2px solid #f5c6cb; padding-bottom:10px;">
-            <i class="fa-solid fa-triangle-exclamation"></i> مركز تحليل وحل تعارضات البدلاء
-        </h3>
-        <p style="font-size:0.85em; color:#666; margin-bottom:20px;">
-            الطلبات أدناه تم تجميعها بناءً على **الموظف البديل المشترك** المشغول في نفس الفترة الزمنية عبر مختلف المواقع.
-        </p>
-        <div id="conflictResolverContainer"></div>
+<!-- Alternative employees -->
+<div class="modal" id="altModal">
+  <div class="modal__dialog sm">
+    <div class="modal__head"><div><h3>الموظفين البدلاء</h3><p>القائمة المعتمدة لتغطية الإجازات.</p></div><button class="btn btn-ghost btn-icon" data-close><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal__body">
+      <div class="row" style="flex-wrap:nowrap"><input class="input" id="altName" placeholder="اسم الموظف البديل"><button class="btn btn-primary" onclick="addAlt(this)"><i class="fa-solid fa-plus"></i></button></div>
+      <div id="altList" style="max-height:320px;overflow:auto"></div>
     </div>
-</div>
-
-<div id="actionModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 550px;">
-        <span class="close-modal" onclick="closeModals()">&times;</span>
-        <h3 style="color:var(--primary); margin-top:0;"><i class="fa-solid fa-gavel"></i> معالجة طلب إجازة موظف</h3>
-        <input type="hidden" id="actionVacId">
-        <input type="hidden" id="actionReqDays"> 
-        
-        <div id="actConflictWarning" style="display:none; background:#f8d7da; color:#721c24; padding:12px; border-radius:6px; margin-bottom:15px; font-size:0.85em; border:1px solid #f5c6cb; line-height: 1.5;"></div>
-
-        <div style="background:#f8fafc; padding:12px; border-radius:6px; margin-bottom:15px; font-size:0.9em; border:1px solid #eee;">
-            <p style="margin:0 0 5px 0;"><b>الموظف:</b> <span id="actEmpName"></span></p>
-            <p style="margin:0 0 5px 0;"><b>الموقع:</b> <span id="actSiteName"></span></p>
-            <p style="margin:0;"><b>الفترة المطلوبة:</b> <span id="actDates" style="color:var(--danger); font-weight:bold;"></span></p>
-        </div>
-
-        <div class="input-box" style="margin-bottom: 15px;">
-            <label style="color:var(--primary); font-weight:bold;"><i class="fa-solid fa-user-shield"></i> الموظف البديل (تغييره قد يحل التعارض)</label>
-            <select id="actCoverEmp" onchange="recheckConflictsInModal()" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc; font-weight:bold;"></select>
-        </div>
-
-        <div class="input-box">
-            <label>اتخاذ إجراء الاعتماد</label>
-            <select id="actStatus" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc;">
-                <option value="pending">قيد المراجعة</option>
-                <option value="approved">اعتماد الطلب الحالي ✅</option>
-                <option value="rejected">رفض / تقديم موعد مقترح ❌</option>
-            </select>
-        </div>
-
-        <div style="background:#fffce8; padding:15px; border-radius:8px; border:1px dashed #f1c40f; margin-top:15px;">
-            <label style="color:#b7950b; font-weight:bold; font-size:0.9em; margin-bottom:10px; display:block;"><i class="fa-solid fa-calendar-plus"></i> اقتراح موعد بديل للإجازة (سيتم إرساله للموظف للموافقة)</label>
-            <div style="display:flex; gap:10px;">
-                <div class="input-box" style="flex:1; margin:0;">
-                    <label style="font-size:0.8em; color:#666;">البداية المقترحة</label>
-                    <input type="date" id="actSuggestStart" style="padding:8px;">
-                </div>
-                <div class="input-box" style="flex:1; margin:0;">
-                    <label style="font-size:0.8em; color:#666;">النهاية المقترحة</label>
-                    <input type="date" id="actSuggestEnd" style="padding:8px;">
-                </div>
-            </div>
-            <p id="autoSuggestMsg" style="color: #27ae60; font-size: 0.8em; margin: 8px 0 0 0; font-weight: bold; display: none;">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> النظام اقترح هذا الموعد آلياً بناءً على توفر البديل المختار!
-            </p>
-        </div>
-
-        <div class="input-box" style="margin-top:15px;">
-            <label>ملاحظات الإدارة أو سبب الرد</label>
-            <input type="text" id="actNotes" placeholder="اكتب رسالة للموظف هنا...">
-        </div>
-        
-        <button onclick="submitAdminAction()" class="btn btn-success" style="width:100%; margin-top:20px;"><i class="fa-solid fa-paper-plane"></i> حفظ وإرسال التحديث</button>
-    </div>
-</div>
-
-<div id="alternativeEmpModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 400px;">
-        <span class="close-modal" onclick="closeModals()">&times;</span>
-        <h3 style="color:var(--primary); margin-top:0;"><i class="fa-solid fa-user-plus"></i> إضافة موظف بديل معتمد</h3>
-        <div class="input-box"><label>اسم الموظف البديل كامل *</label><input type="text" id="newAltName"></div>
-        <button onclick="saveAlternativeEmployee()" class="btn btn-success" style="width:100%; margin-top:20px;">حفظ الموظف بالقائمة</button>
-    </div>
+  </div>
 </div>
 
 <script>
-    const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+  const { db, firebase, esc, toast, openModal, closeModal, confirmDialog, withButton, vacBadge, VAC_STATUS, daysBetween, addDays, todayStr, tsMillis } = FGC;
+  let vacs = [], sites = new Map(), alts = [], conflictIds = new Set(), conflictGroups = {}, openRows = new Set();
 
-    let allVacations = [];
-    let sitesMap = new Map();
-    let uniqueJobsGlobal = new Set();
-    let currentCardFilter = 'all';
-    let conflictIdsGlobal = new Set();
-    let conflictGroupsGlobal = {}; 
-    let altEmployeesList = []; 
-
-    document.getElementById('printDateActual').innerText = new Date().toLocaleDateString('ar-EG');
-
-    function getTodayString() {
-        const d = new Date();
-        let month = '' + (d.getMonth() + 1); let day = '' + d.getDate(); let year = d.getFullYear();
-        if (month.length < 2) month = '0' + month; if (day.length < 2) day = '0' + day;
-        return [year, month, day].join('-');
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-        loadSitesList();
-        loadAltEmployeesList();
-        loadMasterVacations();
+  FGC.init({ admin: true, nav: 'vacations' }).then(() => {
+    document.getElementById('printDate').textContent = todayStr();
+    db.collection('budgets').onSnapshot(s => {
+      sites = new Map(s.docs.map(d => [d.id, d.data().itemName]));
+      const sel = document.getElementById('fSite'), cur = sel.value;
+      sel.innerHTML = '<option value="all">كل المواقع</option>' + [...sites].sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'ar')).map(([id, n]) => `<option value="${esc(id)}">${esc(n)}</option>`).join('');
+      sel.value = [...sites.keys()].includes(cur) ? cur : 'all';
+      render();
     });
-
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.multiselect-wrapper')) {
-            const content = document.getElementById('jobFilterContent');
-            if(content) content.style.display = 'none';
-        }
+    db.collection('alternative_employees').onSnapshot(s => {
+      alts = s.docs.map(d => ({ id: d.id, name: d.data().name })).filter(a => a.name).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+      renderAlts();
     });
+    db.collection('vacations').onSnapshot(s => {
+      vacs = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => tsMillis(b.createdAt) - tsMillis(a.createdAt));
+      buildJobs(); analyze(); render();
+      if (document.getElementById('conflictModal').classList.contains('is-open')) renderConflicts();
+    }, err => toast(FGC.errMsg(err), 'error'));
+  });
 
-    window.toggleRow = function(id) {
-        const row = document.getElementById(id);
-        const btn = document.getElementById('btn-' + id);
-        if(row.style.display === 'none') {
-            row.style.display = 'table-row';
-            btn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
-            btn.style.background = 'var(--primary)';
-            btn.style.color = 'white';
-        } else {
-            row.style.display = 'none';
-            btn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
-            btn.style.background = '#eef2f7';
-            btn.style.color = 'var(--primary)';
-        }
-    };
+  ['fSearch', 'fSite', 'fStatus', 'fFrom', 'fTo'].forEach(id => document.getElementById(id).addEventListener('input', render));
+  const siteName = id => sites.get(id) || 'موقع غير معروف';
+  const active = v => v.status !== 'rejected' && v.status !== 'suggested';
+  const overlaps = (a, b) => a.startDate <= b.endDate && a.endDate >= b.startDate;
 
-    function loadSitesList() {
-        db.collection("budgets").onSnapshot(snap => {
-            const selectFilter = document.getElementById('filterSite');
-            selectFilter.innerHTML = '<option value="all">الكل</option>';
-            sitesMap.clear();
-            snap.forEach(doc => {
-                sitesMap.set(doc.id, doc.data().itemName);
-                selectFilter.innerHTML += `<option value="${doc.id}">${doc.data().itemName}</option>`;
-            });
-            renderTable(); 
-        });
+  function buildJobs() {
+    const menu = document.getElementById('jobMenu');
+    const checked = FGC.$$('.job-cb:checked').map(c => c.value);
+    const jobs = [...new Set(vacs.map(v => v.jobTitle).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar'));
+    menu.innerHTML = jobs.map(j => `<label class="check"><input type="checkbox" class="job-cb" value="${esc(j)}" ${checked.includes(j) ? 'checked' : ''}> ${esc(j)}</label>`).join('') || '<div class="muted small" style="padding:8px">لا توجد وظائف</div>';
+  }
+  document.getElementById('jobMenu').addEventListener('change', () => {
+    const n = FGC.$$('.job-cb:checked').length;
+    document.getElementById('jobLabel').textContent = n ? `${n} وظيفة محددة` : 'كل الوظائف';
+    render();
+  });
+
+  function analyze() {
+    conflictIds = new Set(); conflictGroups = {};
+    const act = vacs.filter(v => active(v) && v.coverEmp && v.coverEmp.trim());
+    for (let i = 0; i < act.length; i++) for (let j = i + 1; j < act.length; j++) {
+      const a = act[i], b = act[j];
+      if (a.coverEmp === b.coverEmp && overlaps(a, b)) {
+        conflictIds.add(a.id); conflictIds.add(b.id);
+        (conflictGroups[a.coverEmp] = conflictGroups[a.coverEmp] || new Map()).set(a.id, a).set(b.id, b);
+      }
     }
+  }
 
-    function loadAltEmployeesList() {
-        db.collection("alternative_employees").onSnapshot(snap => {
-            altEmployeesList = [];
-            snap.forEach(doc => altEmployeesList.push(doc.data().name));
-        });
+  function filtered() {
+    const q = document.getElementById('fSearch').value.trim().toLowerCase();
+    const site = document.getElementById('fSite').value, st = document.getElementById('fStatus').value;
+    const from = document.getElementById('fFrom').value, to = document.getElementById('fTo').value;
+    const jobs = FGC.$$('.job-cb:checked').map(c => c.value);
+    let list = vacs.filter(v =>
+      (!q || `${v.empName} ${v.empId}`.toLowerCase().includes(q)) &&
+      (site === 'all' || v.siteId === site) &&
+      (st === 'all' || (st === 'conflict' ? conflictIds.has(v.id) : (v.status || 'pending') === st)) &&
+      (!from || v.endDate >= from) && (!to || v.startDate <= to) &&
+      (!jobs.length || jobs.includes(v.jobTitle)));
+    if (st === 'conflict') list.sort((a, b) => String(a.coverEmp).localeCompare(String(b.coverEmp), 'ar'));
+    return list;
+  }
+
+  function render() {
+    const count = s => vacs.filter(v => (v.status || 'pending') === s).length;
+    const cur = document.getElementById('fStatus').value;
+    const k = (key, label, icon, cls, n) => `<button class="kpi ${cls} ${cur === key ? 'is-active' : ''}" data-filter="${key}"><div class="kpi__label"><span class="kpi__icon"><i class="fa-solid ${icon}"></i></span>${label}</div><div class="kpi__value">${n}</div></button>`;
+    document.getElementById('kpis').innerHTML =
+      k('all', 'كل الطلبات', 'fa-list', '', vacs.length) +
+      k('pending', 'قيد المراجعة', 'fa-hourglass-half', 'kpi--warning', count('pending')) +
+      k('suggested', 'بانتظار رد الموظف', 'fa-calendar-plus', 'kpi--info', count('suggested')) +
+      k('approved', 'معتمد', 'fa-circle-check', 'kpi--success', count('approved')) +
+      k('conflict', 'تعارضات البدلاء', 'fa-triangle-exclamation', 'kpi--danger', conflictIds.size);
+
+    document.getElementById('conflictAlert').innerHTML = conflictIds.size ? `
+      <div class="callout callout-danger" style="margin-bottom:16px;align-items:center"><i class="fa-solid fa-triangle-exclamation"></i>
+        <div style="flex:1">يوجد <b>${conflictIds.size}</b> طلب فيهم تعارض في الموظف البديل (${Object.keys(conflictGroups).length} بديل).</div>
+        <button class="btn btn-danger btn-sm" onclick="openConflicts()">فتح مركز التعارضات</button></div>` : '';
+
+    const list = filtered();
+    document.getElementById('rows').innerHTML = list.map(v => {
+      const open = openRows.has(v.id), c = conflictIds.has(v.id), id = esc(v.id);
+      return `
+      <tr class="${c ? 'row-danger' : ''} ${open ? 'is-open' : ''}" style="cursor:pointer" data-act="toggle" data-id="${id}">
+        <td class="col-actions"><i class="fa-solid fa-chevron-down chev muted"></i></td>
+        <td><div class="cell-title">${esc(v.empName)}</div><div class="cell-sub">${esc(v.jobTitle || '—')} · ${esc(v.empId)}</div></td>
+        <td>${esc(siteName(v.siteId))}</td>
+        <td class="fw-600">${esc(v.startDate)}</td><td class="fw-600">${esc(v.endDate)}</td>
+        <td class="center">${esc(v.reqDays)}</td>
+        <td>${esc(v.coverEmp || '—')} ${c ? '<span class="badge badge-danger" title="البديل مشغول في نفس الفترة"><i class="fa-solid fa-bolt"></i> تعارض</span>' : ''}</td>
+        <td>${vacBadge(v.status)}</td>
+        <td class="actions-cell"><button class="btn btn-primary btn-sm" data-act="process" data-id="${id}"><i class="fa-solid fa-gavel"></i> معالجة</button></td>
+      </tr>
+      <tr class="expand-row" ${open ? '' : 'hidden'}><td colspan="9"><div class="detail-grid">
+        <div class="item"><span>الرصيد المتاح</span><strong>${esc(v.balance || 0)} يوم</strong></div>
+        <div class="item"><span>آخر إجازة</span><strong>${esc(v.lastVacation || 'لا يوجد')}</strong></div>
+        <div class="item"><span>تاريخ الطلب</span><strong>${v.createdAt ? esc(FGC.toISODate(new Date(tsMillis(v.createdAt)))) : '—'}</strong></div>
+        ${v.suggestedStart ? `<div class="item"><span>الموعد المقترح</span><strong class="text-brand">${esc(v.suggestedStart)} ← ${esc(v.suggestedEnd)}</strong></div>` : ''}
+        <div class="item full"><span>ملاحظات</span><strong>${esc(v.notes || '—')}</strong></div>
+        <div class="full actions"><a class="btn btn-secondary btn-sm" href="details_vacations.html?id=${encodeURIComponent(v.siteId)}"><i class="fa-solid fa-building"></i> صفحة الموقع</a><button class="btn btn-danger-soft btn-sm" data-act="delete" data-id="${id}"><i class="fa-regular fa-trash-can"></i> حذف الطلب</button></div>
+      </div></td></tr>`;
+    }).join('') || `<tr><td colspan="9"><div class="empty"><i class="fa-solid fa-umbrella-beach"></i><h4>لا توجد طلبات مطابقة</h4></div></td></tr>`;
+  }
+
+  document.getElementById('kpis').addEventListener('click', e => {
+    const b = e.target.closest('[data-filter]'); if (!b) return;
+    document.getElementById('fStatus').value = b.dataset.filter; render();
+    if (b.dataset.filter === 'conflict' && conflictIds.size) openConflicts();
+  });
+  document.getElementById('rows').addEventListener('click', e => {
+    const el = e.target.closest('[data-act]'); if (!el) return;
+    const id = el.dataset.id, act = el.dataset.act;
+    if (act === 'toggle') { openRows.has(id) ? openRows.delete(id) : openRows.add(id); render(); return; }
+    e.stopPropagation();
+    if (act === 'process') openAction(id);
+    if (act === 'delete') delVac(id);
+  });
+
+  // ---------- Conflicts ----------
+  function openConflicts() { renderConflicts(); openModal('conflictModal'); }
+  function renderConflicts() {
+    const keys = Object.keys(conflictGroups);
+    document.getElementById('conflictBody').innerHTML = keys.length ? keys.map(k => `
+      <div class="card">
+        <div class="card-head"><h3><i class="fa-solid fa-user-shield text-danger"></i> البديل: ${esc(k)}</h3><span class="badge badge-danger">${conflictGroups[k].size} طلبات</span></div>
+        <div class="table-wrap"><table class="table"><tbody>
+          ${[...conflictGroups[k].values()].sort((a, b) => a.startDate.localeCompare(b.startDate)).map(v => `<tr>
+            <td><div class="cell-title">${esc(v.empName)}</div><div class="cell-sub">${esc(v.jobTitle || '—')} · ${esc(siteName(v.siteId))}</div></td>
+            <td>${esc(v.startDate)} ← ${esc(v.endDate)} <span class="muted small">(${esc(v.reqDays)} يوم)</span></td>
+            <td>${vacBadge(v.status)}</td>
+            <td class="actions-cell"><button class="btn btn-primary btn-sm" onclick="openAction('${esc(v.id)}')"><i class="fa-solid fa-gavel"></i> معالجة</button></td>
+          </tr>`).join('')}
+        </tbody></table></div>
+      </div>`).join('') : `<div class="empty"><i class="fa-solid fa-circle-check" style="color:var(--success)"></i><h4>لا توجد تعارضات حالياً</h4></div>`;
+  }
+
+  // ---------- Action ----------
+  const F = id => document.getElementById(id);
+  function openAction(id) {
+    const v = vacs.find(x => x.id === id); if (!v) return;
+    F('aId').value = id;
+    F('actInfo').innerHTML = `<b>${esc(v.empName)}</b> · ${esc(siteName(v.siteId))}<br>الفترة المطلوبة: <b>${esc(v.startDate)} ← ${esc(v.endDate)}</b> (${esc(v.reqDays)} يوم)`;
+    const names = new Set(alts.map(a => a.name)); if (v.coverEmp) names.add(v.coverEmp);
+    F('aCover').innerHTML = '<option value="">— بدون بديل —</option>' + [...names].map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    F('aCover').value = v.coverEmp || '';
+    F('aStatus').value = v.status === 'suggested' ? 'rejected' : (v.status || 'pending');
+    F('aNotes').value = v.notes || '';
+    F('aSugStart').min = F('aSugEnd').min = todayStr();
+    F('aSugStart').value = v.suggestedStart || ''; F('aSugEnd').value = v.suggestedEnd || '';
+    recheck(false);
+    toggleSuggest();
+    openModal('actModal');
+  }
+  function toggleSuggest() { F('aSuggestBox').hidden = F('aStatus').value !== 'rejected'; }
+  F('aStatus').addEventListener('change', toggleSuggest);
+  F('aCover').addEventListener('change', () => recheck(true));
+
+  function recheck(autofill) {
+    const v = vacs.find(x => x.id === F('aId').value); if (!v) return;
+    const cover = F('aCover').value;
+    F('aAutoMsg').hidden = true; F('aWarn').innerHTML = '';
+    if (!cover) return;
+    const busy = vacs.filter(o => o.id !== v.id && active(o) && o.coverEmp === cover);
+    const clash = busy.filter(o => overlaps(o, v));
+    if (!clash.length) { if (autofill) { F('aSugStart').value = ''; F('aSugEnd').value = ''; } return; }
+    F('aWarn').innerHTML = `<div class="callout callout-danger"><i class="fa-solid fa-triangle-exclamation"></i><div><b>البديل (${esc(cover)}) مشغول في نفس الفترة:</b><br>${clash.map(o => `• ${esc(o.empName)} — ${esc(siteName(o.siteId))} (${esc(o.startDate)} ← ${esc(o.endDate)})`).join('<br>')}</div></div>`;
+    // اقتراح أقرب موعد متاح بنفس المدة
+    const len = Number(v.reqDays) || daysBetween(v.startDate, v.endDate) || 1;
+    let start = v.startDate < todayStr() ? todayStr() : v.startDate;
+    busy.sort((a, b) => a.startDate.localeCompare(b.startDate));
+    let moved = true;
+    while (moved) {
+      moved = false;
+      const end = addDays(start, len - 1);
+      for (const b of busy) if (start <= b.endDate && end >= b.startDate) { start = addDays(b.endDate, 1); moved = true; }
     }
-
-    function loadMasterVacations() {
-        db.collection("vacations").orderBy("createdAt", "desc").onSnapshot(snap => {
-            allVacations = [];
-            uniqueJobsGlobal.clear();
-
-            snap.forEach(doc => {
-                let data = doc.data();
-                allVacations.push({id: doc.id, ...data});
-                if(data.jobTitle) uniqueJobsGlobal.add(data.jobTitle);
-            });
-            
-            populateJobFilter(); 
-            analyzeConflicts();
-            updateDashboardCards();
-            renderTable();
-        });
+    if (!F('aSugStart').value || autofill) {
+      F('aSugStart').value = start; F('aSugEnd').value = addDays(start, len - 1);
+      F('aAutoMsg').hidden = false;
     }
+    if (F('aStatus').value !== 'approved') { F('aStatus').value = 'rejected'; toggleSuggest(); }
+  }
 
-    function populateJobFilter() {
-        const container = document.getElementById('jobFilterContent');
-        const currentSelections = Array.from(document.querySelectorAll('.job-filter-cb:checked')).map(cb => cb.value);
-        container.innerHTML = '';
-        uniqueJobsGlobal.forEach(job => {
-            const isChecked = currentSelections.includes(job) ? 'checked' : '';
-            container.innerHTML += `<label><input type="checkbox" class="job-filter-cb" value="${job}" onchange="applyFilters()" ${isChecked}> ${job}</label>`;
-        });
+  function submitAction(btn) {
+    const id = F('aId').value, status = F('aStatus').value;
+    const s = F('aSugStart').value, e = F('aSugEnd').value;
+    const del = firebase.firestore.FieldValue.delete();
+    const data = { notes: F('aNotes').value.trim(), coverEmp: F('aCover').value };
+    if (status === 'rejected' && (s || e)) {
+      if (!s || !e) return toast('حدد بداية ونهاية الموعد المقترح.', 'warning');
+      if (s < todayStr()) return toast('لا يمكن اقتراح تاريخ ماضي.', 'warning');
+      if (e < s) return toast('نهاية الموعد قبل بدايته.', 'warning');
+      Object.assign(data, { status: 'suggested', suggestedStart: s, suggestedEnd: e });
+    } else {
+      Object.assign(data, { status, suggestedStart: del, suggestedEnd: del });
     }
-
-    function toggleJobFilter() {
-        const content = document.getElementById('jobFilterContent');
-        content.style.display = content.style.display === 'block' ? 'none' : 'block';
+    if (status === 'approved') {
+      const v = vacs.find(x => x.id === id);
+      const clash = data.coverEmp && vacs.some(o => o.id !== id && active(o) && o.coverEmp === data.coverEmp && overlaps(o, v));
+      if (clash) toast('تنبيه: تم الاعتماد رغم وجود تعارض في البديل.', 'warning');
     }
+    withButton(btn, async () => {
+      await db.collection('vacations').doc(id).update(data);
+      closeModal('actModal'); toast('تم حفظ القرار');
+    });
+  }
 
-    function analyzeConflicts() {
-        conflictIdsGlobal.clear();
-        conflictGroupsGlobal = {};
-        for(let i=0; i<allVacations.length; i++) {
-            for(let j=i+1; j<allVacations.length; j++) {
-                let v1 = allVacations[i]; let v2 = allVacations[j];
-                if(v1.status !== 'rejected' && v1.status !== 'suggested' && v2.status !== 'rejected' && v2.status !== 'suggested' && v1.coverEmp && v1.coverEmp.trim() !== "" && v1.coverEmp === v2.coverEmp) {
-                    if(v1.startDate <= v2.endDate && v1.endDate >= v2.startDate) {
-                        conflictIdsGlobal.add(v1.id); conflictIdsGlobal.add(v2.id);
-                        let groupKey = v1.coverEmp;
-                        if(!conflictGroupsGlobal[groupKey]) {
-                            conflictGroupsGlobal[groupKey] = { coverEmp: v1.coverEmp, items: new Set() };
-                        }
-                        conflictGroupsGlobal[groupKey].items.add(v1); conflictGroupsGlobal[groupKey].items.add(v2);
-                    }
-                }
-            }
-        }
-    }
+  async function delVac(id) {
+    const v = vacs.find(x => x.id === id);
+    if (!(await confirmDialog(`حذف طلب إجازة ${v ? v.empName : ''} نهائياً؟`, { title: 'حذف الطلب', confirmText: 'حذف', danger: true }))) return;
+    try { await db.collection('vacations').doc(id).delete(); toast('تم الحذف'); } catch (e) { toast(FGC.errMsg(e), 'error'); }
+  }
 
-    function updateDashboardCards() {
-        let total = allVacations.length;
-        let pending = allVacations.filter(v => v.status === 'pending').length;
-        let approved = allVacations.filter(v => v.status === 'approved').length;
-        let suggested = allVacations.filter(v => v.status === 'suggested').length;
-        let conflict = conflictIdsGlobal.size;
+  // ---------- Alternatives ----------
+  function renderAlts() {
+    document.getElementById('altList').innerHTML = alts.length ? `<table class="table"><tbody>${alts.map(a => `<tr><td>${esc(a.name)}</td><td class="actions-cell"><button class="btn btn-ghost btn-icon text-danger" onclick="delAlt('${esc(a.id)}')"><i class="fa-regular fa-trash-can"></i></button></td></tr>`).join('')}</tbody></table>` : '<div class="empty" style="padding:20px">لا يوجد بدلاء بعد</div>';
+  }
+  function addAlt(btn) {
+    const name = F('altName').value.trim();
+    if (!name) return toast('اكتب الاسم.', 'warning');
+    if (alts.some(a => a.name === name)) return toast('الاسم موجود بالفعل.', 'warning');
+    withButton(btn, async () => { await db.collection('alternative_employees').add({ name, createdAt: new Date().toISOString() }); F('altName').value = ''; toast('تمت الإضافة'); });
+  }
+  F('altName').addEventListener('keydown', e => { if (e.key === 'Enter') addAlt(e.target.nextElementSibling); });
+  async function delAlt(id) {
+    const a = alts.find(x => x.id === id);
+    if (!(await confirmDialog(`حذف "${a ? a.name : ''}" من قائمة البدلاء؟ (الطلبات الحالية لن تتأثر)`, { title: 'حذف بديل', confirmText: 'حذف', danger: true }))) return;
+    try { await db.collection('alternative_employees').doc(id).delete(); } catch (e) { toast(FGC.errMsg(e), 'error'); }
+  }
 
-        document.getElementById('statTotal').innerText = total;
-        document.getElementById('statPending').innerText = pending;
-        document.getElementById('statApproved').innerText = approved;
-        document.getElementById('statSuggested').innerText = suggested;
-        document.getElementById('statConflict').innerText = conflict;
-    }
-
-    function setFilterCard(type) {
-        currentCardFilter = type;
-        if(type === 'conflict') {
-            buildConflictResolverUI();
-            document.getElementById('conflictResolverModal').classList.add('show');
-        }
-        renderTable();
-    }
-
-    function buildConflictResolverUI() {
-        const container = document.getElementById('conflictResolverContainer'); container.innerHTML = "";
-        let keys = Object.keys(conflictGroupsGlobal);
-        if(keys.length === 0) {
-            container.innerHTML = `<p style="text-align:center; color:#888; font-style:italic;">🎉 رائِع! لا توجد أي تعارضات معلقة حالياً.</p>`; return;
-        }
-        keys.forEach(key => {
-            const group = conflictGroupsGlobal[key];
-            let cardHTML = `<div class="conflict-group-card"><div class="conflict-group-header"><span><i class="fa-solid fa-user-shield"></i> البديل المشترك: <b style="text-decoration:underline;">${group.coverEmp}</b></span></div>`;
-            group.items.forEach(v => {
-                let itemSiteName = sitesMap.get(v.siteId) || "موقع مجهول";
-                cardHTML += `
-                <div class="conflict-item-row">
-                    <div>
-                        <b>👤 ${v.empName}</b> (${v.jobTitle || '-'}) <br>
-                        <span style="font-size:0.85em; color:var(--primary); font-weight:bold;"><i class="fa-solid fa-hospital"></i> ${itemSiteName}</span><br>
-                        <span style="font-size:0.85em; color:#555;"><i class="fa-regular fa-calendar-days"></i> الفترة: من <b>${v.startDate}</b> إلى <b>${v.endDate}</b> (${v.reqDays} يوم)</span>
-                    </div>
-                    <div><button onclick="openActionModal('${v.id}')" class="btn btn-primary" style="padding:4px 10px; font-size:0.8em;"><i class="fa-solid fa-gavel"></i> معالجة</button></div>
-                </div>`;
-            });
-            cardHTML += `</div>`; container.innerHTML += cardHTML;
-        });
-    }
-
-    function renderTable() {
-        const tbody = document.getElementById('masterVacTableBody'); 
-        tbody.innerHTML = "";
-        
-        let filtered = [...allVacations];
-
-        if(currentCardFilter === 'pending') filtered = filtered.filter(v => v.status === 'pending');
-        if(currentCardFilter === 'approved') filtered = filtered.filter(v => v.status === 'approved');
-        if(currentCardFilter === 'suggested') filtered = filtered.filter(v => v.status === 'suggested');
-        if(currentCardFilter === 'conflict') {
-            filtered = filtered.filter(v => conflictIdsGlobal.has(v.id));
-            filtered.sort((a,b) => (a.coverEmp || "").localeCompare(b.coverEmp || ""));
-        }
-
-        if(filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888; padding:20px;">لا توجد طلبات إجازة مطابقة.</td></tr>`;
-            return;
-        }
-
-        filtered.forEach(v => {
-            let badge = '';
-            if(v.status === 'pending') badge = '<span class="badge badge-pending">قيد المراجعة</span>';
-            if(v.status === 'suggested') badge = '<span class="badge badge-suggested">انتظار رد الموظف 🚧</span>';
-            if(v.status === 'approved') badge = '<span class="badge badge-approved">معتمد ✅</span>';
-            if(v.status === 'rejected') badge = '<span class="badge badge-rejected">مرفوض ❌</span>';
-
-            let siteName = sitesMap.get(v.siteId) || "جاري التحميل...";
-            let isConflict = conflictIdsGlobal.has(v.id);
-            let rowClass = isConflict ? "conflict-row" : "";
-            
-            let conflictDetailsBtn = isConflict ? `<br><button onclick="event.stopPropagation(); showQuickConflictAlert('${v.id}')" class="btn-detail-conflict"><i class="fa-solid fa-triangle-exclamation"></i> ⚠️ تعارض بالبديل</button>` : "";
-            let suggestedDatesNote = v.suggestedStart ? `<div style="color:#d35400; font-size:0.85em; margin-top:5px; font-weight:bold; background:#fffce8; padding:3px 5px; border-radius:4px;"><i class="fa-solid fa-calendar-plus"></i> موعد مقترح مرسل للموظف: من ${v.suggestedStart} إلى ${v.suggestedEnd}</div>` : '';
-
-            tbody.innerHTML += `
-            <tr class="main-row ${rowClass}" 
-                data-search="${v.empName} ${v.empId}" 
-                data-site="${v.siteId}" 
-                data-status="${v.status || 'pending'}" 
-                data-job="${v.jobTitle || ''}" 
-                data-start="${v.startDate}" 
-                data-end="${v.endDate}" 
-                onclick="toggleRow('vac-${v.id}')">
-                
-                <td style="text-align:center;"><button class="toggle-btn" id="btn-vac-${v.id}"><i class="fa-solid fa-chevron-down"></i></button></td>
-                <td><b>${v.empName}</b><br><span style="font-size:0.8em; color:#666;">${v.jobTitle || '-'}</span></td>
-                <td style="color:var(--primary); font-weight:500;">${siteName}</td>
-                <td style="text-align:center;"><b>${v.startDate}</b></td>
-                <td style="text-align:center;"><b>${v.endDate}</b></td>
-                <td style="text-align:center;">${badge} ${conflictDetailsBtn}</td>
-            </tr>
-            <tr id="vac-${v.id}" class="details-row" style="display:none;">
-                <td colspan="6">
-                    <div class="details-container">
-                        <div class="detail-item"><span>الرقم الوظيفي</span><strong>${v.empId}</strong></div>
-                        <div class="detail-item"><span>الرصيد المتاح</span><strong>${v.balance || 0} يوم</strong></div>
-                        <div class="detail-item"><span>آخر إجازة</span><strong>${v.lastVacation || 'لا يوجد'}</strong></div>
-                        <div class="detail-item"><span>مدة الإجازة المطلوبة</span><strong style="color:var(--danger);">${v.reqDays} يوم</strong></div>
-                        <div class="detail-item"><span>الموظف البديل</span><strong style="color:#8e44ad;">${v.coverEmp || 'لم يحدد'}</strong></div>
-                        <div class="detail-item" style="grid-column: 1 / -1;"><span>ملاحظات والردود</span><strong>${v.notes || 'لا توجد ملاحظات'} ${suggestedDatesNote}</strong></div>
-                        
-                        <div class="detail-item" style="grid-column: 1 / -1; display:flex; gap:10px; border-right:none; border-top:1px solid #eee; padding-top:15px; margin-top:5px;">
-                            <button onclick="openActionModal('${v.id}')" class="btn btn-primary" style="padding:6px 15px;"><i class="fa-solid fa-gavel"></i> معالجة وتغيير البديل</button>
-                            <button onclick="deleteVacationRecord('${v.id}')" class="btn btn-outline" style="border-color:var(--danger); color:var(--danger); padding:6px 15px;"><i class="fa-solid fa-trash"></i> حذف الطلب</button>
-                        </div>
-                    </div>
-                </td>
-            </tr>`;
-        });
-
-        applyFilters(); 
-    }
-
-    // --- 🌟 دالة توليد جدول الطباعة الرسمي قبل الطباعة مباشرة ---
-    window.onbeforeprint = function() {
-        const printBody = document.getElementById('printTableBody');
-        printBody.innerHTML = '';
-        
-        let visibleIds = [];
-        document.querySelectorAll('.main-row').forEach(row => {
-            if(row.style.display !== 'none') {
-                let match = row.getAttribute('onclick').match(/'([^']+)'/);
-                if(match) visibleIds.push(match[1].replace('vac-', ''));
-            }
-        });
-
-        visibleIds.forEach(id => {
-            let v = allVacations.find(item => item.id === id);
-            if(v) {
-                let siteName = sitesMap.get(v.siteId) || "-";
-                let statusTxt = v.status === 'approved' ? 'معتمد ✅' : (v.status === 'rejected' ? 'مرفوض ❌' : (v.status === 'suggested' ? 'موعد مقترح 🚧' : 'قيد المراجعة ⏳'));
-                
-                // 🌟 دمج الملاحظات والتاريخ المقترح للطباعة بشكل أنيق
-                let notesHtml = v.notes ? `<div>${v.notes}</div>` : '';
-                let suggestHtml = v.suggestedStart ? `<div style="color:#d35400; font-weight:bold; margin-top:4px; font-size:0.9em;">مقترح: من ${v.suggestedStart} إلى ${v.suggestedEnd}</div>` : '';
-                let finalNotes = (notesHtml || suggestHtml) ? (notesHtml + suggestHtml) : '-';
-                
-                printBody.innerHTML += `
-                    <tr>
-                        <td style="border: 1px solid #333; padding: 6px;">${v.empId}</td>
-                        <td style="border: 1px solid #333; padding: 6px; font-weight: bold; text-align: right;">${v.empName}</td>
-                        <td style="border: 1px solid #333; padding: 6px; font-weight: bold; color: #1e293b;">${siteName}</td>
-                        <td style="border: 1px solid #333; padding: 6px;">${v.jobTitle || '-'}</td>
-                        <td style="border: 1px solid #333; padding: 6px;">${v.balance || 0}</td>
-                        <td style="border: 1px solid #333; padding: 6px; font-weight:bold; color: #0f172a;">${v.startDate}</td>
-                        <td style="border: 1px solid #333; padding: 6px; font-weight:bold; color: #0f172a;">${v.endDate}</td>
-                        <td style="border: 1px solid #333; padding: 6px;">${v.reqDays}</td>
-                        <td style="border: 1px solid #333; padding: 6px; color:#8e44ad; font-weight:bold;">${v.coverEmp || '-'}</td>
-                        <td style="border: 1px solid #333; padding: 6px;">${statusTxt}</td>
-                        <td style="border: 1px solid #333; padding: 6px; text-align: right; font-size: 0.9em;">${finalNotes}</td>
-                    </tr>
-                `;
-            }
-        });
-    };
-
-    function applyFilters() {
-        const searchStr = document.getElementById('filterSearch').value.toLowerCase();
-        const siteStr = document.getElementById('filterSite').value;
-        const statusStr = document.getElementById('filterStatus').value;
-        const startStr = document.getElementById('filterStart').value;
-        const endStr = document.getElementById('filterEnd').value;
-        const selectedJobs = Array.from(document.querySelectorAll('.job-filter-cb:checked')).map(cb => cb.value);
-
-        document.querySelectorAll('.main-row').forEach(row => {
-            const rowSearch = (row.getAttribute('data-search') || '').toLowerCase();
-            const rowSite = row.getAttribute('data-site') || '';
-            const rowStatus = row.getAttribute('data-status') || 'pending';
-            const rowStart = row.getAttribute('data-start') || '';
-            const rowEnd = row.getAttribute('data-end') || '';
-            const rowJob = row.getAttribute('data-job') || '';
-
-            const targetId = row.getAttribute('onclick').match(/'([^']+)'/)[1];
-            const detailRow = document.getElementById(targetId);
-            const toggleBtn = document.getElementById('btn-' + targetId);
-
-            let matchSearch = !searchStr || rowSearch.includes(searchStr);
-            let matchSite = siteStr === 'all' || rowSite === siteStr;
-            let matchStatus = statusStr === 'all' || rowStatus === statusStr;
-            let matchStart = !startStr || rowStart >= startStr;
-            let matchEnd = !endStr || rowEnd <= endStr;
-            let matchJob = selectedJobs.length === 0 || selectedJobs.includes(rowJob);
-
-            if(matchSearch && matchSite && matchStatus && matchStart && matchEnd && matchJob) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-                if(detailRow) detailRow.style.display = 'none';
-                if(toggleBtn) {
-                    toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
-                    toggleBtn.style.background = '#eef2f7';
-                    toggleBtn.style.color = 'var(--primary)';
-                }
-            }
-        });
-    }
-
-    function showQuickConflictAlert(vacId) {
-        let currentVac = allVacations.find(v => v.id === vacId);
-        if(!currentVac) return;
-        let overlappingVacs = allVacations.filter(v => v.id !== vacId && v.status !== 'rejected' && v.status !== 'suggested' && v.coverEmp && v.coverEmp === currentVac.coverEmp && v.startDate <= currentVac.endDate && v.endDate >= currentVac.startDate);
-        if(overlappingVacs.length > 0) {
-            let names = overlappingVacs.map(v => `[ ${v.empName} في ${sitesMap.get(v.siteId)} ]`).join(' و ');
-            alert(`⚠️ تنبيه تعارض البديل:\nالموظف البديل (${currentVac.coverEmp}) تم تعيينه في نفس الوقت لتغطية إجازة كل من: ${names}.\n\nيرجى الضغط على الكرت الأحمر في الأعلى لفتح مركز معالجة التعارضات.`);
-        }
-    }
-
-    function openActionModal(id) {
-        let v = allVacations.find(item => item.id === id); if(!v) return;
-        document.getElementById('actionVacId').value = id;
-        document.getElementById('actionReqDays').value = v.reqDays || 1; 
-        document.getElementById('actEmpName').innerText = v.empName;
-        document.getElementById('actSiteName').innerText = sitesMap.get(v.siteId) || "موقع مجهول";
-        document.getElementById('actDates').innerText = `من ${v.startDate} إلى ${v.endDate}`;
-        document.getElementById('actStatus').value = v.status === 'suggested' ? 'pending' : v.status;
-        document.getElementById('actNotes').value = v.notes || '';
-        
-        let todayStr = getTodayString();
-        document.getElementById('actSuggestStart').setAttribute('min', todayStr);
-        document.getElementById('actSuggestEnd').setAttribute('min', todayStr);
-
-        let coverSelect = document.getElementById('actCoverEmp');
-        coverSelect.innerHTML = '<option value="">-- بدون بديل / لم يحدد --</option>';
-        let allOptions = new Set([...altEmployeesList]); if(v.coverEmp) allOptions.add(v.coverEmp);
-        allOptions.forEach(emp => { coverSelect.innerHTML += `<option value="${emp}">${emp}</option>`; });
-        coverSelect.value = v.coverEmp || '';
-
-        recheckConflictsInModal();
-        document.getElementById('actionModal').classList.add('show');
-    }
-
-    function recheckConflictsInModal() {
-        let id = document.getElementById('actionVacId').value;
-        let v = allVacations.find(item => item.id === id); if(!v) return;
-        let selectedCover = document.getElementById('actCoverEmp').value;
-        let warningDiv = document.getElementById('actConflictWarning');
-        let autoSuggestMsg = document.getElementById('autoSuggestMsg');
-        
-        warningDiv.style.display = 'none'; autoSuggestMsg.style.display = 'none';
-        if(!selectedCover) return;
-
-        let todayStr = getTodayString();
-        let overlappingVacs = allVacations.filter(alt => alt.id !== id && alt.status !== 'rejected' && alt.status !== 'suggested' && alt.coverEmp === selectedCover && alt.startDate <= v.endDate && alt.endDate >= v.startDate);
-        
-        if(overlappingVacs.length > 0) {
-            let names = overlappingVacs.map(alt => `<b>${alt.empName}</b> (${sitesMap.get(alt.siteId)} | ${alt.startDate} إلى ${alt.endDate})`).join('<br> - ');
-            warningDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <b>تنبيه تعارض:</b> الموظف البديل المختار (${selectedCover}) مشغول بالفترة المحددة:<br> - ${names}`;
-            warningDiv.style.display = 'block';
-
-            let reqDays = Number(v.reqDays) || 1;
-            let candidateStartStr = v.startDate < todayStr ? todayStr : v.startDate;
-            let candidateStart = new Date(candidateStartStr);
-            
-            let busyVacs = allVacations.filter(alt => alt.id !== id && alt.status !== 'rejected' && alt.status !== 'suggested' && alt.coverEmp === selectedCover);
-            busyVacs.sort((a,b) => new Date(a.startDate) - new Date(b.startDate));
-            
-            for(let busy of busyVacs) {
-                let bStart = new Date(busy.startDate); let bEnd = new Date(busy.endDate);
-                if(candidateStart >= bStart && candidateStart <= bEnd) {
-                    candidateStart = new Date(bEnd); candidateStart.setDate(candidateStart.getDate() + 1);
-                } else if (candidateStart < bStart) {
-                    let neededEnd = new Date(candidateStart); neededEnd.setDate(neededEnd.getDate() + reqDays - 1);
-                    if(neededEnd < bStart) { break; } 
-                    else { candidateStart = new Date(bEnd); candidateStart.setDate(candidateStart.getDate() + 1); }
-                }
-            }
-            let finalEnd = new Date(candidateStart); finalEnd.setDate(finalEnd.getDate() + reqDays - 1);
-            document.getElementById('actSuggestStart').value = candidateStart.toISOString().split('T')[0];
-            document.getElementById('actSuggestEnd').value = finalEnd.toISOString().split('T')[0];
-            autoSuggestMsg.style.display = 'block';
-        } else {
-            document.getElementById('actSuggestStart').value = v.suggestedStart || '';
-            document.getElementById('actSuggestEnd').value = v.suggestedEnd || '';
-        }
-    }
-
-    async function submitAdminAction() {
-        const id = document.getElementById('actionVacId').value;
-        let status = document.getElementById('actStatus').value;
-        const notes = document.getElementById('actNotes').value;
-        const suggestedStart = document.getElementById('actSuggestStart').value;
-        const suggestedEnd = document.getElementById('actSuggestEnd').value;
-        const newCoverEmp = document.getElementById('actCoverEmp').value;
-        const todayStr = getTodayString();
-
-        let updateData = { notes: notes, coverEmp: newCoverEmp };
-
-        if (status === 'approved') {
-            updateData.status = 'approved';
-            updateData.suggestedStart = firebase.firestore.FieldValue.delete();
-            updateData.suggestedEnd = firebase.firestore.FieldValue.delete();
-        } 
-        else if (status === 'rejected') {
-            if (suggestedStart && suggestedEnd) {
-                if (suggestedStart < todayStr) return alert("🚫 لا يمكن اقتراح إجازة في تاريخ ماضي.");
-                if (suggestedEnd < suggestedStart) return alert("🚫 تاريخ العودة لا يمكن أن يكون قبل البداية.");
-                
-                updateData.suggestedStart = suggestedStart;
-                updateData.suggestedEnd = suggestedEnd;
-                updateData.status = "suggested";
-            } else {
-                updateData.status = 'rejected';
-                updateData.suggestedStart = firebase.firestore.FieldValue.delete();
-                updateData.suggestedEnd = firebase.firestore.FieldValue.delete();
-            }
-        } 
-        else {
-            updateData.status = status;
-            updateData.suggestedStart = firebase.firestore.FieldValue.delete();
-            updateData.suggestedEnd = firebase.firestore.FieldValue.delete();
-        }
-
-        try {
-            await db.collection("vacations").doc(id).update(updateData); 
-            closeModals();
-            if(document.getElementById('conflictResolverModal').classList.contains('show')) {
-                analyzeConflicts();
-                buildConflictResolverUI();
-            }
-        } catch(e) { alert("حدث خطأ: " + e.message); }
-    }
-
-    function openAlternativeEmpModal() { document.getElementById('newAltName').value = ""; document.getElementById('alternativeEmpModal').classList.add('show'); }
-    async function saveAlternativeEmployee() {
-        const name = document.getElementById('newAltName').value; if(!name) return alert("أدخل الاسم!");
-        await db.collection("alternative_employees").add({ name: name.trim(), createdAt: new Date().toISOString() });
-        closeModals();
-    }
-    async function deleteVacationRecord(id) { if(confirm("حذف؟")) await db.collection("vacations").doc(id).delete(); }
-    function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show')); }
-    
-    function cleanArabicNum(str) { if(!str) return ""; return str.replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]).replace(/٫/g, '.'); }
-    function exportTableToCSV(filename) {
-        let csv = []; csv.push('\uFEFF'); 
-        csv.push("الموظف,الرقم الوظيفي,الوظيفة,الموقع,آخر إجازة,الرصيد,بداية الإجازة,نهاية الإجازة,مدة الأيام,الموظف البديل,الموعد المقترح,الحالة,الملاحظات");
-        let rows = document.querySelectorAll(".main-row");
-        rows.forEach(row => {
-            if(row.style.display !== 'none') {
-                let targetId = row.getAttribute('onclick').match(/'([^']+)'/)[1].replace('vac-', '');
-                let v = allVacations.find(item => item.id === targetId);
-                if(v) {
-                    let siteName = sitesMap.get(v.siteId) || "";
-                    let statusTxt = v.status === 'approved' ? 'معتمد' : (v.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة');
-                    let suggestTxt = v.suggestedStart ? `من ${v.suggestedStart} إلى ${v.suggestedEnd}` : '-';
-                    let line = [v.empName, v.empId, v.jobTitle, siteName, v.lastVacation, v.balance, v.startDate, v.endDate, v.reqDays, v.coverEmp, suggestTxt, statusTxt, v.notes];
-                    csv.push('"' + line.map(l => cleanArabicNum(String(l || '').replace(/"/g, '""'))).join('","') + '"');
-                }
-            }
-        });
-        let csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
-        let downloadLink = document.createElement("a"); downloadLink.download = filename;
-        downloadLink.href = window.URL.createObjectURL(csvFile); downloadLink.style.display = "none";
-        document.body.appendChild(downloadLink); downloadLink.click();
-    }
+  function exportCSV() {
+    FGC.downloadCSV(`الإجازات_المركزية_${todayStr()}.csv`,
+      ['الموظف', 'الرقم الوظيفي', 'الوظيفة', 'الموقع', 'آخر إجازة', 'الرصيد', 'البداية', 'النهاية', 'الأيام', 'البديل', 'الموعد المقترح', 'الحالة', 'تعارض', 'ملاحظات'],
+      filtered().map(v => [v.empName, v.empId, v.jobTitle, siteName(v.siteId), v.lastVacation, v.balance || 0, v.startDate, v.endDate, v.reqDays, v.coverEmp,
+        v.suggestedStart ? `${v.suggestedStart} - ${v.suggestedEnd}` : '', (VAC_STATUS[v.status] || VAC_STATUS.pending).label, conflictIds.has(v.id) ? 'نعم' : '', v.notes]));
+  }
 </script>
 </body>
 </html>

@@ -1,1042 +1,470 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FGC Dashboard</title>
-    
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;800&display=swap" rel="stylesheet">
-    
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-
-    <style>
-        .contract-card {
-            background: white; border-radius: 12px; margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden;
-            border: 1px solid #eee; transition: 0.3s;
-        }
-        .contract-header {
-            background: linear-gradient(to left, #f8f9fa, #fff);
-            padding: 20px; cursor: pointer; display: flex;
-            justify-content: space-between; align-items: flex-start;
-            border-bottom: 3px solid var(--primary);
-        }
-        .contract-header:hover { background: #f1f3f5; }
-        .contract-info-block { flex: 1; }
-        .contract-title { font-size: 1.3rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; margin-bottom: 8px;}
-        .contract-details { font-size: 0.9rem; color: #555; display: flex; flex-wrap: wrap; gap: 15px; }
-        .contract-details span { background: #eef2f7; padding: 4px 8px; border-radius: 4px; border: 1px solid #dee2e6; }
-        
-        .sites-container {
-            padding: 20px; background: #fafafa; display: none;
-            border-top: 1px solid #ddd;
-        }
-        .sites-container.open { display: block; animation: slideDown 0.3s ease-out; }
-        
-        .site-mini-card {
-            background: white; border-radius: 8px; padding: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #eee;
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 10px; transition: 0.2s; position: relative;
-        }
-        .site-mini-card:hover { transform: translateX(-5px); border-color: var(--accent); }
-        .site-info h4 { margin: 0 0 5px 0; color: var(--text-dark); display: flex; align-items: center; gap: 8px; }
-        .site-stats { font-size: 0.85rem; color: #666; display: flex; gap: 15px; }
-        .site-balance { font-weight: bold; }
-        
-        .category-badge {
-            font-size: 0.7em; padding: 2px 8px; border-radius: 10px; color: white;
-            background: #999; vertical-align: middle;
-        }
-        .cat-spare_parts { background: var(--primary); }
-        .cat-labor { background: var(--accent-orange); }
-        .cat-subcontractors { background: #6c757d; }
-
-        .empty-sites { text-align: center; color: #999; padding: 20px; font-style: italic; }
-        
-        .btn-edit-sm {
-            background: white; border: 1px solid #ccc; color: #555;
-            padding: 5px 10px; border-radius: 5px; cursor: pointer;
-            font-size: 0.8em; margin-left: 5px; transition: 0.2s;
-        }
-        .btn-edit-sm:hover { border-color: var(--primary); color: var(--primary); }
-        
-        .btn-edit-contract {
-            background: transparent; border: 1px solid var(--accent); color: var(--accent);
-            width: 30px; height: 30px; border-radius: 50%; display: flex;
-            justify-content: center; align-items: center; cursor: pointer; text-decoration: none;
-        }
-        .btn-edit-contract:hover { background: var(--accent); color: white; }
-
-        .btn-delete {
-            background: transparent; border: 1px solid var(--danger); color: var(--danger);
-            width: 30px; height: 30px; border-radius: 50%; display: flex;
-            justify-content: center; align-items: center; cursor: pointer; margin-right: 5px;
-        }
-        .btn-delete:hover { background: var(--danger); color: white; }
-
-        .project-group-header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 10px 5px; border-bottom: 2px solid #eee; margin-bottom: 10px; margin-top: 15px;
-        }
-        .project-group-title { font-weight: bold; color: var(--primary); font-size: 1.1em; }
-
-        .btn-vacation-plan {
-            background-color: #e67e22; color: white; border: none;
-            padding: 12px; border-radius: 8px; font-weight: bold;
-            cursor: pointer; width: 100%; transition: 0.3s; font-size: 1rem;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-        }
-        .btn-vacation-plan:hover { background-color: #d35400; box-shadow: 0 4px 10px rgba(230,126,34,0.3); }
-
-        .btn-backup {
-            background-color: #27ae60; color: white; border: none;
-            padding: 12px; border-radius: 8px; font-weight: bold;
-            cursor: pointer; width: 100%; transition: 0.3s; font-size: 1rem;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-        }
-        .btn-backup:hover { background-color: #219653; }
-        
-        .btn-restore {
-            background-color: #c0392b; color: white; border: none;
-            padding: 12px; border-radius: 8px; font-weight: bold;
-            cursor: pointer; width: 100%; transition: 0.3s; font-size: 1rem;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-        }
-        .btn-restore:hover { background-color: #a93226; }
-
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
-        .lang-btn {
-            background: transparent; border: 1px solid #fff; color: var(--primary); 
-            font-weight: bold; cursor: pointer; padding: 5px 10px; border-radius: 5px; 
-            border: 1px solid var(--primary); margin-left: 10px;
-        }
-        html[dir="ltr"] .site-mini-card:hover { transform: translateX(5px); }
-        html[dir="ltr"] .nav-brand { gap: 15px; }
-        html[dir="ltr"] .contract-title { flex-direction: row; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة التحكم — FGC System</title>
+  <link rel="icon" href="FGC.jpeg">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="js/core.js"></script>
 </head>
 <body>
+<div id="pageLoader" class="page-loader"><div class="spinner"></div></div>
+<header id="appHeader"></header>
 
-    <div id="loader">
-        <div class="loader-spinner"></div>
-        <h3 id="txt_loading" style="color: var(--primary); margin-top: 20px;">جاري المعالجة...</h3>
+<main class="page">
+  <div class="page-head">
+    <div>
+      <h1>لوحة التحكم</h1>
+      <p>نظرة عامة على العقود والمواقع والأرصدة</p>
     </div>
-
-    <nav class="navbar">
-        <div class="nav-brand">
-            <img src="FGC.jpeg" alt="Logo">
-            <div>
-                <h2>FGC Dashboard</h2>
-                <span id="txt_nav_subtitle" style="font-size: 0.8rem; color: #888;">إدارة العقود والمواقع</span>
-            </div>
-        </div>
-        <div style="display: flex; align-items: center;">
-            <button onclick="toggleLanguage()" class="lang-btn">English / عربي</button>
-            <button onclick="logout()" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> <span id="txt_logout">خروج</span></button>
-        </div>
-    </nav>
-
-    <div class="container">
-        
-        <div id="adminPanel" class="admin-panel">
-            <h3 style="margin-top: 0; color: var(--primary);">👑 <span id="txt_admin_panel">لوحة تحكم المدير</span></h3>
-            
-            <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px;">
-                <div style="flex: 1; min-width: 150px;">
-                     <button onclick="openUsersModal()" class="btn-users" style="width: 100%; padding: 12px; border-radius: 8px;">
-                        <i class="fa-solid fa-users-gear"></i> <span id="txt_manage_users">المستخدمين</span>
-                    </button>
-                </div>
-                <div style="flex: 1; min-width: 150px;">
-                    <button onclick="recalculateAllProjects()" class="btn-sync" style="width: 100%; padding: 12px; border-radius: 8px;">
-                        <i class="fa-solid fa-rotate"></i> <span id="txt_refresh_balance">تحديث الأرصدة</span>
-                    </button>
-                </div>
-                <div style="flex: 1.5; min-width: 250px; display: flex; gap: 10px;">
-                    <button onclick="startBackup()" id="backupBtn" class="btn-backup" style="flex: 1;">
-                        <i class="fa-solid fa-cloud-arrow-down"></i> <span id="txt_backup">نسخة احتياطية</span>
-                    </button>
-                    <button onclick="document.getElementById('restoreFileInput').click()" id="restoreBtn" class="btn-restore" style="flex: 1;">
-                        <i class="fa-solid fa-cloud-arrow-up"></i> <span id="txt_restore">استعادة</span>
-                    </button>
-                    <input type="file" id="restoreFileInput" accept=".json" style="display:none" onchange="processRestore(event)">
-                </div>
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <button onclick="window.location.href='vacations.html'" class="btn-vacation-plan">
-                    <i class="fa-solid fa-umbrella-beach"></i> <span id="txt_vacations_plan">إدارة خطط إجازات الموظفين</span>
-                </button>
-            </div>
-            
-            <hr style="border: 0; border-top: 1px dashed #ddd; margin: 20px 0;">
-
-            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                <button onclick="document.getElementById('addContractModal').style.display='flex'" class="btn btn-primary" style="flex: 1; padding: 15px;">
-                    <i class="fa-solid fa-file-contract" style="font-size: 1.2rem;"></i><br> <span id="txt_add_contract">إضافة عقد جديد</span>
-                </button>
-                <button onclick="openAddSiteModal()" class="btn btn-warning" style="flex: 1; padding: 15px; color: white;">
-                    <i class="fa-solid fa-map-location-dot" style="font-size: 1.2rem;"></i><br> <span id="txt_add_site">إضافة موقع / بند</span>
-                </button>
-            </div>
-        </div>
-
-        <h3 style="margin-bottom: 20px; color: var(--text-dark); border-bottom: 2px solid var(--accent); display: inline-block; padding-bottom: 5px;">
-            <i class="fa-solid fa-folder-tree"></i> <span id="txt_contracts_title">العقود والمشاريع</span>
-        </h3>
-        
-        <div id="contractsGrid">
-            <p id="txt_loading_contracts" style="text-align:center; color:#888;">جاري تحميل العقود...</p>
-        </div>
+    <div class="actions">
+      <button class="btn btn-secondary" onclick="openContractModal()"><i class="fa-solid fa-file-signature"></i> عقد جديد</button>
+      <button class="btn btn-primary" onclick="openSiteModal()"><i class="fa-solid fa-plus"></i> إضافة موقع / بند</button>
     </div>
+  </div>
 
-    <div id="addContractModal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 600px;">
-            <span class="close-modal" onclick="document.getElementById('addContractModal').style.display='none'">&times;</span>
-            <h2 style="color: var(--primary); margin-top: 0;"><span id="txt_modal_add_contract">إضافة عقد جديد</span></h2>
-            <div class="input-group" style="flex-direction: column; align-items: stretch;">
-                <div class="input-box">
-                    <label id="lbl_contract_name">اسم العقد</label>
-                    <input type="text" id="newContractName">
-                </div>
-                <div class="input-box">
-                    <label id="lbl_contract_auth">الجهة المشرفة</label>
-                    <input type="text" id="newContractAuth">
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <div class="input-box" style="flex:1;">
-                        <label id="lbl_start_date">تاريخ البداية</label>
-                        <input type="date" id="newContractStart">
-                    </div>
-                    <div class="input-box" style="flex:1;">
-                        <label id="lbl_end_date">تاريخ النهاية</label>
-                        <input type="date" id="newContractEnd">
-                    </div>
-                </div>
-                <p id="txt_contract_hint" style="font-size:0.85em; color:#888; margin-top:5px;">* القيمة تحسب تلقائياً.</p>
-                <button onclick="addContract()" class="btn-add" style="margin-top: 10px; width: 100%;"><span id="btn_save_contract">حفظ العقد</span></button>
-            </div>
-        </div>
-    </div>
+  <div class="kpis">
+    <div class="kpi"><div class="kpi__label"><span class="kpi__icon"><i class="fa-solid fa-file-contract"></i></span>العقود / البنود</div><div class="kpi__value" id="kContracts">—</div></div>
+    <div class="kpi"><div class="kpi__label"><span class="kpi__icon"><i class="fa-solid fa-wallet"></i></span>إجمالي الميزانيات</div><div class="kpi__value" id="kBudget">—</div></div>
+    <div class="kpi kpi--danger"><div class="kpi__label"><span class="kpi__icon"><i class="fa-solid fa-arrow-trend-down"></i></span>إجمالي المصروف</div><div class="kpi__value" id="kSpent">—</div></div>
+    <div class="kpi kpi--success"><div class="kpi__label"><span class="kpi__icon"><i class="fa-solid fa-scale-balanced"></i></span>الرصيد المتبقي</div><div class="kpi__value" id="kBalance">—</div></div>
+    <div class="kpi kpi--accent"><div class="kpi__label"><span class="kpi__icon"><i class="fa-solid fa-coins"></i></span>إجمالي التمويل</div><div class="kpi__value" id="kProfit">—</div></div>
+  </div>
 
-    <div id="editContractModal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 600px;">
-            <span class="close-modal" onclick="document.getElementById('editContractModal').style.display='none'">&times;</span>
-            <h2 style="color: var(--primary); margin-top: 0;"><span id="txt_modal_edit_contract">تعديل بيانات العقد</span></h2>
-            <input type="hidden" id="editContractId">
-            <div class="input-group" style="flex-direction: column; align-items: stretch;">
-                <div class="input-box">
-                    <label id="lbl_edit_contract_name">اسم العقد</label>
-                    <input type="text" id="editContractName">
-                </div>
-                <div class="input-box">
-                    <label id="lbl_edit_contract_auth">الجهة المشرفة</label>
-                    <input type="text" id="editContractAuth">
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <div class="input-box" style="flex:1;">
-                        <label id="lbl_edit_start_date">تاريخ البداية</label>
-                        <input type="date" id="editContractStart">
-                    </div>
-                    <div class="input-box" style="flex:1;">
-                        <label id="lbl_edit_end_date">تاريخ النهاية</label>
-                        <input type="date" id="editContractEnd">
-                    </div>
-                </div>
-                <button onclick="updateContract()" class="btn-add" style="margin-top: 10px; width: 100%;"><span id="btn_update_contract">حفظ التعديلات</span></button>
-            </div>
-        </div>
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-head"><h3><i class="fa-solid fa-screwdriver-wrench text-brand"></i> أدوات المدير</h3></div>
+    <div class="card-body actions">
+      <button class="btn btn-secondary" onclick="openUsersModal()"><i class="fa-solid fa-users-gear"></i> المستخدمين والصلاحيات</button>
+      <button class="btn btn-secondary" onclick="recalculateAll(this)"><i class="fa-solid fa-rotate"></i> إعادة حساب الأرصدة</button>
+      <button class="btn btn-secondary" onclick="startBackup(this)"><i class="fa-solid fa-cloud-arrow-down"></i> نسخة احتياطية</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('restoreFile').click()"><i class="fa-solid fa-cloud-arrow-up"></i> استعادة نسخة</button>
+      <input type="file" id="restoreFile" accept=".json" hidden onchange="processRestore(event)">
+      <a class="btn btn-secondary" href="vacations.html"><i class="fa-solid fa-umbrella-beach"></i> خطط الإجازات</a>
     </div>
+  </div>
 
-    <div id="addSiteModal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 500px;">
-            <span class="close-modal" onclick="document.getElementById('addSiteModal').style.display='none'">&times;</span>
-            <h2 style="color: var(--primary); margin-top: 0;"><span id="txt_modal_add_site">إضافة بند للعقد</span></h2>
-            <div class="input-group" style="flex-direction: column; align-items: stretch;">
-                <div class="input-box">
-                    <label id="lbl_select_contract">اختر العقد</label>
-                    <select id="contractSelect" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                        <option value="">...</option>
-                    </select>
-                </div>
-                <div class="input-box">
-                    <label id="lbl_site_category">نوع البند</label>
-                    <select id="newSiteCategory" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-weight:bold;">
-                        <option value="spare_parts" selected>⚙️ Spare Parts</option>
-                        <option value="labor">👷 Labor</option>
-                        <option value="subcontractors">🤝 Subcontractors</option>
-                    </select>
-                </div>
-                <div class="input-box">
-                    <label id="lbl_site_name">اسم الموقع/المشروع</label>
-                    <input type="text" id="newSiteName">
-                </div>
-                <div class="input-box">
-                    <label id="lbl_site_budget">الميزانية</label>
-                    <input type="number" id="newSiteBudget">
-                </div>
-                <button onclick="addSite()" class="btn-add" style="margin-top: 10px; width: 100%;"><span id="btn_save_site">حفظ</span></button>
-            </div>
-        </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="toolbar" style="border-bottom:0;border-radius:var(--radius)">
+      <div class="field grow"><label>بحث</label><div class="input-icon"><i class="fa-solid fa-magnifying-glass"></i><input class="input" id="search" placeholder="ابحث باسم العقد أو الموقع أو الجهة المشرفة..."></div></div>
+      <div class="field"><label>نوع البند</label>
+        <select class="select" id="catFilter"><option value="">الكل</option><option value="spare_parts">قطع غيار</option><option value="labor">عمالة</option><option value="subcontractors">مقاولي باطن</option></select>
+      </div>
+      <div class="actions"><button class="btn btn-ghost btn-sm" onclick="toggleAll(true)">فتح الكل</button><button class="btn btn-ghost btn-sm" onclick="toggleAll(false)">طي الكل</button></div>
     </div>
+  </div>
 
-    <div id="editSiteModal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 500px;">
-            <span class="close-modal" onclick="document.getElementById('editSiteModal').style.display='none'">&times;</span>
-            <h2 style="color: var(--primary); margin-top: 0;"><span id="txt_modal_edit_site">تعديل بيانات البند</span></h2>
-            <input type="hidden" id="editSiteId">
-            <div class="input-group" style="flex-direction: column; align-items: stretch;">
-                <div class="input-box">
-                    <label id="lbl_edit_site_contract">العقد التابع له</label>
-                    <select id="editSiteContractSelect" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; background: #fffbe6;">
-                    </select>
-                </div>
-                <div class="input-box">
-                    <label id="lbl_edit_site_cat">نوع البند</label>
-                    <select id="editSiteCategory" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                        <option value="spare_parts">⚙️ Spare Parts</option>
-                        <option value="labor">👷 Labor</option>
-                        <option value="subcontractors">🤝 Subcontractors</option>
-                    </select>
-                </div>
-                <div class="input-box">
-                    <label id="lbl_edit_site_name">اسم الموقع/المشروع</label>
-                    <input type="text" id="editSiteName">
-                </div>
-                <div class="input-box">
-                    <label id="lbl_edit_site_budget">الميزانية المخصصة</label>
-                    <input type="number" id="editSiteBudget">
-                </div>
-                <button onclick="updateSite()" class="btn-add" style="margin-top: 10px; width: 100%;"><span id="btn_update_site">حفظ التعديلات</span></button>
-            </div>
-        </div>
-    </div>
+  <div id="contracts"><div class="card card-body"><div class="skeleton" style="width:40%"></div><br><div class="skeleton"></div></div></div>
+</main>
 
-    <div id="usersModal" class="modal-overlay">
-        <div class="modal-content">
-            <span class="close-modal" onclick="document.getElementById('usersModal').style.display='none'">&times;</span>
-            <h2 style="color: var(--primary); margin-top: 0;"><span id="txt_modal_users">إدارة المستخدمين</span></h2>
-            <div class="table-container">
-                <table class="users-table">
-                    <thead>
-                        <tr>
-                            <th id="th_email">البريد الإلكتروني</th>
-                            <th id="th_role">الصلاحية</th>
-                            <th id="th_site">الموقع المخصص</th>
-                            <th id="th_action">إجراء</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usersTableBody"></tbody>
-                </table>
-            </div>
-        </div>
+<!-- Contract modal -->
+<div class="modal" id="contractModal">
+  <div class="modal__dialog">
+    <div class="modal__head"><div><h3 id="contractModalTitle">عقد جديد</h3><p>قيمة العقد تُحسب تلقائياً من ميزانيات البنود.</p></div><button class="btn btn-ghost btn-icon" data-close><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal__body">
+      <input type="hidden" id="cId">
+      <div class="field"><label class="req">اسم العقد</label><input class="input" id="cName"></div>
+      <div class="field"><label>الجهة المشرفة</label><input class="input" id="cAuth"></div>
+      <div class="form-grid">
+        <div class="field"><label>تاريخ البداية</label><input type="date" class="input" id="cStart"></div>
+        <div class="field"><label>تاريخ النهاية</label><input type="date" class="input" id="cEnd"></div>
+      </div>
     </div>
+    <div class="modal__foot"><button class="btn btn-secondary" data-close>إلغاء</button><button class="btn btn-primary" onclick="saveContract(this)">حفظ</button></div>
+  </div>
+</div>
+
+<!-- Site modal -->
+<div class="modal" id="siteModal">
+  <div class="modal__dialog">
+    <div class="modal__head"><div><h3 id="siteModalTitle">إضافة موقع / بند</h3></div><button class="btn btn-ghost btn-icon" data-close><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal__body">
+      <input type="hidden" id="sId">
+      <div class="field"><label class="req">العقد</label><select class="select" id="sContract"></select></div>
+      <div class="form-grid">
+        <div class="field"><label class="req">اسم الموقع / المشروع</label><input class="input" id="sName" list="projectNames"><datalist id="projectNames"></datalist></div>
+        <div class="field"><label class="req">نوع البند</label>
+          <select class="select" id="sCat"><option value="spare_parts">قطع غيار</option><option value="labor">عمالة</option><option value="subcontractors">مقاولي باطن</option></select>
+        </div>
+      </div>
+      <div class="field"><label class="req">الميزانية المعتمدة</label><input type="number" class="input" id="sBudget" min="0" step="0.01"><span class="hint" id="sBudgetHint"></span></div>
+    </div>
+    <div class="modal__foot"><button class="btn btn-secondary" data-close>إلغاء</button><button class="btn btn-primary" onclick="saveSite(this)">حفظ</button></div>
+  </div>
+</div>
+
+<!-- Users modal -->
+<div class="modal" id="usersModal">
+  <div class="modal__dialog lg">
+    <div class="modal__head"><div><h3>المستخدمين والصلاحيات</h3><p>حدد صلاحية كل مستخدم والموقع المسموح له بالدخول عليه.</p></div><button class="btn btn-ghost btn-icon" data-close><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal__body" style="padding:0">
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>البريد الإلكتروني</th><th style="width:170px">الصلاحية</th><th>الموقع المخصص</th><th></th></tr></thead>
+        <tbody id="usersBody"></tbody>
+      </table></div>
+    </div>
+    <div class="modal__foot" style="justify-content:flex-start"><span class="small muted"><i class="fa-solid fa-circle-info"></i> المدير يرى كل المواقع. باقي الصلاحيات تحتاج تحديد موقع.</span></div>
+  </div>
+</div>
 
 <script>
-    const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+  const { db, firebase, esc, fmt, num, toast, openModal, closeModal, confirmDialog, withButton, busy, commitInChunks, CATEGORIES, catBadge, ROLES, tsMillis } = FGC;
+  let contracts = [], sites = [], openIds = new Set();
+  let unsubs = [];
 
-    let allContracts = [];
-    let allSites = [];
-    let currentLang = localStorage.getItem('lang') || 'ar';
+  FGC.init({ admin: true, nav: 'dashboard' }).then(() => {
+    unsubs.push(db.collection('contracts').onSnapshot(s => {
+      contracts = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => tsMillis(b.createdAt) - tsMillis(a.createdAt));
+      render();
+    }, err => toast(FGC.errMsg(err), 'error')));
+    unsubs.push(db.collection('budgets').onSnapshot(s => {
+      sites = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      render();
+    }, err => toast(FGC.errMsg(err), 'error')));
+  });
 
-    const i18n = {
-        ar: {
-            nav_subtitle: "إدارة العقود والمواقع",
-            logout: "خروج",
-            admin_panel: "لوحة تحكم المدير",
-            manage_users: "المستخدمين",
-            refresh_balance: "تحديث الأرصدة",
-            vacations_plan: "إدارة خطط إجازات الموظفين",
-            backup: "نسخة احتياطية",
-            restore: "استعادة",
-            add_contract: "إضافة عقد جديد",
-            add_site: "إضافة موقع / بند",
-            contracts_title: "العقود والمشاريع",
-            loading_contracts: "جاري تحميل العقود...",
-            no_contracts: "لا توجد عقود حالياً. ابدأ بإضافة عقد جديد.",
-            total_contract: "إجمالي العقد",
-            total_spent: "إجمالي المصروف",
-            budget: "الميزانية",
-            spent: "المصروف",
-            details: "التفاصيل",
-            delete_project: "حذف المشروع",
-            delete_contract: "حذف العقد",
-            confirm_delete_contract: "تحذير هام!\nهل أنت متأكد من حذف العقد وكل المشاريع والبيانات المالية بداخله نهائياً؟",
-            confirm_delete_project: "هل أنت متأكد من حذف المشروع؟ سيتم حذف جميع البنود التابعة له.",
-            spare_parts: "قطع غيار",
-            labor: "عمالة",
-            subcontractors: "مقاولي باطن",
-            orphans_title: "مواقع غير مرتبطة بعقد",
-            empty_contract: "لا توجد بنود مضافة لهذا العقد بعد.",
-            modal_add_contract: "إضافة عقد جديد",
-            modal_edit_contract: "تعديل بيانات العقد",
-            lbl_name: "الاسم",
-            lbl_auth: "الجهة المشرفة",
-            lbl_start: "تاريخ البداية",
-            lbl_end: "تاريخ النهاية",
-            btn_save: "حفظ",
-            btn_update: "تحديث",
-            hint_contract: "* القيمة تحسب تلقائياً.",
-            modal_add_site: "إضافة بند للعقد",
-            modal_edit_site: "تعديل بيانات البند",
-            lbl_select_contract: "اختر العقد",
-            lbl_cat: "نوع البند",
-            lbl_site_name: "اسم الموقع/المشروع",
-            lbl_budget: "الميزانية",
-            modal_users: "إدارة المستخدمين",
-            th_email: "البريد الإلكتروني",
-            th_role: "الصلاحية",
-            th_site: "الموقع المخصص",
-            th_action: "إجراء",
-            role_user: "مستخدم (إدخال)",
-            role_admin: "مدير (Admin)",
-            role_viewer: "مشاهد فقط",
-            role_viewer_pro: "مشاهد + أرباح",
-            no_site: "-- بدون موقع --",
-            other: "أخرى",
-            msg_success_add: "تم الإضافة بنجاح",
-            msg_success_update: "تم التحديث بنجاح",
-            msg_success_delete: "تم الحذف بنجاح",
-            msg_confirm_recalc: "إعادة حساب الأرصدة؟",
-            msg_incomplete: "البيانات ناقصة"
-        },
-        en: {
-            nav_subtitle: "Contract & Site Management",
-            logout: "Logout",
-            admin_panel: "Admin Control Panel",
-            manage_users: "Users",
-            refresh_balance: "Sync Balances",
-            vacations_plan: "Vacations Plan Management",
-            backup: "Backup Data",
-            restore: "Restore",
-            add_contract: "Add New Contract",
-            add_site: "Add Site / Item",
-            contracts_title: "Contracts & Projects",
-            loading_contracts: "Loading contracts...",
-            no_contracts: "No contracts found. Start by adding a new one.",
-            total_contract: "Total Contract",
-            total_spent: "Total Spent",
-            budget: "Budget",
-            spent: "Spent",
-            details: "Details",
-            delete_project: "Delete Project",
-            delete_contract: "Delete Contract",
-            confirm_delete_contract: "Important Warning!\nAre you sure you want to delete this contract and all its financial data permanently?",
-            confirm_delete_project: "Are you sure you want to delete this project? All associated items will be deleted.",
-            spare_parts: "Spare Parts",
-            labor: "Labor",
-            subcontractors: "Subcontractors",
-            orphans_title: "Unlinked Sites",
-            empty_contract: "No items added to this contract yet.",
-            modal_add_contract: "Add New Contract",
-            modal_edit_contract: "Edit Contract",
-            lbl_name: "Name",
-            lbl_auth: "Supervising Authority",
-            lbl_start: "Start Date",
-            lbl_end: "End Date",
-            btn_save: "Save",
-            btn_update: "Update",
-            hint_contract: "* Value calculated automatically.",
-            modal_add_site: "Add Item to Contract",
-            modal_edit_site: "Edit Item",
-            lbl_select_contract: "Select Contract",
-            lbl_cat: "Category",
-            lbl_site_name: "Site/Project Name",
-            lbl_budget: "Budget",
-            modal_users: "Manage Users",
-            th_email: "Email",
-            th_role: "Role",
-            th_site: "Assigned Site",
-            th_action: "Action",
-            role_user: "User (Input)",
-            role_admin: "Admin",
-            role_viewer: "Viewer Only",
-            role_viewer_pro: "Viewer + Profit",
-            no_site: "-- No Site --",
-            other: "Others",
-            msg_success_add: "Added Successfully",
-            msg_success_update: "Updated Successfully",
-            msg_success_delete: "Deleted Successfully",
-            msg_confirm_recalc: "Recalculate balances?",
-            msg_incomplete: "Incomplete Data"
-        }
-    };
+  document.getElementById('search').addEventListener('input', render);
+  document.getElementById('catFilter').addEventListener('change', render);
 
-    function t(key) { return i18n[currentLang][key] || key; }
+  function pct(site) { const b = num(site.totalAllocatedAmount); return b ? (num(site.totalSpent) / b) * 100 : 0; }
 
-    function updateLanguageUI() {
-        document.documentElement.lang = currentLang;
-        document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
-        
-        document.getElementById('txt_nav_subtitle').innerText = t('nav_subtitle');
-        document.getElementById('txt_logout').innerText = t('logout');
-        document.getElementById('txt_admin_panel').innerText = t('admin_panel');
-        document.getElementById('txt_manage_users').innerText = t('manage_users');
-        document.getElementById('txt_refresh_balance').innerText = t('refresh_balance');
-        document.getElementById('txt_vacations_plan').innerText = t('vacations_plan');
-        document.getElementById('txt_backup').innerText = t('backup');
-        document.getElementById('txt_restore').innerText = t('restore');
-        document.getElementById('txt_add_contract').innerText = t('add_contract');
-        document.getElementById('txt_add_site').innerText = t('add_site');
-        document.getElementById('txt_contracts_title').innerText = t('contracts_title');
-        document.getElementById('txt_loading_contracts').innerText = t('loading_contracts');
-        
-        document.getElementById('txt_modal_add_contract').innerText = t('modal_add_contract');
-        document.getElementById('lbl_contract_name').innerText = t('lbl_name');
-        document.getElementById('lbl_contract_auth').innerText = t('lbl_auth');
-        document.getElementById('lbl_start_date').innerText = t('lbl_start');
-        document.getElementById('lbl_end_date').innerText = t('lbl_end');
-        document.getElementById('txt_contract_hint').innerText = t('hint_contract');
-        document.getElementById('btn_save_contract').innerText = t('btn_save');
+  function render() {
+    // KPIs
+    const tb = sites.reduce((s, x) => s + num(x.totalAllocatedAmount), 0);
+    const ts = sites.reduce((s, x) => s + num(x.totalSpent), 0);
+    const tp = sites.reduce((s, x) => s + num(x.totalProfit), 0);
+    document.getElementById('kContracts').textContent = `${contracts.length} / ${sites.length}`;
+    document.getElementById('kBudget').textContent = fmt(tb);
+    document.getElementById('kSpent').textContent = fmt(ts);
+    document.getElementById('kBalance').textContent = fmt(tb - ts);
+    document.getElementById('kProfit').textContent = fmt(tp);
 
-        document.getElementById('txt_modal_edit_contract').innerText = t('modal_edit_contract');
-        document.getElementById('lbl_edit_contract_name').innerText = t('lbl_name');
-        document.getElementById('lbl_edit_contract_auth').innerText = t('lbl_auth');
-        document.getElementById('lbl_edit_start_date').innerText = t('lbl_start');
-        document.getElementById('lbl_edit_end_date').innerText = t('lbl_end');
-        document.getElementById('btn_update_contract').innerText = t('btn_update');
+    const q = document.getElementById('search').value.trim().toLowerCase();
+    const cat = document.getElementById('catFilter').value;
+    const box = document.getElementById('contracts');
 
-        document.getElementById('txt_modal_add_site').innerText = t('modal_add_site');
-        document.getElementById('lbl_select_contract').innerText = t('lbl_select_contract');
-        document.getElementById('lbl_site_category').innerText = t('lbl_cat');
-        document.getElementById('lbl_site_name').innerText = t('lbl_site_name');
-        document.getElementById('lbl_site_budget').innerText = t('lbl_budget');
-        document.getElementById('btn_save_site').innerText = t('btn_save');
+    const groups = contracts.map(c => ({ c, items: sites.filter(s => s.contractId === c.id) }));
+    const orphans = sites.filter(s => !s.contractId || !contracts.some(c => c.id === s.contractId));
+    if (orphans.length) groups.push({ c: { id: '__orphans', name: 'مواقع غير مرتبطة بعقد', orphan: true }, items: orphans });
 
-        document.getElementById('txt_modal_edit_site').innerText = t('modal_edit_site');
-        document.getElementById('lbl_edit_site_contract').innerText = t('lbl_select_contract');
-        document.getElementById('lbl_edit_site_cat').innerText = t('lbl_cat');
-        document.getElementById('lbl_edit_site_name').innerText = t('lbl_site_name');
-        document.getElementById('lbl_edit_site_budget').innerText = t('lbl_budget');
-        document.getElementById('btn_update_site').innerText = t('btn_update');
-        
-        document.getElementById('txt_modal_users').innerText = t('modal_users');
-        document.getElementById('th_email').innerText = t('th_email');
-        document.getElementById('th_role').innerText = t('th_role');
-        document.getElementById('th_site').innerText = t('th_site');
-        document.getElementById('th_action').innerText = t('th_action');
+    const html = groups.map(({ c, items }) => {
+      let list = cat ? items.filter(s => (s.category || 'spare_parts') === cat) : items;
+      const cMatch = !q || [c.name, c.supervisingAuthority].some(v => String(v || '').toLowerCase().includes(q));
+      if (q && !cMatch) list = list.filter(s => String(s.itemName || '').toLowerCase().includes(q));
+      if ((q || cat) && !list.length && !(cMatch && !cat)) return '';
+      return contractCard(c, items, list, !!(q || cat));
+    }).join('');
 
-        renderDashboard();
-    }
+    box.innerHTML = html || `<div class="card"><div class="empty"><i class="fa-regular fa-folder-open"></i><h4>${contracts.length ? 'لا توجد نتائج مطابقة' : 'لا توجد عقود بعد'}</h4><p>${contracts.length ? 'جرّب كلمة بحث أخرى.' : 'ابدأ بإضافة عقد جديد ثم أضف له المواقع والبنود.'}</p></div></div>`;
+  }
 
-    function toggleLanguage() {
-        currentLang = currentLang === 'ar' ? 'en' : 'ar';
-        localStorage.setItem('lang', currentLang);
-        updateLanguageUI();
-    }
+  function contractCard(c, allItems, list, forceOpen) {
+    const budget = allItems.reduce((s, x) => s + num(x.totalAllocatedAmount), 0);
+    const spent = allItems.reduce((s, x) => s + num(x.totalSpent), 0);
+    const open = forceOpen || openIds.has(c.id) || c.orphan;
+    const cid = esc(c.id);
 
-    document.addEventListener('DOMContentLoaded', updateLanguageUI);
+    // group by project name
+    const projects = {};
+    list.forEach(s => { const k = s.itemName || '—'; (projects[k] = projects[k] || []).push(s); });
 
-    auth.onAuthStateChanged(async user => {
-        if(!user) { window.location.href = "index.html"; return; }
-        
-        const userDoc = await db.collection('users').doc(user.uid).get();
-        if (userDoc.exists) {
-            const userData = userDoc.data();
-            if(userData.role === 'admin') {
-                document.getElementById('adminPanel').style.display = 'block';
-                loadData(); 
-            } else {
-                if(userData.assignedSiteId) window.location.href = "details_finance.html?id=" + userData.assignedSiteId;
-                else document.getElementById('contractsGrid').innerHTML = `<p style='text-align:center'>${t('no_contracts')}</p>`;
-            }
-        }
-    });
+    const body = Object.keys(projects).length ? Object.entries(projects).map(([name, items]) => `
+      <div class="project-title">
+        <span><i class="fa-solid fa-building text-brand"></i> ${esc(name)}</span>
+        ${c.orphan ? '' : `<button class="btn btn-ghost btn-sm text-danger" data-act="delProject" data-cid="${cid}" data-name="${esc(name)}"><i class="fa-regular fa-trash-can"></i> حذف المشروع</button>`}
+      </div>
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>البند</th><th class="num">الميزانية</th><th class="num">المصروف</th><th class="num">المتبقي</th><th style="width:160px">نسبة الصرف</th><th></th></tr></thead>
+        <tbody>${items.map(s => {
+          const p = pct(s); const bal = num(s.totalAllocatedAmount) - num(s.totalSpent);
+          return `<tr>
+            <td>${catBadge(s.category)}</td>
+            <td class="num">${fmt(s.totalAllocatedAmount)}</td>
+            <td class="num text-danger">${fmt(s.totalSpent)}</td>
+            <td class="num fw-600 ${bal < 0 ? 'text-danger' : 'text-success'}">${fmt(bal)}</td>
+            <td><div class="row" style="gap:8px;flex-wrap:nowrap"><div class="progress ${p > 90 ? 'is-danger' : p > 75 ? 'is-warning' : ''}" style="flex:1"><span style="width:${Math.min(p, 100)}%"></span></div><span class="small muted">${p.toFixed(0)}%</span></div></td>
+            <td class="actions-cell">
+              <a class="btn btn-secondary btn-sm" href="details_finance.html?id=${encodeURIComponent(s.id)}">فتح <i class="fa-solid fa-arrow-left"></i></a>
+              <button class="btn btn-ghost btn-icon" title="تعديل" data-act="editSite" data-id="${esc(s.id)}"><i class="fa-regular fa-pen-to-square"></i></button>
+            </td></tr>`;
+        }).join('')}</tbody>
+      </table></div>`).join('')
+      : `<div class="empty" style="padding:28px"><h4>لا توجد بنود في هذا العقد</h4></div>`;
 
-    function loadData() {
-        db.collection("contracts").orderBy("createdAt", "desc").onSnapshot(contractSnap => {
-            allContracts = [];
-            contractSnap.forEach(doc => allContracts.push({ id: doc.id, ...doc.data() }));
-            
-            db.collection("budgets").onSnapshot(siteSnap => {
-                allSites = [];
-                siteSnap.forEach(doc => allSites.push({ id: doc.id, ...doc.data() }));
-                renderDashboard();
-            });
-        });
-    }
-
-    function renderDashboard() {
-        const container = document.getElementById('contractsGrid');
-        container.innerHTML = "";
-
-        if (allContracts.length === 0 && allSites.length > 0) {
-            renderContractCard({ id: 'legacy', name: t('other'), totalValue: 0 }, allSites, container);
-            return;
-        }
-
-        if (allContracts.length === 0) {
-            container.innerHTML = `<p style='text-align:center'>${t('no_contracts')}</p>`;
-            return;
-        }
-
-        allContracts.forEach(contract => {
-            const contractSites = allSites.filter(site => site.contractId === contract.id);
-            renderContractCard(contract, contractSites, container);
-        });
-
-        const orphanSites = allSites.filter(site => !site.contractId);
-        if (orphanSites.length > 0) {
-            renderContractCard({ id: 'orphans', name: t('orphans_title'), totalValue: 0 }, orphanSites, container, true);
-        }
-    }
-
-    function renderContractCard(contract, sites, container, isOrphan = false) {
-        const allocatedTotal = sites.reduce((sum, s) => sum + (s.totalAllocatedAmount || 0), 0);
-        const spentTotal = sites.reduce((sum, s) => sum + (s.totalSpent || 0), 0);
-        
-        let sitesHTML = "";
-
-        if (sites.length === 0) {
-            sitesHTML = `<div class="empty-sites">${t('empty_contract')}</div>`;
-        } else {
-            const groupedProjects = {};
-            sites.forEach(site => {
-                const name = site.itemName;
-                if (!groupedProjects[name]) groupedProjects[name] = [];
-                groupedProjects[name].push(site);
-            });
-
-            Object.keys(groupedProjects).forEach(projectName => {
-                const projectItems = groupedProjects[projectName];
-                
-                sitesHTML += `
-                <div class="project-group-header">
-                    <span class="project-group-title"><i class="fa-solid fa-layer-group"></i> ${projectName}</span>
-                    <button onclick="deleteProjectGroup('${contract.id}', '${projectName}')" class="btn btn-outline" style="border-color:var(--danger); color:var(--danger); font-size:0.8em; padding:3px 10px;">
-                        <i class="fa-solid fa-trash"></i> ${t('delete_project')}
-                    </button>
-                </div>
-                `;
-
-                projectItems.forEach(site => {
-                    const percent = site.totalAllocatedAmount ? (site.currentBalance / site.totalAllocatedAmount) * 100 : 0;
-                    const balanceColor = percent < 20 ? 'var(--danger)' : 'var(--success)';
-                    const catKey = site.category || 'spare_parts';
-                    
-                    const catName = t(catKey);
-                    let icon = 'fa-cogs';
-                    let badgeClass = 'cat-spare_parts';
-                    if(catKey === 'labor') { icon = 'fa-hard-hat'; badgeClass = 'cat-labor'; }
-                    if(catKey === 'subcontractors') { icon = 'fa-handshake'; badgeClass = 'cat-subcontractors'; }
-
-                    sitesHTML += `
-                    <div class="site-mini-card">
-                        <div class="site-info">
-                            <h4>
-                                <i class="fa-solid ${icon}" style="color:var(--primary);"></i> 
-                                ${catName}
-                                <span class="category-badge ${badgeClass}">${catName}</span>
-                            </h4>
-                            <div class="site-stats">
-                                <span>${t('budget')}: ${fmt(site.totalAllocatedAmount)}</span>
-                                <span>${t('spent')}: <span style="color:var(--danger)">${fmt(site.totalSpent)}</span></span>
-                            </div>
-                        </div>
-                        <div style="text-align:left">
-                            <div class="site-balance" style="color:${balanceColor}">${fmt(site.currentBalance)}</div>
-                            <div style="margin-top:5px; display:flex; gap:5px; justify-content:flex-end;">
-                                <a href="details_finance.html?id=${site.id}" class="btn btn-outline" style="font-size:0.8em; padding:5px 10px; display:inline-block;">${t('details')}</a>
-                                <button onclick="openEditSiteModal('${site.id}')" class="btn-edit-sm" title="${t('modal_edit_site')}"><i class="fa-solid fa-pen-to-square"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                    `;
-                });
-            });
-        }
-
-        const headerStyle = isOrphan ? 'background: #fff0f0; border-bottom-color: var(--danger);' : '';
-        const titleStyle = isOrphan ? 'color: var(--danger);' : '';
-        const authority = contract.supervisingAuthority ? `<span title="${t('lbl_auth')}"><i class="fa-solid fa-building-columns"></i> ${contract.supervisingAuthority}</span>` : '';
-        const dateRange = (contract.startDate || contract.endDate) ? 
-            `<span title="Date"><i class="fa-regular fa-calendar"></i> ${contract.startDate || '?'} <i class="fa-solid fa-arrow-left" style="font-size:0.7em"></i> ${contract.endDate || '?'}</span>` : '';
-
-        const html = `
-        <div class="contract-card">
-            <div class="contract-header" onclick="toggleSites('${contract.id}')" style="${headerStyle}">
-                <div class="contract-info-block">
-                    <div class="contract-title" style="${titleStyle}">
-                        <i class="fa-solid ${isOrphan ? 'fa-triangle-exclamation' : 'fa-file-signature'}"></i>
-                        ${contract.name}
-                        ${!isOrphan ? `
-                            <div style="display:flex; gap:5px; margin-right:10px;">
-                                <a href="contract-details.html?id=${contract.id}" onclick="event.stopPropagation();" class="btn-edit-contract" title="Report" style="border-color:var(--primary); color:var(--primary);">
-                                    <i class="fa-solid fa-chart-pie"></i>
-                                </a>
-                                <button onclick="openEditContractModal('${contract.id}'); event.stopPropagation();" class="btn-edit-contract" title="Edit">
-                                    <i class="fa-solid fa-pen"></i>
-                                </button>
-                                <button onclick="deleteContract('${contract.id}', '${contract.name}'); event.stopPropagation();" class="btn-delete" title="${t('delete_contract')}">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                            </div>
-                        ` : ''}
-                    </div>
-                    <div class="contract-details">
-                         ${authority}
-                         ${dateRange}
-                         <span style="border-color:var(--accent); color:var(--primary); font-weight:bold;"><i class="fa-solid fa-calculator"></i> ${t('total_contract')}: ${fmt(allocatedTotal)}</span>
-                         <span><i class="fa-solid fa-chart-pie"></i> ${t('total_spent')}: ${fmt(spentTotal)}</span>
-                    </div>
-                </div>
-                <div><i id="icon-${contract.id}" class="fa-solid fa-chevron-down" style="color:#aaa; font-size:1.2em; margin-top:10px;"></i></div>
-            </div>
-            <div id="sites-${contract.id}" class="sites-container" style="${isOrphan ? 'display:block;' : ''}">
-                ${sitesHTML}
-                ${!isOrphan ? `<div style="text-align:center; margin-top:10px;">
-                    <button onclick="openAddSiteModal('${contract.id}')" class="btn btn-warning" style="font-size:0.9em;">
-                        <i class="fa-solid fa-plus"></i> ${t('add_site')}
-                    </button>
-                </div>` : ''}
-            </div>
+    return `
+    <div class="card contract ${open ? 'is-open' : ''}" id="c-${cid}">
+      <div class="contract__head" data-act="toggle" data-id="${cid}">
+        <div class="contract__icon" ${c.orphan ? 'style="background:var(--danger-50);color:var(--danger)"' : ''}><i class="fa-solid ${c.orphan ? 'fa-triangle-exclamation' : 'fa-file-signature'}"></i></div>
+        <div style="min-width:0">
+          <div class="contract__title">${esc(c.name)}</div>
+          <div class="contract__meta">
+            ${c.supervisingAuthority ? `<span><i class="fa-solid fa-building-columns"></i> ${esc(c.supervisingAuthority)}</span>` : ''}
+            ${(c.startDate || c.endDate) ? `<span><i class="fa-regular fa-calendar"></i> ${esc(c.startDate || '؟')} ← ${esc(c.endDate || '؟')}</span>` : ''}
+            <span><i class="fa-solid fa-layer-group"></i> ${allItems.length} بند</span>
+          </div>
         </div>
-        `;
-        container.innerHTML += html;
-    }
+        <div class="contract__stats">
+          <div><span>قيمة العقد</span><strong>${fmt(budget)}</strong></div>
+          <div><span>المصروف</span><strong class="text-danger">${fmt(spent)}</strong></div>
+          <div><span>المتبقي</span><strong class="text-success">${fmt(budget - spent)}</strong></div>
+        </div>
+        ${c.orphan ? '' : `<div class="actions" style="flex-wrap:nowrap">
+          <a class="btn btn-ghost btn-icon" title="تقرير العقد" href="contract-details.html?id=${encodeURIComponent(c.id)}" onclick="event.stopPropagation()"><i class="fa-solid fa-chart-pie"></i></a>
+          <button class="btn btn-ghost btn-icon" title="تعديل العقد" data-act="editContract" data-id="${cid}"><i class="fa-regular fa-pen-to-square"></i></button>
+          <button class="btn btn-ghost btn-icon text-danger" title="حذف العقد" data-act="delContract" data-id="${cid}"><i class="fa-regular fa-trash-can"></i></button>
+        </div>`}
+        <i class="fa-solid fa-chevron-down chev muted"></i>
+      </div>
+      <div class="contract__body">
+        ${body}
+        ${c.orphan ? '' : `<div style="padding:12px 18px;border-top:1px solid var(--border)"><button class="btn btn-ghost btn-sm text-brand" data-act="addSite" data-id="${cid}"><i class="fa-solid fa-plus"></i> إضافة بند لهذا العقد</button></div>`}
+      </div>
+    </div>`;
+  }
 
-    function toggleSites(id) {
-        const el = document.getElementById(`sites-${id}`);
-        const icon = document.getElementById(`icon-${id}`);
-        if (el.style.display === 'block') {
-            el.style.display = 'none';
-            icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-            el.classList.remove('open');
-        } else {
-            el.style.display = 'block';
-            el.classList.add('open');
-            icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+  // event delegation (بدون تمرير نصوص داخل onclick)
+  document.getElementById('contracts').addEventListener('click', e => {
+    const el = e.target.closest('[data-act]'); if (!el) return;
+    const act = el.dataset.act;
+    if (act !== 'toggle') e.stopPropagation();
+    if (act === 'toggle') {
+      const id = el.dataset.id; const card = document.getElementById('c-' + id);
+      card.classList.toggle('is-open');
+      card.classList.contains('is-open') ? openIds.add(id) : openIds.delete(id);
+    }
+    if (act === 'editContract') openContractModal(el.dataset.id);
+    if (act === 'delContract') deleteContract(el.dataset.id);
+    if (act === 'delProject') deleteProject(el.dataset.cid, el.dataset.name);
+    if (act === 'editSite') openSiteModal(null, el.dataset.id);
+    if (act === 'addSite') openSiteModal(el.dataset.id);
+  });
+
+  function toggleAll(open) {
+    contracts.forEach(c => open ? openIds.add(c.id) : openIds.delete(c.id));
+    render();
+  }
+
+  // ---------- Contracts ----------
+  function openContractModal(id) {
+    const c = contracts.find(x => x.id === id) || {};
+    document.getElementById('contractModalTitle').textContent = id ? 'تعديل بيانات العقد' : 'عقد جديد';
+    document.getElementById('cId').value = id || '';
+    document.getElementById('cName').value = c.name || '';
+    document.getElementById('cAuth').value = c.supervisingAuthority || '';
+    document.getElementById('cStart').value = c.startDate || '';
+    document.getElementById('cEnd').value = c.endDate || '';
+    openModal('contractModal');
+  }
+  function saveContract(btn) {
+    const id = document.getElementById('cId').value;
+    const data = {
+      name: document.getElementById('cName').value.trim(),
+      supervisingAuthority: document.getElementById('cAuth').value.trim(),
+      startDate: document.getElementById('cStart').value,
+      endDate: document.getElementById('cEnd').value
+    };
+    if (!data.name) return toast('اكتب اسم العقد.', 'warning');
+    if (data.startDate && data.endDate && data.endDate < data.startDate) return toast('تاريخ النهاية قبل تاريخ البداية.', 'warning');
+    withButton(btn, async () => {
+      if (id) await db.collection('contracts').doc(id).update(data);
+      else { data.createdAt = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('contracts').add(data); }
+      closeModal('contractModal'); toast(id ? 'تم تحديث العقد' : 'تمت إضافة العقد');
+    });
+  }
+
+  async function deleteSitesDeep(siteDocs) {
+    // يحذف البنود ومعاملاتها المالية (بدل ما تفضل بيانات يتيمة)
+    const ops = [];
+    for (const s of siteDocs) {
+      const tr = await db.collection('budgets').doc(s.id).collection('transactions').get();
+      tr.forEach(t => ops.push(b => b.delete(t.ref)));
+      ops.push(b => b.delete(db.collection('budgets').doc(s.id)));
+    }
+    await commitInChunks(ops);
+  }
+
+  async function deleteContract(id) {
+    const c = contracts.find(x => x.id === id); if (!c) return;
+    const items = sites.filter(s => s.contractId === id);
+    const ok = await confirmDialog(`سيتم حذف العقد "${c.name}" و ${items.length} بند وكل المعاملات المالية بداخلها نهائياً.\nلا يمكن التراجع عن هذا الإجراء.`, { title: 'حذف العقد', confirmText: 'حذف نهائي', danger: true });
+    if (!ok) return;
+    busy(true, 'جاري الحذف...');
+    try {
+      await deleteSitesDeep(items);
+      await db.collection('contracts').doc(id).delete();
+      toast('تم حذف العقد');
+    } catch (e) { toast(FGC.errMsg(e), 'error'); } finally { busy(false); }
+  }
+
+  async function deleteProject(contractId, name) {
+    const items = sites.filter(s => s.contractId === contractId && (s.itemName || '—') === name);
+    const ok = await confirmDialog(`سيتم حذف المشروع "${name}" (${items.length} بند) وكل معاملاته المالية نهائياً.`, { title: 'حذف المشروع', confirmText: 'حذف نهائي', danger: true });
+    if (!ok) return;
+    busy(true, 'جاري الحذف...');
+    try { await deleteSitesDeep(items); toast('تم حذف المشروع'); }
+    catch (e) { toast(FGC.errMsg(e), 'error'); } finally { busy(false); }
+  }
+
+  // ---------- Sites ----------
+  function openSiteModal(contractId, siteId) {
+    const s = sites.find(x => x.id === siteId) || {};
+    document.getElementById('siteModalTitle').textContent = siteId ? 'تعديل بيانات البند' : 'إضافة موقع / بند';
+    document.getElementById('sId').value = siteId || '';
+    const sel = document.getElementById('sContract');
+    const current = siteId ? s.contractId : contractId;
+    sel.innerHTML = '<option value="">— اختر العقد —</option>' + contracts.map(c => `<option value="${esc(c.id)}" ${c.id === current ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+    document.getElementById('projectNames').innerHTML = [...new Set(sites.map(x => x.itemName).filter(Boolean))].map(n => `<option value="${esc(n)}">`).join('');
+    document.getElementById('sName').value = s.itemName || '';
+    document.getElementById('sCat').value = s.category || 'spare_parts';
+    document.getElementById('sBudget').value = siteId ? (s.totalAllocatedAmount ?? '') : '';
+    document.getElementById('sBudgetHint').textContent = siteId ? `المصروف الحالي: ${fmt(s.totalSpent)} — الرصيد يتحدث تلقائياً عند تغيير الميزانية.` : '';
+    openModal('siteModal');
+  }
+  function saveSite(btn) {
+    const id = document.getElementById('sId').value;
+    const contractId = document.getElementById('sContract').value;
+    const itemName = document.getElementById('sName').value.trim();
+    const category = document.getElementById('sCat').value;
+    const budgetRaw = document.getElementById('sBudget').value;
+    const budget = num(budgetRaw);
+    if (!contractId || !itemName || budgetRaw === '') return toast('يرجى استكمال البيانات المطلوبة.', 'warning');
+    withButton(btn, async () => {
+      if (id) {
+        const s = sites.find(x => x.id === id) || {};
+        // إصلاح: الرصيد لازم يتحدث مع تغيير الميزانية
+        await db.collection('budgets').doc(id).update({ contractId, category, itemName, totalAllocatedAmount: budget, currentBalance: budget - num(s.totalSpent) });
+      } else {
+        await db.collection('budgets').add({ contractId, category, itemName, totalAllocatedAmount: budget, currentBalance: budget, totalSpent: 0, totalProfit: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        openIds.add(contractId);
+      }
+      closeModal('siteModal'); toast(id ? 'تم تحديث البند' : 'تمت إضافة البند');
+    });
+  }
+
+  // ---------- Users ----------
+  async function openUsersModal() {
+    const body = document.getElementById('usersBody');
+    body.innerHTML = `<tr><td colspan="4"><div class="skeleton"></div></td></tr>`;
+    openModal('usersModal');
+    try {
+      const snap = await db.collection('users').get(); // بدون orderBy عشان المستخدمين اللي مفيهمش createdAt ميختفوش
+      const users = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => tsMillis(b.createdAt) - tsMillis(a.createdAt));
+      const siteOptions = sel => {
+        let h = `<option value="">— بدون موقع —</option>`;
+        contracts.forEach(c => {
+          const cs = sites.filter(s => s.contractId === c.id);
+          if (!cs.length) return;
+          h += `<optgroup label="${esc(c.name)}">` + cs.map(s => `<option value="${esc(s.id)}" ${s.id === sel ? 'selected' : ''}>${esc(s.itemName)} — ${esc((CATEGORIES[s.category] || CATEGORIES.spare_parts).label)}</option>`).join('') + '</optgroup>';
+        });
+        return h;
+      };
+      body.innerHTML = users.map(u => `
+        <tr data-uid="${esc(u.id)}">
+          <td><div class="cell-title ltr" style="text-align:right">${esc(u.email || u.id)}</div>${!u.assignedSiteId && u.role !== 'admin' ? '<span class="badge badge-warning" style="margin-top:4px">بانتظار التفعيل</span>' : ''}</td>
+          <td><select class="select" data-f="role">${Object.entries(ROLES).map(([k, r]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${r.label}</option>`).join('')}</select></td>
+          <td><select class="select" data-f="site">${siteOptions(u.assignedSiteId)}</select></td>
+          <td class="actions-cell"><button class="btn btn-primary btn-sm" data-save>حفظ</button></td>
+        </tr>`).join('') || `<tr><td colspan="4"><div class="empty">لا يوجد مستخدمين</div></td></tr>`;
+    } catch (e) { body.innerHTML = `<tr><td colspan="4" class="text-danger">${esc(FGC.errMsg(e))}</td></tr>`; }
+  }
+  document.getElementById('usersBody').addEventListener('click', e => {
+    const btn = e.target.closest('[data-save]'); if (!btn) return;
+    const tr = btn.closest('tr');
+    const role = tr.querySelector('[data-f=role]').value;
+    const site = tr.querySelector('[data-f=site]').value;
+    if (role !== 'admin' && !site) toast('تنبيه: المستخدم بدون موقع لن يستطيع الدخول لأي صفحة.', 'warning');
+    withButton(btn, async () => {
+      await db.collection('users').doc(tr.dataset.uid).update({ role, assignedSiteId: site });
+      toast('تم حفظ صلاحيات المستخدم');
+    });
+  });
+
+  // ---------- Recalculate ----------
+  async function recalculateAll(btn) {
+    if (!(await confirmDialog('سيتم إعادة حساب المصروف والرصيد والتمويل لكل البنود من واقع المعاملات المسجلة.', { title: 'إعادة حساب الأرصدة', confirmText: 'ابدأ' }))) return;
+    busy(true, 'جاري إعادة الحساب...');
+    try {
+      const bs = await db.collection('budgets').get();
+      const ops = [];
+      for (const b of bs.docs) {
+        const tr = await b.ref.collection('transactions').get();
+        let s = 0, p = 0;
+        tr.forEach(t => { s += num(t.data().amountExclTax); p += num(t.data().companyProfit); });
+        ops.push(batch => batch.update(b.ref, { totalSpent: s, totalProfit: p, currentBalance: num(b.data().totalAllocatedAmount) - s }));
+      }
+      await commitInChunks(ops);
+      toast('تمت إعادة حساب الأرصدة بنجاح');
+    } catch (e) { toast(FGC.errMsg(e), 'error'); } finally { busy(false); }
+  }
+
+  // ---------- Backup / Restore ----------
+  const TOP_COLLECTIONS = ['users', 'contracts', 'budgets', 'vacations', 'alternative_employees', 'calibrations', 'calibration_device_names',
+    'labor_records', 'subcontractor_visits', 'general_deductions', 'contracts_master_labor', 'contracts_master_devices'];
+
+  function serialize(v) {
+    if (v && typeof v.toMillis === 'function') return { __ts: v.toMillis() };
+    if (Array.isArray(v)) return v.map(serialize);
+    if (v && typeof v === 'object') { const o = {}; for (const k in v) o[k] = serialize(v[k]); return o; }
+    return v;
+  }
+  function deserialize(v) {
+    if (Array.isArray(v)) return v.map(deserialize);
+    if (v && typeof v === 'object') {
+      const keys = Object.keys(v);
+      if (keys.length === 1 && keys[0] === '__ts') return firebase.firestore.Timestamp.fromMillis(v.__ts);
+      if (keys.length === 2 && 'seconds' in v && 'nanoseconds' in v) return new firebase.firestore.Timestamp(v.seconds, v.nanoseconds); // نسخ قديمة
+      const o = {}; for (const k in v) o[k] = deserialize(v[k]); return o;
+    }
+    return v;
+  }
+
+  async function startBackup() {
+    busy(true, 'جاري تجهيز النسخة الاحتياطية...');
+    try {
+      const data = { version: 2, createdAt: new Date().toISOString(), transactions: [] };
+      for (const col of TOP_COLLECTIONS) {
+        const snap = await db.collection(col).get();
+        data[col] = snap.docs.map(d => ({ id: d.id, ...serialize(d.data()) }));
+        if (col === 'budgets') {
+          for (const d of snap.docs) {
+            const tr = await d.ref.collection('transactions').get();
+            tr.forEach(t => data.transactions.push({ budgetId: d.id, transactionId: t.id, ...serialize(t.data()) }));
+          }
         }
-    }
+      }
+      FGC.download(JSON.stringify(data, null, 2), `FGC_Backup_${FGC.todayStr()}.json`, 'application/json');
+      toast('تم تحميل النسخة الاحتياطية');
+    } catch (e) { toast(FGC.errMsg(e), 'error'); } finally { busy(false); }
+  }
 
-    async function deleteContract(contractId, name) {
-        if(!confirm(t('confirm_delete_contract'))) return;
-        try {
-            await db.collection("contracts").doc(contractId).delete();
-            const snap = await db.collection("budgets").where("contractId", "==", contractId).get();
-            const batch = db.batch();
-            snap.forEach(doc => { batch.delete(doc.ref); });
-            await batch.commit();
-            alert(t('msg_success_delete'));
-        } catch(e) { alert("Error: " + e.message); }
-    }
-
-    async function deleteProjectGroup(contractId, projectName) {
-        if(!confirm(t('confirm_delete_project'))) return;
-        try {
-            const snap = await db.collection("budgets").where("contractId", "==", contractId).where("itemName", "==", projectName).get();
-            const batch = db.batch();
-            snap.forEach(doc => { batch.delete(doc.ref); });
-            await batch.commit();
-            alert(t('msg_success_delete'));
-        } catch(e) { alert("Error: " + e.message); }
-    }
-
-    function addContract() {
-        const name = document.getElementById('newContractName').value;
-        const auth = document.getElementById('newContractAuth').value;
-        const start = document.getElementById('newContractStart').value;
-        const end = document.getElementById('newContractEnd').value;
-        if(!name) return alert(t('msg_incomplete'));
-        const btn = event.target; btn.innerHTML = "..."; btn.disabled = true;
-        db.collection("contracts").add({
-            name: name, supervisingAuthority: auth, startDate: start, endDate: end,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => {
-            alert(t('msg_success_add'));
-            document.getElementById('addContractModal').style.display='none';
-            document.getElementById('newContractName').value="";
-            btn.innerHTML = t('btn_save'); btn.disabled = false;
-        });
-    }
-
-    function openEditContractModal(contractId) {
-        const contract = allContracts.find(c => c.id === contractId);
-        if(!contract) return;
-        document.getElementById('editContractId').value = contractId;
-        document.getElementById('editContractName').value = contract.name;
-        document.getElementById('editContractAuth').value = contract.supervisingAuthority || '';
-        document.getElementById('editContractStart').value = contract.startDate || '';
-        document.getElementById('editContractEnd').value = contract.endDate || '';
-        document.getElementById('editContractModal').style.display = 'flex';
-    }
-
-    async function updateContract() {
-        const id = document.getElementById('editContractId').value;
-        const name = document.getElementById('editContractName').value;
-        const auth = document.getElementById('editContractAuth').value;
-        const start = document.getElementById('editContractStart').value;
-        const end = document.getElementById('editContractEnd').value;
-        if(!id || !name) return alert(t('msg_incomplete'));
-        const btn = event.target; btn.innerHTML = "..."; btn.disabled = true;
-        try {
-            await db.collection("contracts").doc(id).update({ name: name, supervisingAuthority: auth, startDate: start, endDate: end });
-            alert(t('msg_success_update')); document.getElementById('editContractModal').style.display='none';
-        } catch(e) { alert("Error: " + e.message); } finally { btn.innerHTML = t('btn_update'); btn.disabled = false; }
-    }
-
-    function openAddSiteModal(preSelectedContractId = null) {
-        const select = document.getElementById('contractSelect');
-        select.innerHTML = `<option value="">${t('lbl_select_contract')}</option>`;
-        allContracts.forEach(c => {
-            const sel = preSelectedContractId === c.id ? 'selected' : '';
-            select.innerHTML += `<option value="${c.id}" ${sel}>${c.name}</option>`;
-        });
-        document.getElementById('addSiteModal').style.display = 'flex';
-    }
-
-    function addSite() {
-        const contractId = document.getElementById('contractSelect').value;
-        const category = document.getElementById('newSiteCategory').value;
-        const name = document.getElementById('newSiteName').value;
-        const budget = Number(document.getElementById('newSiteBudget').value);
-        if(!contractId || !name || !budget) return alert(t('msg_incomplete'));
-        const btn = event.target; btn.innerHTML = "..."; btn.disabled = true;
-        db.collection("budgets").add({
-            contractId: contractId, category: category, itemName: name, totalAllocatedAmount: budget, currentBalance: budget,
-            totalSpent: 0, totalProfit: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => {
-            alert(t('msg_success_add')); document.getElementById('addSiteModal').style.display='none';
-            document.getElementById('newSiteName').value=""; document.getElementById('newSiteBudget').value="";
-            btn.innerHTML = t('btn_save'); btn.disabled = false;
-        });
-    }
-
-    function openEditSiteModal(siteId) {
-        const site = allSites.find(s => s.id === siteId); if(!site) return;
-        document.getElementById('editSiteId').value = siteId;
-        document.getElementById('editSiteName').value = site.itemName;
-        document.getElementById('editSiteBudget').value = site.totalAllocatedAmount;
-        document.getElementById('editSiteCategory').value = site.category || 'spare_parts';
-        const select = document.getElementById('editSiteContractSelect');
-        select.innerHTML = `<option value="">${t('lbl_select_contract')}</option>`;
-        allContracts.forEach(c => {
-            const selected = site.contractId === c.id ? 'selected' : '';
-            select.innerHTML += `<option value="${c.id}" ${selected}>${c.name}</option>`;
-        });
-        document.getElementById('editSiteModal').style.display = 'flex';
-    }
-
-    async function updateSite() {
-        const siteId = document.getElementById('editSiteId').value;
-        const contractId = document.getElementById('editSiteContractSelect').value;
-        const category = document.getElementById('editSiteCategory').value;
-        const name = document.getElementById('editSiteName').value;
-        const budget = Number(document.getElementById('editSiteBudget').value);
-        if(!siteId || !contractId || !name) return alert(t('msg_incomplete'));
-        const btn = event.target; btn.innerHTML = "..."; btn.disabled = true;
-        try {
-            await db.collection('budgets').doc(siteId).update({ contractId: contractId, category: category, itemName: name, totalAllocatedAmount: budget });
-            alert(t('msg_success_update')); document.getElementById('editSiteModal').style.display = 'none';
-        } catch (e) { alert("Error: " + e.message); } finally { btn.innerHTML = t('btn_update'); btn.disabled = false; }
-    }
-
-    async function openUsersModal() {
-        document.getElementById('usersModal').style.display = 'flex';
-        const tbody = document.getElementById('usersTableBody');
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center">...</td></tr>`;
-
-        try {
-            const usersSnap = await db.collection('users').orderBy('createdAt', 'desc').get();
-            tbody.innerHTML = '';
-            usersSnap.forEach(doc => {
-                const u = doc.data();
-                const userId = doc.id;
-                
-                let sitesOptions = `<option value="">${t('no_site')}</option>`;
-                allContracts.forEach(contract => {
-                    const contractSites = allSites.filter(s => s.contractId === contract.id);
-                    if(contractSites.length > 0) {
-                        sitesOptions += `<optgroup label="${contract.name}">`;
-                        contractSites.forEach(site => {
-                            const selected = u.assignedSiteId === site.id ? 'selected' : '';
-                            const cat = t(site.category || 'spare_parts');
-                            sitesOptions += `<option value="${site.id}" ${selected}>${site.itemName} (${cat})</option>`;
-                        });
-                        sitesOptions += `</optgroup>`;
-                    }
-                });
-                
-                const selUser = u.role === 'user' ? 'selected' : '';
-                const selAdmin = u.role === 'admin' ? 'selected' : '';
-                const selViewer = u.role === 'viewer' ? 'selected' : '';
-                const selViewerPro = u.role === 'viewer_pro' ? 'selected' : '';
-
-                const row = `
-                <tr>
-                    <td>${u.email}</td>
-                    <td>
-                        <select id="role-${userId}" style="padding: 6px; width: 100%; border:1px solid #ddd; border-radius:4px;">
-                            <option value="user" ${selUser}>${t('role_user')}</option>
-                            <option value="viewer" ${selViewer}>${t('role_viewer')}</option>
-                            <option value="viewer_pro" ${selViewerPro}>${t('role_viewer_pro')}</option>
-                            <option value="admin" ${selAdmin}>${t('role_admin')}</option>
-                        </select>
-                    </td>
-                    <td><select id="site-${userId}" style="padding: 6px; width: 100%; border:1px solid #ddd; border-radius:4px;">${sitesOptions}</select></td>
-                    <td><button onclick="saveUserChanges('${userId}')" class="btn btn-success" style="padding:5px 10px; font-size:0.9em;">${t('btn_save')}</button></td>
-                </tr>`;
-                tbody.innerHTML += row;
-            });
-        } catch (e) { console.error(e); }
-    }
-
-    async function saveUserChanges(userId) {
-        const newRole = document.getElementById(`role-${userId}`).value;
-        const newSite = document.getElementById(`site-${userId}`).value;
-        const btn = event.target; btn.innerText = "..."; btn.disabled = true;
-        try {
-            await db.collection('users').doc(userId).update({ role: newRole, assignedSiteId: newSite });
-            alert(t('msg_success_update'));
-        } catch (e) { alert("Error: " + e.message); } finally { btn.innerText = t('btn_save'); btn.disabled = false; }
-    }
-
-    async function recalculateAllProjects() {
-       if(!confirm(t('msg_confirm_recalc'))) return;
-       document.getElementById('loader').style.display = 'flex';
-       try {
-           const bs = await db.collection('budgets').get();
-           const promises = bs.docs.map(async b => {
-               const trans = await b.ref.collection('transactions').get();
-               let p = 0, s = 0;
-               trans.forEach(t => { s += Number(t.data().amountExclTax)||0; p += Number(t.data().companyProfit)||0; });
-               return b.ref.update({ totalSpent: s, totalProfit: p, currentBalance: (b.data().totalAllocatedAmount||0) - s });
-           });
-           await Promise.all(promises); alert(t('msg_success_update'));
-       } catch(e) { alert(e.message); } finally { document.getElementById('loader').style.display = 'none'; }
-    }
-
-    async function startBackup() {
-        const btn = document.getElementById('backupBtn');
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحميل...';
-        
-        let backupData = {
-            users: [],
-            contracts: [],
-            budgets: [],
-            transactions: [],
-            vacations: []
-        };
-
-        try {
-            const usersSnap = await db.collection('users').get();
-            usersSnap.forEach(doc => backupData.users.push({ id: doc.id, ...doc.data() }));
-
-            const contractsSnap = await db.collection('contracts').get();
-            contractsSnap.forEach(doc => backupData.contracts.push({ id: doc.id, ...doc.data() }));
-
-            const budgetsSnap = await db.collection('budgets').get();
-            for (let doc of budgetsSnap.docs) {
-                backupData.budgets.push({ id: doc.id, ...doc.data() });
-                const transSnap = await db.collection('budgets').doc(doc.id).collection('transactions').get();
-                transSnap.forEach(tDoc => {
-                    backupData.transactions.push({ budgetId: doc.id, transactionId: tDoc.id, ...tDoc.data() });
-                });
-            }
-
-            const vacSnap = await db.collection('vacations').get();
-            vacSnap.forEach(doc => backupData.vacations.push({ id: doc.id, ...doc.data() }));
-
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
-            const date = new Date().toISOString().slice(0, 10);
-            downloadAnchorNode.setAttribute("download", "FGC_Backup_" + date + ".json");
-            
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
-
-            alert('تم تحميل النسخة الاحتياطية بنجاح! 💾✅');
-
-        } catch (error) {
-            alert("❌ حدث خطأ أثناء تحميل النسخة الاحتياطية: " + error.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-        }
-    }
-
-    async function processRestore(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        if (!confirm('⚠️ تحذير هام جداً: استعادة البيانات ستقوم بتحديث أو إضافة البيانات من الملف إلى قاعدة البيانات الحالية. هل أنت متأكد أنك تريد المتابعة؟')) {
-            event.target.value = ''; 
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            document.getElementById('loader').style.display = 'flex';
-            document.getElementById('txt_loading').innerText = 'جاري استعادة البيانات... برجاء عدم إغلاق الصفحة';
-            
-            try {
-                const data = JSON.parse(e.target.result);
-                
-                if (data.users) {
-                    for (let u of data.users) {
-                        const { id, ...userData } = u;
-                        await db.collection('users').doc(id).set(userData, { merge: true });
-                    }
-                }
-                
-                if (data.contracts) {
-                    for (let c of data.contracts) {
-                        const { id, ...contractData } = c;
-                        await db.collection('contracts').doc(id).set(contractData, { merge: true });
-                    }
-                }
-                
-                if (data.budgets) {
-                    for (let b of data.budgets) {
-                        const { id, ...budgetData } = b;
-                        await db.collection('budgets').doc(id).set(budgetData, { merge: true });
-                    }
-                }
-                
-                if (data.transactions) {
-                    for (let t of data.transactions) {
-                        const { budgetId, transactionId, ...transData } = t;
-                        if (budgetId && transactionId) {
-                            await db.collection('budgets').doc(budgetId).collection('transactions').doc(transactionId).set(transData, { merge: true });
-                        }
-                    }
-                }
-                
-                if (data.vacations) {
-                    for (let v of data.vacations) {
-                        const { id, ...vacData } = v;
-                        await db.collection('vacations').doc(id).set(vacData, { merge: true });
-                    }
-                }
-
-                alert('✅ تمت استعادة البيانات بنجاح!');
-                location.reload(); 
-            } catch (err) {
-                alert('❌ حدث خطأ أثناء الاستعادة: تأكد من أن الملف هو ملف النسخة الاحتياطية الصحيح. التفاصيل: ' + err.message);
-            } finally {
-                document.getElementById('loader').style.display = 'none';
-                document.getElementById('txt_loading').innerText = 'جاري المعالجة...';
-                event.target.value = '';
-            }
-        };
-        reader.readAsText(file);
-    }
-
-    function logout() { auth.signOut().then(() => window.location.href = "index.html"); }
-    function fmt(n) { return Number(n || 0).toLocaleString('ar-EG', {minimumFractionDigits: 2}); }
+  async function processRestore(event) {
+    const file = event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    let data;
+    try { data = JSON.parse(await file.text()); } catch { return toast('الملف غير صالح.', 'error'); }
+    const counts = TOP_COLLECTIONS.filter(c => Array.isArray(data[c])).map(c => `${c}: ${data[c].length}`).join('\n');
+    const ok = await confirmDialog(`سيتم إضافة/تحديث البيانات التالية في قاعدة البيانات الحالية (بدون حذف أي بيانات موجودة):\n\n${counts}\ntransactions: ${(data.transactions || []).length}`, { title: 'استعادة نسخة احتياطية', confirmText: 'استعادة', danger: true });
+    if (!ok) return;
+    busy(true, 'جاري استعادة البيانات... لا تغلق الصفحة');
+    try {
+      const ops = [];
+      TOP_COLLECTIONS.forEach(col => (data[col] || []).forEach(item => {
+        const { id, ...rest } = item; if (!id) return;
+        ops.push(b => b.set(db.collection(col).doc(id), deserialize(rest), { merge: true }));
+      }));
+      (data.transactions || []).forEach(t => {
+        const { budgetId, transactionId, ...rest } = t; if (!budgetId || !transactionId) return;
+        ops.push(b => b.set(db.collection('budgets').doc(budgetId).collection('transactions').doc(transactionId), deserialize(rest), { merge: true }));
+      });
+      await commitInChunks(ops);
+      toast(`تمت استعادة ${ops.length} سجل بنجاح`);
+    } catch (e) { toast(FGC.errMsg(e), 'error'); } finally { busy(false); }
+  }
 </script>
 </body>
 </html>

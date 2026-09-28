@@ -1,286 +1,145 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إعدادات مقاولي الباطن والعمالة - FGC</title>
-    
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-
-    <style>
-        .profit-element { display: none; } /* مخفية افتراضياً وتظهر للأدمن فقط */
-        
-        .config-card { background: #fff; padding: 25px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-        .config-header { font-size: 1.2em; font-weight: bold; color: var(--primary); margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; display: flex; align-items: center; gap: 10px; }
-        
-        .month-checkbox-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #edf2f7; margin-top: 10px; }
-        .month-checkbox-group label { display: flex; align-items: center; gap: 8px; font-size: 0.9em; cursor: pointer; padding: 5px; border-radius: 5px; transition: 0.2s; }
-        .month-checkbox-group label:hover { background: #e2e8f0; }
-        
-        table.config-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }
-        table.config-table th, table.config-table td { border: 1px solid #eee; padding: 10px; text-align: center; }
-        table.config-table th { background: #f8fafc; color: var(--primary); }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>إعدادات المستخلص — FGC System</title>
+  <link rel="icon" href="FGC.jpeg">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="js/core.js"></script>
 </head>
 <body>
+<div id="pageLoader" class="page-loader"><div class="spinner"></div></div>
+<header id="appHeader"></header>
 
-<div class="container" style="margin-top: 30px;">
-    
-    <div class="header-bar">
-        <div class="header-title-box">
-            <img src="FGC.jpeg" alt="Logo" class="logo-img" style="max-height: 60px;">
-            <div>
-                <h2 style="margin:0; color: var(--primary);">إعدادات قوائم العمالة والصيانة الوقائية</h2>
-                <p id="siteTitle" style="margin:5px 0 0 0; color:#666; font-size:0.9em;">جاري التحميل...</p>
-            </div>
+<main class="page">
+  <div class="page-head">
+    <div>
+      <div class="breadcrumb"><a id="backLink" href="#">المستخلصات</a><i class="fa-solid fa-chevron-left" style="font-size:10px"></i><span>الإعدادات</span></div>
+      <h1>إعدادات القوائم الثابتة</h1>
+      <p><span class="js-site-name"></span> — العمالة الأساسية وجدول الصيانة الوقائية التي يتم توليد المستخلص الشهري منها</p>
+    </div>
+    <div class="actions"><a class="btn btn-secondary" id="backBtn" href="#"><i class="fa-solid fa-arrow-right"></i> العودة للمستخلصات</a></div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h3><i class="fa-solid fa-users-gear text-brand"></i> العمالة الأساسية <span class="badge badge-neutral">نموذج 20</span></h3></div>
+      <div class="card-body" data-edit hidden>
+        <div class="callout callout-info" style="margin-bottom:14px"><i class="fa-solid fa-lightbulb"></i><div>اكتب اسم الموظف أو اختاره من المقترحات (مأخوذة من موظفي الموقع المسجلين في الإجازات) وسيتم ملء الوظيفة تلقائياً.</div></div>
+        <div class="form-grid-3">
+          <div class="field"><label class="req">اسم الموظف</label><input class="input" id="mlName" list="empList" autocomplete="off"><datalist id="empList"></datalist></div>
+          <div class="field"><label class="req">الوظيفة</label><input class="input" id="mlJob"></div>
+          <div class="field"><label class="req">الجنسية</label><input class="input" id="mlNat"></div>
+          <div class="field"><label class="req">قيمة المطالبة بالمستخلص</label><input type="number" class="input" id="mlInvoice"></div>
+          <div class="field" data-profit hidden><label>الراتب الفعلي (للإدارة فقط)</label><input type="number" class="input" id="mlCost"></div>
+          <div class="field" style="justify-content:flex-end"><button class="btn btn-primary" onclick="saveLabor(this)"><i class="fa-solid fa-plus"></i> إضافة للقائمة</button></div>
         </div>
-        <div id="actionButtons" style="display:flex; gap: 10px;">
-            <a href="#" id="backToInvoicesBtn" class="btn btn-outline" style="border-color:var(--primary); color:var(--primary); text-decoration:none;"><i class="fa-solid fa-arrow-right"></i> العودة لصفحة المستخلصات</a>
-        </div>
+      </div>
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>الاسم</th><th>الوظيفة</th><th>الجنسية</th><th class="num">المبلغ بالمستخلص</th><th class="num" data-profit hidden>الراتب</th><th class="col-actions" data-edit hidden></th></tr></thead>
+        <tbody id="laborRows"></tbody>
+      </table></div>
     </div>
 
-    <div class="config-card">
-        <div class="config-header"><i class="fa-solid fa-users-gear"></i> القائمة الأساسية للعمالة (نموذج 20)</div>
-        
-        <div style="background:#eef2f7; padding:12px; border-radius:8px; margin-bottom:20px; font-size:0.85em; color:var(--primary); border:1px solid #cbd5e1;">
-            <i class="fa-solid fa-lightbulb"></i> القائمة أدناه مرتبطة بأسماء الموظفين المسجلين في نظام "الإجازات". اختر الموظف لجلبه للقائمة الثابتة للمستخلص.
+    <div class="card">
+      <div class="card-head"><h3><i class="fa-solid fa-calendar-check text-brand"></i> جدولة الأجهزة ومقاولي الباطن <span class="badge badge-neutral">نموذج 5</span></h3></div>
+      <div class="card-body" data-edit hidden>
+        <div class="form-grid-3">
+          <div class="field"><label class="req">الوكيل / المقاول</label><input class="input" id="mdContractor"></div>
+          <div class="field"><label class="req">الجهاز</label><input class="input" id="mdDevice"></div>
+          <div class="field"><label>الشركة الصانعة</label><input class="input" id="mdBrand"></div>
+          <div class="field"><label class="req">عدد الأجهزة</label><input type="number" class="input" id="mdCount" value="1" min="1"></div>
+          <div class="field"><label class="req">قيمة الزيارة بالمستخلص</label><input type="number" class="input" id="mdInvoice"></div>
+          <div class="field" data-profit hidden><label>تكلفة الوكيل (للإدارة فقط)</label><input type="number" class="input" id="mdCost"></div>
         </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; background: #fafafa; padding: 20px; border-radius: 8px; border: 1px solid #eee;">
-            <div class="input-box">
-                <label>اختر الموظف من القائمة المسجلة *</label>
-                <select id="mLabSelect" onchange="autoFillJobTitle()" style="width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #ccc;">
-                    <option value="">-- جاري تحميل الموظفين --</option>
-                </select>
-            </div>
-            <div class="input-box"><label>مسمى الوظيفة *</label><input type="text" id="mLabJob" placeholder="يتم سحبه تلقائياً..."></div>
-            <div class="input-box"><label>الجنسية *</label><input type="text" id="mLabNat"></div>
-            
-            <div class="input-box"><label>قيمة المطالبة المرفوعة للتجمع (ريال) *</label><input type="number" id="mLabInvoice" style="border-color:var(--accent);"></div>
-            <div class="input-box profit-element"><label style="color:#c0392b;">الراتب الفعلي / التكلفة (تظهر للإدارة فقط)</label><input type="number" id="mLabCost" placeholder="الراتب الحقيقي للعامل"></div>
-            
-            <div style="grid-column: 1 / -1; text-align: left; margin-top: 10px;">
-                <button onclick="saveMasterLabor()" class="btn btn-primary" style="width: 200px;"><i class="fa-solid fa-plus"></i> إضافة للقائمة الثابتة</button>
-            </div>
-        </div>
-
-        <table class="config-table">
-            <thead>
-                <tr>
-                    <th>اسم الموظف</th><th>الوظيفة</th><th>الجنسية</th>
-                    <th>المبلغ بالمستخلص</th><th class="profit-element">التكلفة (الراتب)</th><th>حذف</th>
-                </tr>
-            </thead>
-            <tbody id="masterLaborTableBody"></tbody>
-        </table>
+        <fieldset class="fieldset" style="margin-top:14px"><legend>شهور الصيانة الوقائية (PPM)</legend>
+          <div class="row" style="margin-bottom:8px"><button class="btn btn-ghost btn-sm" type="button" onclick="setMonths('all')">الكل</button><button class="btn btn-ghost btn-sm" type="button" onclick="setMonths('q')">ربع سنوي</button><button class="btn btn-ghost btn-sm" type="button" onclick="setMonths('h')">نصف سنوي</button><button class="btn btn-ghost btn-sm" type="button" onclick="setMonths('none')">مسح</button></div>
+          <div class="check-grid" id="monthsBox"></div>
+        </fieldset>
+        <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-primary" onclick="saveDevice(this)"><i class="fa-solid fa-plus"></i> جدولة وحفظ الجهاز</button></div>
+      </div>
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>المقاول</th><th>الجهاز</th><th class="center">العدد</th><th>شهور الزيارة</th><th class="num">قيمة الزيارة</th><th class="num" data-profit hidden>التكلفة</th><th class="col-actions" data-edit hidden></th></tr></thead>
+        <tbody id="devRows"></tbody>
+      </table></div>
     </div>
-
-    <div class="config-card">
-        <div class="config-header"><i class="fa-solid fa-calendar-check"></i> الجدولة السنوية للأجهزة ومقاولي الباطن (نموذج 5)</div>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; background: #fafafa; padding: 20px; border-radius: 8px; border: 1px solid #eee;">
-            <div class="input-box"><label>اسم الوكيل/مقاول الباطن *</label><input type="text" id="mSubContractor"></div>
-            <div class="input-box"><label>اسم ونوع الجهاز *</label><input type="text" id="mSubDevice"></div>
-            <div class="input-box"><label>الشركة الصانعة</label><input type="text" id="mSubBrand"></div>
-            <div class="input-box"><label>عدد الأجهزة بالموقع *</label><input type="number" id="mSubCount" value="1"></div>
-            
-            <div class="input-box"><label>قيمة الزيارة بالمستخلص (ريال) *</label><input type="number" id="mSubInvoice" style="border-color:var(--accent);"></div>
-            <div class="input-box profit-element"><label style="color:#c0392b;">التكلفة الفعلية للوكيل (تظهر للإدارة فقط)</label><input type="number" id="mSubCost" placeholder="ما يُدفع للوكيل"></div>
-            
-            <div style="grid-column: 1 / -1;">
-                <label style="font-weight:bold; color:var(--primary); display:block; margin-top:10px;">حدد شهور الصيانة الوقائية (PPM) المعتمدة لهذا الجهاز:</label>
-                <div class="month-checkbox-group">
-                    <label><input type="checkbox" class="ppm-month" value="01">يناير (01)</label>
-                    <label><input type="checkbox" class="ppm-month" value="02">فبراير (02)</label>
-                    <label><input type="checkbox" class="ppm-month" value="03">مارس (03)</label>
-                    <label><input type="checkbox" class="ppm-month" value="04">أبريل (04)</label>
-                    <label><input type="checkbox" class="ppm-month" value="05">مايو (05)</label>
-                    <label><input type="checkbox" class="ppm-month" value="06">يونيو (06)</label>
-                    <label><input type="checkbox" class="ppm-month" value="07">يوليو (07)</label>
-                    <label><input type="checkbox" class="ppm-month" value="08">أغسطس (08)</label>
-                    <label><input type="checkbox" class="ppm-month" value="09">سبتمبر (09)</label>
-                    <label><input type="checkbox" class="ppm-month" value="10">أكتوبر (10)</label>
-                    <label><input type="checkbox" class="ppm-month" value="11">نوفمبر (11)</label>
-                    <label><input type="checkbox" class="ppm-month" value="12">ديسمبر (12)</label>
-                </div>
-            </div>
-
-            <div style="grid-column: 1 / -1; text-align: left; margin-top: 10px;">
-                <button onclick="saveMasterDevice()" class="btn btn-primary" style="width: 200px;"><i class="fa-solid fa-plus"></i> جدولة وحفظ الجهاز</button>
-            </div>
-        </div>
-
-        <table class="config-table">
-            <thead>
-                <tr>
-                    <th>المقاول</th><th>الجهاز</th><th>الشركة الصانعة</th><th>العدد</th>
-                    <th>شهور الزيارة (PPM)</th><th>المبلغ بالمستخلص</th><th class="profit-element">التكلفة الفعلية</th><th>حذف</th>
-                </tr>
-            </thead>
-            <tbody id="masterDevicesTableBody"></tbody>
-        </table>
-    </div>
-
-</div>
+  </div>
+</main>
 
 <script>
-    const firebaseConfig = { apiKey: "AIzaSyCHZsLreB9fd8fkjnj87miAPDrZsKMOrDI", authDomain: "fgcbio.firebaseapp.com", projectId: "fgcbio", storageBucket: "fgcbio.firebasestorage.app", messagingSenderId: "924334872806", appId: "1:924334872806:web:fac89ce388b1ff2de24327" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
+  const { db, esc, fmt, num, toast, confirmDialog, withButton } = FGC;
+  const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  const F = id => document.getElementById(id);
+  let ctx, siteId, emps = new Map();
 
-    const siteId = new URLSearchParams(window.location.search).get('id');
-    if(!siteId) window.location.href = "dashboard.html";
+  F('monthsBox').innerHTML = MONTHS.map((m, i) => `<label class="check"><input type="checkbox" class="ppm" value="${FGC.pad(i + 1)}"> ${m}</label>`).join('');
+  function setMonths(mode) {
+    FGC.$$('.ppm').forEach((c, i) => c.checked = mode === 'all' || (mode === 'q' && i % 3 === 0) || (mode === 'h' && i % 6 === 0));
+  }
 
-    // رابط العودة لصفحة المستخلصات
-    document.getElementById('backToInvoicesBtn').href = `details_subcontracts.html?id=${siteId}`;
+  FGC.init({ site: true, nav: 'site' }).then(c => {
+    ctx = c; siteId = c.siteId;
+    FGC.$$('[data-edit]').forEach(e => e.hidden = !ctx.can.edit);
+    FGC.$$('[data-profit]').forEach(e => e.hidden = !ctx.can.profit);
+    const back = 'details_subcontracts.html?id=' + encodeURIComponent(siteId);
+    F('backLink').href = back; F('backBtn').href = back;
 
-    let currentUserRole = 'user'; 
-    let employeesFromVacations = new Map(); // خريطة لتخزين الموظفين من الإجازات
-
-    auth.onAuthStateChanged(async user => {
-        if(user) {
-            const u = await db.collection('users').doc(user.uid).get();
-            if(u.exists) currentUserRole = u.data().role;
-
-            // تطبيق الصلاحيات الذكية لحجب التكاليف عن الموظف العادي
-            if(currentUserRole === 'admin' || currentUserRole === 'viewer_pro') {
-                document.querySelectorAll('.profit-element').forEach(el => el.style.display = 'table-cell'); // للجداول
-                document.querySelectorAll('div.profit-element').forEach(el => el.style.display = 'block'); // للحقول
-            }
-
-            loadSiteName();
-            loadVacationEmployees();
-            loadMasterData();
-        } else { window.location.href = "index.html"; }
+    db.collection('budgets').doc(siteId).onSnapshot(d => { if (d.exists) FGC.$$('.js-site-name').forEach(e => e.textContent = d.data().itemName); });
+    db.collection('vacations').where('siteId', '==', siteId).onSnapshot(s => {
+      emps = new Map(); s.forEach(d => { const v = d.data(); if (v.empName) emps.set(v.empName, v.jobTitle || ''); });
+      F('empList').innerHTML = [...emps.keys()].map(n => `<option value="${esc(n)}">`).join('');
     });
+    const err = e => toast(FGC.errMsg(e), 'error');
+    db.collection('contracts_master_labor').where('siteId', '==', siteId).onSnapshot(s => {
+      const rows = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.name).localeCompare(String(b.name), 'ar'));
+      F('laborRows').innerHTML = rows.map(d => `<tr><td class="cell-title">${esc(d.name)}</td><td>${esc(d.jobTitle)}</td><td>${esc(d.nationality)}</td><td class="num fw-600">${fmt(d.invoice)}</td>${ctx.can.profit ? `<td class="num">${fmt(d.cost)}</td>` : ''}${del('contracts_master_labor', d.id)}</tr>`).join('')
+        || `<tr><td colspan="6"><div class="empty" style="padding:24px">لا يوجد عمالة في القائمة</div></td></tr>`;
+    }, err);
+    db.collection('contracts_master_devices').where('siteId', '==', siteId).onSnapshot(s => {
+      const rows = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      F('devRows').innerHTML = rows.map(d => `<tr><td class="cell-title">${esc(d.contractorName)}</td><td>${esc(d.deviceName)}<div class="cell-sub">${esc(d.brand || '')}</div></td><td class="center">${esc(d.devicesCount)}</td>
+        <td>${(d.scheduledMonths || []).slice().sort().map(m => `<span class="badge badge-brand" style="margin:1px">${esc(MONTHS[+m - 1] || m)}</span>`).join('')}</td>
+        <td class="num fw-600">${fmt(d.invoice)}</td>${ctx.can.profit ? `<td class="num">${fmt(d.cost)}</td>` : ''}${del('contracts_master_devices', d.id)}</tr>`).join('')
+        || `<tr><td colspan="7"><div class="empty" style="padding:24px">لا توجد أجهزة مجدولة</div></td></tr>`;
+    }, err);
+  });
 
-    function loadSiteName() {
-        db.collection("budgets").doc(siteId).onSnapshot(doc => {
-            if(doc.exists) document.getElementById('siteTitle').innerText = "الموقع: " + doc.data().itemName;
-        });
-    }
+  const del = (col, id) => ctx.can.edit ? `<td class="actions-cell"><button class="btn btn-ghost btn-icon text-danger" data-col="${col}" data-id="${esc(id)}"><i class="fa-regular fa-trash-can"></i></button></td>` : '';
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-col][data-id]'); if (!b) return;
+    if (!(await confirmDialog('حذف هذا السجل من القائمة الثابتة؟ (المستخلصات السابقة لن تتأثر)', { title: 'حذف', confirmText: 'حذف', danger: true }))) return;
+    try { await db.collection(b.dataset.col).doc(b.dataset.id).delete(); toast('تم الحذف'); } catch (err) { toast(FGC.errMsg(err), 'error'); }
+  });
 
-    // الخطوة الذكية: سحب بيانات الموظفين من جدول الإجازات
-    function loadVacationEmployees() {
-        db.collection("vacations").where("siteId", "==", siteId).onSnapshot(snap => {
-            employeesFromVacations.clear();
-            snap.forEach(doc => {
-                const v = doc.data();
-                if(v.empName) employeesFromVacations.set(v.empName, v.jobTitle || '');
-            });
+  F('mlName').addEventListener('input', () => { const j = emps.get(F('mlName').value.trim()); if (j && !F('mlJob').value) F('mlJob').value = j; });
 
-            const selectEl = document.getElementById('mLabSelect');
-            selectEl.innerHTML = '<option value="">-- اختر موظف مسجل بالموقع --</option>';
-            employeesFromVacations.forEach((jobTitle, empName) => {
-                selectEl.innerHTML += `<option value="${empName}" data-job="${jobTitle}">${empName}</option>`;
-            });
-        });
-    }
+  function saveLabor(btn) {
+    const data = { siteId, name: F('mlName').value.trim(), jobTitle: F('mlJob').value.trim(), nationality: F('mlNat').value.trim(),
+      invoice: num(F('mlInvoice').value), cost: ctx.can.profit ? num(F('mlCost').value) : 0 };
+    if (!data.name || !data.jobTitle || !data.nationality || !data.invoice) return toast('يرجى تعبئة الحقول المطلوبة.', 'warning');
+    withButton(btn, async () => {
+      await db.collection('contracts_master_labor').add(data);
+      ['mlName', 'mlJob', 'mlNat', 'mlInvoice', 'mlCost'].forEach(id => F(id).value = '');
+      toast('تمت الإضافة');
+    });
+  }
 
-    // التعبئة التلقائية للوظيفة عند اختيار الموظف
-    function autoFillJobTitle() {
-        const selectEl = document.getElementById('mLabSelect');
-        const selectedOption = selectEl.options[selectEl.selectedIndex];
-        const jobTitle = selectedOption.getAttribute('data-job') || '';
-        document.getElementById('mLabJob').value = jobTitle;
-    }
-
-    // تحميل القوائم الثابتة المحفوظة مسبقاً
-    function loadMasterData() {
-        const isProfitVisible = (currentUserRole === 'admin' || currentUserRole === 'viewer_pro');
-
-        db.collection("contracts_master_labor").where("siteId", "==", siteId).onSnapshot(snap => {
-            const tbody = document.getElementById('masterLaborTableBody');
-            tbody.innerHTML = "";
-            snap.forEach(doc => {
-                const d = doc.data();
-                tbody.innerHTML += `
-                <tr>
-                    <td><b>${d.name}</b></td><td>${d.jobTitle}</td><td>${d.nationality}</td>
-                    <td style="font-weight:bold;">${fmt(d.invoice)}</td>
-                    ${isProfitVisible ? `<td style="color:#c0392b;">${fmt(d.cost)}</td>` : ''}
-                    <td><button onclick="deleteDoc('contracts_master_labor','${doc.id}')" style="color:red; background:none; border:none; cursor:pointer;"><i class="fa-solid fa-trash"></i></button></td>
-                </tr>`;
-            });
-        });
-
-        db.collection("contracts_master_devices").where("siteId", "==", siteId).onSnapshot(snap => {
-            const tbody = document.getElementById('masterDevicesTableBody');
-            tbody.innerHTML = "";
-            snap.forEach(doc => {
-                const d = doc.data();
-                const monthsStr = (d.scheduledMonths || []).sort().join(', ');
-                tbody.innerHTML += `
-                <tr>
-                    <td><b>${d.contractorName}</b></td><td>${d.deviceName}</td><td>${d.brand || '-'}</td><td>${d.devicesCount}</td>
-                    <td style="color:var(--primary); font-weight:bold; letter-spacing:2px;">[ ${monthsStr} ]</td>
-                    <td style="font-weight:bold;">${fmt(d.invoice)}</td>
-                    ${isProfitVisible ? `<td style="color:#c0392b;">${fmt(d.cost)}</td>` : ''}
-                    <td><button onclick="deleteDoc('contracts_master_devices','${doc.id}')" style="color:red; background:none; border:none; cursor:pointer;"><i class="fa-solid fa-trash"></i></button></td>
-                </tr>`;
-            });
-        });
-    }
-
-    // حفظ عامل جديد في القائمة الثابتة
-    async function saveMasterLabor() {
-        const selectEl = document.getElementById('mLabSelect');
-        const name = selectEl.value; // اسم الموظف المختار من قائمة الإجازات
-        const job = document.getElementById('mLabJob').value;
-        const nat = document.getElementById('mLabNat').value;
-        const invoice = Number(document.getElementById('mLabInvoice').value) || 0;
-        const cost = Number(document.getElementById('mLabCost').value) || 0;
-
-        if(!name || !job || !nat || !invoice) return alert("يرجى اختيار الموظف واستكمال حقول الجنسية وقيمة المستخلص!");
-
-        try {
-            await db.collection("contracts_master_labor").add({ siteId, name, jobTitle: job, nationality: nat, cost, invoice });
-            document.getElementById('mLabSelect').selectedIndex = 0;
-            document.getElementById('mLabJob').value = "";
-            document.getElementById('mLabNat').value = "";
-            document.getElementById('mLabInvoice').value = "";
-            document.getElementById('mLabCost').value = "";
-        } catch(e) { alert(e.message); }
-    }
-
-    // حفظ وجدولة جهاز في القائمة الثابتة
-    async function saveMasterDevice() {
-        const contractorName = document.getElementById('mSubContractor').value;
-        const deviceName = document.getElementById('mSubDevice').value;
-        const brand = document.getElementById('mSubBrand').value;
-        const devicesCount = Number(document.getElementById('mSubCount').value) || 1;
-        const invoice = Number(document.getElementById('mSubInvoice').value) || 0;
-        const cost = Number(document.getElementById('mSubCost').value) || 0;
-        
-        let scheduledMonths = [];
-        document.querySelectorAll('.ppm-month:checked').forEach(cb => scheduledMonths.push(cb.value));
-
-        if(!contractorName || !deviceName || !invoice || scheduledMonths.length === 0) {
-            return alert("يرجى ملء المقاول، الجهاز، قيمة المستخلص، واختيار شهر واحد على الأقل!");
-        }
-
-        try {
-            await db.collection("contracts_master_devices").add({ siteId, contractorName, deviceName, brand, devicesCount, cost, invoice, scheduledMonths });
-            document.getElementById('mSubContractor').value = "";
-            document.getElementById('mSubDevice').value = "";
-            document.getElementById('mSubBrand').value = "";
-            document.getElementById('mSubInvoice').value = "";
-            document.getElementById('mSubCost').value = "";
-            document.querySelectorAll('.ppm-month').forEach(cb => cb.checked = false);
-        } catch(e) { alert(e.message); }
-    }
-
-    async function deleteDoc(col, id) {
-        if(confirm("هل أنت متأكد من حذف هذا السجل من القائمة الأساسية؟")) await db.collection(col).doc(id).delete();
-    }
-
-    function fmt(n) { return Number(n||0).toLocaleString('ar-EG',{minimumFractionDigits:2}); }
+  function saveDevice(btn) {
+    const scheduledMonths = FGC.$$('.ppm:checked').map(c => c.value);
+    const data = { siteId, contractorName: F('mdContractor').value.trim(), deviceName: F('mdDevice').value.trim(), brand: F('mdBrand').value.trim(),
+      devicesCount: Number(F('mdCount').value) || 1, invoice: num(F('mdInvoice').value), cost: ctx.can.profit ? num(F('mdCost').value) : 0, scheduledMonths };
+    if (!data.contractorName || !data.deviceName || !data.invoice || !scheduledMonths.length) return toast('املأ المقاول والجهاز وقيمة الزيارة واختر شهراً واحداً على الأقل.', 'warning');
+    withButton(btn, async () => {
+      await db.collection('contracts_master_devices').add(data);
+      ['mdContractor', 'mdDevice', 'mdBrand', 'mdInvoice', 'mdCost'].forEach(id => F(id).value = ''); F('mdCount').value = 1; setMonths('none');
+      toast('تمت الجدولة');
+    });
+  }
 </script>
 </body>
 </html>

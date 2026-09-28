@@ -1,0 +1,104 @@
+rules_version = '2';
+
+// =========================================================
+// FGC System — Firestore Security Rules
+// انسخ الملف ده والصقه في: Firebase Console > Firestore Database > Rules > Publish
+//
+// الأدوار:
+//   admin       : كل الصلاحيات على كل المواقع
+//   user        : قراءة وإدخال بيانات الموقع المخصص له فقط
+//   viewer      : قراءة الموقع المخصص له فقط
+//   viewer_pro  : قراءة الموقع المخصص له فقط (والأرباح في الواجهة)
+// =========================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helpers ----------
+    function signedIn() { return request.auth != null; }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function hasProfile() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function isAdmin() { return hasProfile() && me().role == 'admin'; }
+    function mySite() { return me().get('assignedSiteId', ''); }
+    function canEdit() { return hasProfile() && me().role in ['admin', 'user']; }
+
+    // يقرأ الموقع المسموح له فقط
+    function canReadSite(siteId) { return isAdmin() || (hasProfile() && siteId != '' && mySite() == siteId); }
+    // يكتب في الموقع المسموح له فقط
+    function canWriteSite(siteId) { return isAdmin() || (canEdit() && siteId != '' && mySite() == siteId); }
+
+    // مستندات مربوطة بموقع عن طريق حقل siteId
+    function readSiteDoc() { return canReadSite(resource.data.siteId); }
+    function createSiteDoc() { return canWriteSite(request.resource.data.siteId); }
+    function updateSiteDoc() {
+      return canWriteSite(resource.data.siteId)
+        && request.resource.data.siteId == resource.data.siteId; // ممنوع نقل السجل لموقع تاني
+    }
+
+    // ---------- Users ----------
+    match /users/{uid} {
+      allow read: if (signedIn() && request.auth.uid == uid) || isAdmin();
+      // التسجيل الذاتي: يسمح فقط بإنشاء حساب بصلاحية user وبدون موقع
+      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid
+        && request.resource.data.role == 'user'
+        && request.resource.data.get('assignedSiteId', '') == '');
+      // الصلاحية والموقع يغيرهم المدير فقط
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ---------- Contracts ----------
+    match /contracts/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---------- Sites / budgets ----------
+    match /budgets/{siteId} {
+      allow read: if canReadSite(siteId);
+      allow create, delete: if isAdmin();
+      // المدير يعدل كل شيء، والمستخدم يحدّث الأرصدة فقط (عند إضافة/حذف تعميد)
+      allow update: if isAdmin() || (canWriteSite(siteId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalSpent', 'totalProfit', 'currentBalance']));
+
+      match /transactions/{tid} {
+        allow read: if canReadSite(siteId);
+        allow create, update, delete: if canWriteSite(siteId);
+      }
+    }
+
+    // ---------- Vacations ----------
+    // غير المدير لا يعتمد إجازة بنفسه، إلا لو بيقبل موعد اقترحته الإدارة
+    function vacationUserUpdateOk() {
+      return request.resource.data.get('status', 'pending') in ['pending', 'rejected']
+        || (request.resource.data.status == 'approved'
+            && resource.data.get('status', '') == 'suggested'
+            && request.resource.data.startDate == resource.data.suggestedStart
+            && request.resource.data.endDate == resource.data.suggestedEnd);
+    }
+    match /vacations/{id} {
+      allow read: if readSiteDoc();
+      allow create: if isAdmin() || (createSiteDoc() && request.resource.data.get('status', 'pending') == 'pending');
+      allow update: if isAdmin() || (updateSiteDoc() && vacationUserUpdateOk());
+      allow delete: if isAdmin();
+    }
+    match /alternative_employees/{id} {
+      allow read: if hasProfile();
+      allow write: if isAdmin();
+    }
+
+    // ---------- Subcontracts / invoices ----------
+    match /labor_records/{id}            { allow read: if readSiteDoc(); allow create: if createSiteDoc(); allow update: if updateSiteDoc(); allow delete: if canWriteSite(resource.data.siteId); }
+    match /subcontractor_visits/{id}     { allow read: if readSiteDoc(); allow create: if createSiteDoc(); allow update: if updateSiteDoc(); allow delete: if canWriteSite(resource.data.siteId); }
+    match /general_deductions/{id}       { allow read: if readSiteDoc(); allow create: if createSiteDoc(); allow update: if updateSiteDoc(); allow delete: if canWriteSite(resource.data.siteId); }
+    match /contracts_master_labor/{id}   { allow read: if readSiteDoc(); allow create: if createSiteDoc(); allow update: if updateSiteDoc(); allow delete: if canWriteSite(resource.data.siteId); }
+    match /contracts_master_devices/{id} { allow read: if readSiteDoc(); allow create: if createSiteDoc(); allow update: if updateSiteDoc(); allow delete: if canWriteSite(resource.data.siteId); }
+
+    // ---------- Calibration ----------
+    match /calibrations/{id}             { allow read: if readSiteDoc(); allow create: if createSiteDoc(); allow update: if updateSiteDoc(); allow delete: if canWriteSite(resource.data.siteId); }
+    match /calibration_device_names/{id} {
+      allow read: if hasProfile();
+      allow write: if isAdmin();
+    }
+
+    // أي مجموعة تانية مقفولة افتراضياً
+  }
+}
